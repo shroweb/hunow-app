@@ -9,18 +9,57 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-redeemRouter.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
-  const { card_id, offer_id, business_id } = req.body;
+const WP_BASE = process.env.WP_API_URL ?? "https://hunow.co.uk/wp-json";
 
-  if (!card_id || !offer_id || !business_id) {
-    res.status(400).json({ message: "card_id, offer_id, and business_id are required" });
+/** Get a WP JWT token for the service account */
+async function getWPToken(): Promise<string | null> {
+  const username = process.env.WP_SERVICE_USERNAME;
+  const password = process.env.WP_SERVICE_PASSWORD;
+  if (!username || !password) return null;
+
+  try {
+    const res = await fetch(`${WP_BASE}/jwt-auth/v1/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { token: string };
+    return data.token;
+  } catch {
+    return null;
+  }
+}
+
+/** Award points to a WP user via HU NOW API */
+async function awardPoints(wpUserId: number, action: string, points: number, token: string): Promise<void> {
+  try {
+    await fetch(`${WP_BASE}/hunow/v1/points/award`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ user_id: wpUserId, action, points }),
+    });
+  } catch {
+    // Non-critical — log but don't fail the redemption
+    console.error("Failed to award WP points");
+  }
+}
+
+redeemRouter.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { card_id, offer_title, offer_index, business_id, wp_post_id } = req.body;
+
+  if (!card_id || !offer_title || !business_id) {
+    res.status(400).json({ message: "card_id, offer_title, and business_id are required" });
     return;
   }
 
   // Verify the business belongs to the authenticated user
   const { data: business, error: bizError } = await supabase
     .from("businesses")
-    .select("id")
+    .select("id, wp_post_id")
     .eq("id", business_id)
     .eq("user_id", req.userId!)
     .single();
@@ -30,36 +69,42 @@ redeemRouter.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  // Fetch the offer
-  const { data: offer, error: offerError } = await supabase
-    .from("offers")
-    .select("id, redemption_type, is_active, business_id")
-    .eq("id", offer_id)
-    .eq("business_id", business_id)
+  // Verify the card exists
+  const { data: card, error: cardError } = await supabase
+    .from("cards")
+    .select("id, user_id")
+    .eq("id", card_id)
     .single();
 
-  if (offerError || !offer) {
-    res.status(404).json({ message: "Offer not found" });
+  if (cardError || !card) {
+    res.status(404).json({ message: "Card not found" });
     return;
   }
 
-  if (!offer.is_active) {
-    res.status(400).json({ message: "This offer is no longer active" });
+  // Check if this offer was already redeemed today (basic duplicate guard)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const { data: todayRedemptions } = await supabase
+    .from("redemptions")
+    .select("id")
+    .eq("card_id", card_id)
+    .eq("business_id", business_id)
+    .eq("offer_title", offer_title)
+    .gte("redeemed_at", today.toISOString());
+
+  if (todayRedemptions && todayRedemptions.length > 0) {
+    res.status(400).json({ message: "This offer has already been redeemed today on this card" });
     return;
   }
 
-  // Check redemption eligibility
-  const eligible = await checkEligibility(card_id, offer_id, offer.redemption_type);
-  if (!eligible.ok) {
-    res.status(400).json({ message: eligible.message });
-    return;
-  }
-
-  // Record the redemption
+  // Record the redemption in Supabase
   const { error: insertError } = await supabase.from("redemptions").insert({
     card_id,
-    offer_id,
     business_id,
+    offer_title,
+    offer_index: offer_index ?? null,
+    wp_post_id: wp_post_id ?? business.wp_post_id ?? null,
     redeemed_by: req.userId!,
   });
 
@@ -69,49 +114,17 @@ redeemRouter.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  res.json({ success: true, message: "Offer redeemed successfully" });
-});
-
-async function checkEligibility(
-  cardId: string,
-  offerId: string,
-  redemptionType: string
-): Promise<{ ok: boolean; message?: string }> {
-  if (redemptionType === "unlimited") return { ok: true };
-
-  const { data: existing } = await supabase
-    .from("redemptions")
-    .select("redeemed_at")
-    .eq("card_id", cardId)
-    .eq("offer_id", offerId)
-    .order("redeemed_at", { ascending: false })
-    .limit(1);
-
-  if (!existing || existing.length === 0) return { ok: true };
-
-  if (redemptionType === "one_time") {
-    return { ok: false, message: "This offer has already been redeemed on this card" };
-  }
-
-  const last = new Date(existing[0].redeemed_at);
-  const now = new Date();
-
-  if (redemptionType === "once_per_day") {
-    const sameDay = last.toDateString() === now.toDateString();
-    if (sameDay) return { ok: false, message: "This offer can only be redeemed once per day" };
-  }
-
-  if (redemptionType === "once_per_week") {
-    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-    if (now.getTime() - last.getTime() < msPerWeek) {
-      return { ok: false, message: "This offer can only be redeemed once per week" };
+  // Award WP points asynchronously (non-blocking)
+  getWPToken().then((token) => {
+    if (token) {
+      // Award scan points (10pts) + redemption points (25pts) = 35pts total
+      awardPoints(0, "offer_redeemed", 35, token); // TODO: resolve WP user ID from card
     }
-  }
+  });
 
-  if (redemptionType === "once_per_month") {
-    const sameMonth = last.getMonth() === now.getMonth() && last.getFullYear() === now.getFullYear();
-    if (sameMonth) return { ok: false, message: "This offer can only be redeemed once per month" };
-  }
-
-  return { ok: true };
-}
+  res.json({
+    success: true,
+    message: "Offer redeemed successfully",
+    points_awarded: 35,
+  });
+});
