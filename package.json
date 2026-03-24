@@ -1,9 +1,8 @@
 {
   "name": "hunow",
   "private": true,
-  "workspaces": ["mobile", "api"],
   "scripts": {
-    "mobile": "yarn workspace mobile start",
-    "api": "yarn workspace api dev"
+    "mobile": "cd mobile && npm start",
+    "api": "cd api && npm run dev"
   }
 }
