@@ -7,13 +7,13 @@ export default function CustomerLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#0F0032",
-          borderTopColor: "rgba(255,255,255,0.1)",
+          backgroundColor: "#ffffff",
+          borderTopColor: "rgba(0,0,0,0.06)",
           height: 60,
           paddingBottom: 8,
         },
-        tabBarActiveTintColor: "#FBC900",
-        tabBarInactiveTintColor: "rgba(255,255,255,0.35)",
+        tabBarActiveTintColor: "#0F0032",
+        tabBarInactiveTintColor: "rgba(15,0,50,0.3)",
         tabBarLabelStyle: { fontSize: 11 },
       }}
     >

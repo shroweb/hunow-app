@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
-import { wordpress, type WPEat, type WPEvent } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, type WPEat, type WPEvent } from "@/lib/wordpress";
+import { decodeHtml, stripHtml, parseEventDate } from "@/lib/utils";
 
 type Offer = {
   id: string;
@@ -20,13 +22,6 @@ function greeting() {
   return "Good evening";
 }
 
-function formatEventDate(ymd: string): string {
-  if (!ymd || ymd.length !== 8) return ymd;
-  return new Date(`${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`).toLocaleDateString("en-GB", {
-    weekday: "short", day: "numeric", month: "short",
-  });
-}
-
 export default function HomeScreen() {
   const router = useRouter();
   const [userName, setUserName] = useState("");
@@ -40,20 +35,20 @@ export default function HomeScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const [{ data: profile }, wpFeatured, wpEvents, { data: activeOffers }] = await Promise.all([
+    const [{ data: profile }, wpEat, wpEvents, { data: activeOffers }] = await Promise.all([
       supabase.from("profiles").select("name").eq("id", user.id).single(),
-      wordpress.getEat({ perPage: 6, orderby: "date", order: "desc" }),
-      wordpress.getEvents({ perPage: 5, orderby: "date", order: "asc" }),
+      wordpress.getEat({ perPage: 12 }),
+      wordpress.getEvents({ perPage: 6 }),
       supabase
         .from("offers")
         .select("id, title, description, redemption_type, businesses(name, wp_post_id)")
         .eq("is_active", true)
-        .limit(8),
+        .limit(10),
     ]);
 
-    setUserName(profile?.name ?? "");
-    setFeatured(wpFeatured.filter((v) => v.acf?.is_featured === "1").slice(0, 4));
-    setEvents(wpEvents.slice(0, 3));
+    setUserName(profile?.name?.split(" ")[0] ?? "");
+    setFeatured(wpEat.filter((v) => v.acf?.is_featured === "1"));
+    setEvents(wpEvents.slice(0, 4));
     setOffers((activeOffers ?? []) as Offer[]);
     setLoading(false);
     setRefreshing(false);
@@ -61,57 +56,69 @@ export default function HomeScreen() {
 
   useEffect(() => { load(); }, []);
 
-  function onRefresh() {
-    setRefreshing(true);
-    load();
-  }
+  function onRefresh() { setRefreshing(true); load(); }
 
   if (loading) {
     return (
-      <View className="flex-1 bg-brand-navy items-center justify-center">
-        <ActivityIndicator color="#FBC900" />
+      <View className="flex-1 bg-[#F5F5F7] items-center justify-center">
+        <ActivityIndicator color="#0F0032" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-brand-navy">
+    <SafeAreaView className="flex-1 bg-[#F5F5F7]">
       <ScrollView
         className="flex-1"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FBC900" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0F0032" />}
+        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View className="px-5 pt-6 pb-4">
-          <Text className="text-white/60 text-sm">{greeting()}</Text>
-          <Text className="text-white text-2xl font-bold">{userName || "Welcome"}</Text>
+        <View className="px-5 pt-6 pb-2">
+          <Text className="text-[#0F0032]/50 text-sm">{greeting()}</Text>
+          <Text className="text-[#0F0032] text-3xl font-bold">{userName || "Welcome"}</Text>
         </View>
 
         {/* Active Offers */}
         {offers.length > 0 && (
-          <View className="mb-6">
+          <View className="mt-6 mb-2">
             <View className="px-5 flex-row items-center justify-between mb-3">
-              <Text className="text-white font-bold text-lg">Active Offers</Text>
-              <Text className="text-brand-yellow text-xs">HU NOW exclusive</Text>
+              <Text className="text-[#0F0032] font-bold text-lg">Active Offers</Text>
+              <View className="bg-brand-yellow/20 rounded-full px-2 py-0.5">
+                <Text className="text-[#0F0032] text-xs font-semibold">HU NOW exclusive</Text>
+              </View>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
               {offers.map((offer) => (
                 <TouchableOpacity
                   key={offer.id}
-                  className="bg-brand-yellow/10 border border-brand-yellow/30 rounded-2xl p-4 mr-3 w-56"
+                  style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 }}
+                  className="bg-white rounded-2xl overflow-hidden w-60"
                   onPress={() => offer.businesses?.wp_post_id
                     ? router.push(`/(customer)/venue/${offer.businesses.wp_post_id}`)
                     : null
                   }
                 >
-                  <Text className="text-brand-yellow font-bold text-sm mb-1" numberOfLines={2}>{offer.title}</Text>
-                  {offer.description && (
-                    <Text className="text-white/60 text-xs" numberOfLines={2}>{offer.description}</Text>
-                  )}
-                  <Text className="text-white/30 text-xs mt-2 font-medium">
-                    {offer.businesses?.name ?? ""}
-                  </Text>
-                  <View className="mt-2 self-start bg-brand-yellow/20 rounded-full px-2 py-0.5">
-                    <Text className="text-brand-yellow text-xs">{offer.redemption_type.replace(/_/g, " ")}</Text>
+                  <View className="bg-brand-yellow h-1.5 w-full" />
+                  <View className="p-4">
+                    <Text className="text-[#0F0032] font-bold text-sm mb-1" numberOfLines={2}>
+                      {decodeHtml(offer.title)}
+                    </Text>
+                    {offer.description && (
+                      <Text className="text-[#0F0032]/50 text-xs mb-3" numberOfLines={2}>
+                        {decodeHtml(offer.description)}
+                      </Text>
+                    )}
+                    <View className="flex-row items-center justify-between mt-auto">
+                      <Text className="text-[#0F0032]/40 text-xs font-medium">
+                        {decodeHtml(offer.businesses?.name ?? "")}
+                      </Text>
+                      <View className="bg-[#F5F5F7] rounded-full px-2 py-0.5">
+                        <Text className="text-[#0F0032]/50 text-xs">
+                          {offer.redemption_type.replace(/_/g, " ")}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -121,73 +128,99 @@ export default function HomeScreen() {
 
         {/* Featured Venues */}
         {featured.length > 0 && (
-          <View className="mb-6">
+          <View className="mt-6 mb-2">
             <View className="px-5 flex-row items-center justify-between mb-3">
-              <Text className="text-white font-bold text-lg">Featured Venues</Text>
-              <TouchableOpacity onPress={() => router.push("/(customer)/venues")}>
-                <Text className="text-brand-yellow text-xs">See all</Text>
+              <Text className="text-[#0F0032] font-bold text-lg">Featured Venues</Text>
+              <TouchableOpacity onPress={() => router.push("/(customer)/venues")} className="flex-row items-center">
+                <Text className="text-[#0F0032]/50 text-sm mr-1">See all</Text>
+                <Ionicons name="chevron-forward" size={14} color="rgba(15,0,50,0.4)" />
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
-              {featured.map((venue) => (
-                <TouchableOpacity
-                  key={venue.id}
-                  className="bg-white/10 border border-white/20 rounded-2xl p-4 mr-3 w-48"
-                  onPress={() => router.push(`/(customer)/venue/${venue.id}`)}
-                >
-                  <View className="self-start bg-brand-yellow/20 border border-brand-yellow/30 rounded-full px-2 py-0.5 mb-2">
-                    <Text className="text-brand-yellow text-xs font-semibold">Featured</Text>
-                  </View>
-                  <Text className="text-white font-semibold text-sm" numberOfLines={2}>
-                    {venue.title.rendered}
-                  </Text>
-                  {venue.excerpt?.rendered ? (
-                    <Text className="text-white/40 text-xs mt-1" numberOfLines={2}>
-                      {venue.excerpt.rendered.replace(/<[^>]+>/g, "")}
-                    </Text>
-                  ) : null}
-                </TouchableOpacity>
-              ))}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+              {featured.map((venue) => {
+                const img = getFeaturedImage(venue);
+                return (
+                  <TouchableOpacity
+                    key={venue.id}
+                    style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3 }}
+                    className="bg-white rounded-2xl overflow-hidden w-52"
+                    onPress={() => router.push(`/(customer)/venue/${venue.id}`)}
+                  >
+                    {img ? (
+                      <Image source={{ uri: img }} className="w-full h-28" resizeMode="cover" />
+                    ) : (
+                      <View className="w-full h-28 bg-brand-navy/10 items-center justify-center">
+                        <Ionicons name="storefront-outline" size={32} color="rgba(15,0,50,0.2)" />
+                      </View>
+                    )}
+                    <View className="p-3">
+                      <Text className="text-[#0F0032] font-semibold text-sm" numberOfLines={1}>
+                        {decodeHtml(venue.title.rendered)}
+                      </Text>
+                      {venue.excerpt?.rendered ? (
+                        <Text className="text-[#0F0032]/40 text-xs mt-0.5" numberOfLines={2}>
+                          {stripHtml(venue.excerpt.rendered)}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         )}
 
-        {/* Upcoming Events */}
+        {/* What's On */}
         {events.length > 0 && (
-          <View className="mb-8">
+          <View className="mt-6 mb-8">
             <View className="px-5 flex-row items-center justify-between mb-3">
-              <Text className="text-white font-bold text-lg">What's On</Text>
-              <TouchableOpacity onPress={() => router.push("/(customer)/events")}>
-                <Text className="text-brand-yellow text-xs">See all</Text>
+              <Text className="text-[#0F0032] font-bold text-lg">What's On</Text>
+              <TouchableOpacity onPress={() => router.push("/(customer)/events")} className="flex-row items-center">
+                <Text className="text-[#0F0032]/50 text-sm mr-1">See all</Text>
+                <Ionicons name="chevron-forward" size={14} color="rgba(15,0,50,0.4)" />
               </TouchableOpacity>
             </View>
-            <View className="px-5">
-              {events.map((event) => (
-                <View key={event.id} className="bg-white/10 border border-white/20 rounded-2xl p-4 mb-3 flex-row items-start">
-                  <View className="bg-brand-yellow/20 rounded-xl px-3 py-2 mr-3 items-center min-w-[52px]">
-                    {event.acf?.event_date ? (
-                      <>
-                        <Text className="text-brand-yellow font-bold text-lg leading-tight">
-                          {event.acf.event_date.slice(6, 8)}
-                        </Text>
-                        <Text className="text-brand-yellow/70 text-xs">
-                          {new Date(`${event.acf.event_date.slice(0,4)}-${event.acf.event_date.slice(4,6)}-${event.acf.event_date.slice(6,8)}`).toLocaleDateString("en-GB", { month: "short" })}
-                        </Text>
-                      </>
+            <View className="px-5 gap-3">
+              {events.map((event) => {
+                const img = getFeaturedImage(event);
+                const date = event.acf?.event_date ? parseEventDate(event.acf.event_date) : null;
+                return (
+                  <View
+                    key={event.id}
+                    style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}
+                    className="bg-white rounded-2xl overflow-hidden flex-row"
+                  >
+                    {img ? (
+                      <Image source={{ uri: img }} style={{ width: 80, height: 80 }} resizeMode="cover" />
                     ) : (
-                      <Text className="text-brand-yellow text-xs">TBC</Text>
+                      <View style={{ width: 80, height: 80 }} className="bg-brand-yellow/20 items-center justify-center">
+                        {date ? (
+                          <View className="items-center">
+                            <Text className="text-[#0F0032] font-black text-xl leading-tight">
+                              {date.getDate()}
+                            </Text>
+                            <Text className="text-[#0F0032]/60 text-xs font-semibold uppercase">
+                              {date.toLocaleDateString("en-GB", { month: "short" })}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Ionicons name="calendar-outline" size={24} color="rgba(15,0,50,0.3)" />
+                        )}
+                      </View>
                     )}
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-white font-semibold text-sm">{event.title.rendered}</Text>
-                    {event.excerpt?.rendered ? (
-                      <Text className="text-white/50 text-xs mt-1" numberOfLines={2}>
-                        {event.excerpt.rendered.replace(/<[^>]+>/g, "")}
+                    <View className="flex-1 p-3 justify-center">
+                      <Text className="text-[#0F0032] font-semibold text-sm" numberOfLines={2}>
+                        {decodeHtml(event.title.rendered)}
                       </Text>
-                    ) : null}
+                      {date && (
+                        <Text className="text-[#0F0032]/40 text-xs mt-1">
+                          {date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long" })}
+                        </Text>
+                      )}
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </View>
         )}
