@@ -1,13 +1,5 @@
 import { Tabs } from "expo-router";
-import { View, Text } from "react-native";
-
-function TabIcon({ label, active }: { label: string; active: boolean }) {
-  return (
-    <Text className={`text-xs mt-1 ${active ? "text-brand-yellow" : "text-white/40"}`}>
-      {label}
-    </Text>
-  );
-}
+import { Ionicons } from "@expo/vector-icons";
 
 export default function CustomerLayout() {
   return (
@@ -21,14 +13,47 @@ export default function CustomerLayout() {
           paddingBottom: 8,
         },
         tabBarActiveTintColor: "#FBC900",
-        tabBarInactiveTintColor: "rgba(255,255,255,0.4)",
+        tabBarInactiveTintColor: "rgba(255,255,255,0.35)",
         tabBarLabelStyle: { fontSize: 11 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "My Card" }} />
-      <Tabs.Screen name="venues" options={{ title: "Venues" }} />
-      <Tabs.Screen name="events" options={{ title: "Events" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="venues"
+        options={{
+          title: "Venues",
+          tabBarIcon: ({ color, size }) => <Ionicons name="storefront" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="card"
+        options={{
+          title: "My Card",
+          tabBarIcon: ({ color, size }) => <Ionicons name="qr-code" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{
+          title: "Events",
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
+        }}
+      />
+      {/* Hide venue detail from tab bar */}
+      <Tabs.Screen name="venue/[id]" options={{ href: null }} />
     </Tabs>
   );
 }
