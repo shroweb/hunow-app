@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "HU NOW",
+    "slug": "hunow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "hunow",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F0032"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "co.uk.hunow.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Camera is used to scan HU NOW offer QR codes."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F0032"
+      },
+      "package": "co.uk.hunow.app",
+      "permissions": ["CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

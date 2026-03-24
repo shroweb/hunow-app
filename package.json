@@ -1,0 +1,9 @@
+{
+  "name": "hunow",
+  "private": true,
+  "workspaces": ["mobile", "api"],
+  "scripts": {
+    "mobile": "yarn workspace mobile start",
+    "api": "yarn workspace api dev"
+  }
+}
