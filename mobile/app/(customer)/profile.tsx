@@ -3,61 +3,70 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
 
+const NAV = "#0F0032";
+const YELLOW = "#FBC900";
+
 function memberNumber(token: string): string {
   return "HUNOW-" + token.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-
   if (!user) return null;
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F5F7]">
-      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
-        <Text className="text-[#0F0032] text-2xl font-bold mt-6 mb-6">Profile</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
+      <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+        <Text style={{ color: "white", fontSize: 26, fontWeight: "900", marginTop: 20, marginBottom: 20, letterSpacing: -0.5 }}>Profile</Text>
 
         {/* Avatar + name */}
-        <View className="items-center mb-6">
-          <View className="bg-[#0F0032] rounded-full w-20 h-20 items-center justify-center mb-3"
-            style={{ shadowColor: "#0F0032", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12 }}
-          >
-            <Text className="text-brand-yellow text-2xl font-bold">
+        <View style={{ alignItems: "center", marginBottom: 24 }}>
+          <View style={{
+            backgroundColor: YELLOW, borderRadius: 40, width: 80, height: 80,
+            alignItems: "center", justifyContent: "center", marginBottom: 12,
+            shadowColor: YELLOW, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12,
+          }}>
+            <Text style={{ color: NAV, fontSize: 28, fontWeight: "900" }}>
               {user.display_name.charAt(0).toUpperCase()}
             </Text>
           </View>
-          <Text className="text-[#0F0032] text-xl font-bold">{user.display_name}</Text>
-          <Text className="text-[#0F0032]/40 text-sm">{memberNumber(user.card_token)}</Text>
+          <Text style={{ color: "white", fontSize: 20, fontWeight: "800" }}>{user.display_name}</Text>
+          <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, marginTop: 4 }}>{memberNumber(user.card_token)}</Text>
         </View>
 
-        {/* Points badge */}
-        <View className="bg-brand-yellow rounded-2xl p-4 mb-4 flex-row items-center justify-between"
-          style={{ shadowColor: "#FBC900", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 }}
-        >
+        {/* Points */}
+        <View style={{
+          backgroundColor: YELLOW, borderRadius: 18, padding: 18,
+          flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16,
+          shadowColor: YELLOW, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12,
+        }}>
           <View>
-            <Text className="text-[#0F0032]/60 text-xs font-semibold uppercase tracking-wide">HU NOW Points</Text>
-            <Text className="text-[#0F0032] text-3xl font-black">{user.points}</Text>
+            <Text style={{ color: "rgba(15,0,50,0.55)", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
+              HU NOW Points
+            </Text>
+            <Text style={{ color: NAV, fontSize: 34, fontWeight: "900", marginTop: 2 }}>{user.points}</Text>
           </View>
-          <View className="bg-[#0F0032]/10 rounded-full w-12 h-12 items-center justify-center">
-            <Ionicons name="star" size={22} color="#0F0032" />
+          <View style={{ backgroundColor: "rgba(15,0,50,0.12)", borderRadius: 20, width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="star" size={22} color={NAV} />
           </View>
         </View>
 
         {/* Account details */}
-        <View className="bg-white rounded-2xl overflow-hidden mb-4"
-          style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 }}
-        >
-          <View className="px-5 py-4 border-b border-[#F5F5F7]">
-            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Name</Text>
-            <Text className="text-[#0F0032] font-semibold">{user.display_name}</Text>
+        <View style={{
+          backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, overflow: "hidden",
+          marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+        }}>
+          <View style={{ paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 3 }}>Name</Text>
+            <Text style={{ color: "white", fontWeight: "600" }}>{user.display_name}</Text>
           </View>
-          <View className="px-5 py-4 border-b border-[#F5F5F7]">
-            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Email</Text>
-            <Text className="text-[#0F0032] font-semibold">{user.email}</Text>
+          <View style={{ paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 3 }}>Email</Text>
+            <Text style={{ color: "white", fontWeight: "600" }}>{user.email}</Text>
           </View>
-          <View className="px-5 py-4">
-            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Member since</Text>
-            <Text className="text-[#0F0032] font-semibold">
+          <View style={{ paddingHorizontal: 18, paddingVertical: 14 }}>
+            <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 3 }}>Member since</Text>
+            <Text style={{ color: "white", fontWeight: "600" }}>
               {user.card_created
                 ? new Date(user.card_created).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
                 : "—"}
@@ -67,20 +76,22 @@ export default function ProfileScreen() {
 
         {/* Recent redemptions */}
         {user.redemptions.length > 0 && (
-          <View className="mb-4">
-            <Text className="text-[#0F0032] font-bold text-base mb-3">Recent Redemptions</Text>
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ color: "white", fontWeight: "800", fontSize: 16, marginBottom: 12 }}>Recent Redemptions</Text>
             {user.redemptions.map((r, i) => (
-              <View key={i} className="bg-white rounded-2xl p-4 mb-2 flex-row items-center"
-                style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 }}
-              >
-                <View className="bg-brand-yellow/20 rounded-full w-9 h-9 items-center justify-center mr-3">
-                  <Ionicons name="ticket-outline" size={18} color="#0F0032" />
+              <View key={i} style={{
+                backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 16, padding: 14,
+                marginBottom: 8, flexDirection: "row", alignItems: "center",
+                borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+              }}>
+                <View style={{ backgroundColor: YELLOW + "33", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                  <Ionicons name="ticket-outline" size={16} color={YELLOW} />
                 </View>
-                <View className="flex-1">
-                  <Text className="text-[#0F0032] font-semibold text-sm">{r.offer_title}</Text>
-                  <Text className="text-[#0F0032]/40 text-xs">{r.venue_name}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "white", fontWeight: "600", fontSize: 13 }}>{r.offer_title}</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{r.venue_name}</Text>
                 </View>
-                <Text className="text-[#0F0032]/30 text-xs">
+                <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
                   {new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                 </Text>
               </View>
@@ -90,11 +101,14 @@ export default function ProfileScreen() {
 
         {/* Sign out */}
         <TouchableOpacity
-          className="bg-white border border-red-100 rounded-2xl py-4 items-center mb-8"
           onPress={signOut}
-          style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 }}
+          style={{
+            borderWidth: 1, borderColor: "rgba(255,80,80,0.3)",
+            backgroundColor: "rgba(255,80,80,0.08)",
+            borderRadius: 18, paddingVertical: 16, alignItems: "center", marginBottom: 32,
+          }}
         >
-          <Text className="text-red-500 font-semibold">Sign Out</Text>
+          <Text style={{ color: "#ff6b6b", fontWeight: "700" }}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

@@ -4,6 +4,9 @@ import QRCode from "react-native-qrcode-svg";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
 
+const NAV = "#0F0032";
+const YELLOW = "#FBC900";
+
 function memberNumber(token: string): string {
   return "HUNOW-" + token.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
@@ -16,7 +19,6 @@ function memberSince(dateStr: string): string {
 
 export default function MyCardScreen() {
   const { user } = useAuth();
-
   if (!user) return null;
 
   async function handleShare() {
@@ -24,105 +26,117 @@ export default function MyCardScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F5F7]">
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 20 }}>
-        <Text className="text-[#0F0032] text-sm font-medium mb-1 mt-2 opacity-50">My Card</Text>
-        <Text className="text-[#0F0032] text-2xl font-bold mb-6">{user.display_name}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
 
-        <View
-          style={{
-            borderRadius: 24,
-            overflow: "hidden",
-            shadowColor: "#0F0032",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.18,
-            shadowRadius: 24,
-            elevation: 12,
-            marginBottom: 16,
-          }}
-        >
+        <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, marginTop: 4, marginBottom: 4 }}>My Card</Text>
+        <Text style={{ color: "white", fontSize: 26, fontWeight: "900", marginBottom: 20, letterSpacing: -0.5 }}>
+          {user.display_name}
+        </Text>
+
+        {/* The Card */}
+        <View style={{
+          borderRadius: 24, overflow: "hidden",
+          shadowColor: YELLOW, shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25, shadowRadius: 24, elevation: 12, marginBottom: 16,
+        }}>
           {/* Yellow Header */}
-          <View className="bg-brand-yellow px-6 pt-5 pb-4">
-            <View className="flex-row items-start justify-between mb-4">
+          <View style={{ backgroundColor: YELLOW, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
               <View>
-                <Text className="text-[#0F0032]/50 text-xs font-semibold uppercase tracking-widest mb-1">
+                <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>
                   Member Number
                 </Text>
-                <Text className="text-[#0F0032] text-lg font-bold tracking-wide">
+                <Text style={{ color: NAV, fontSize: 18, fontWeight: "800", letterSpacing: 1 }}>
                   {memberNumber(user.card_token)}
                 </Text>
               </View>
-              <View className="bg-[#0F0032] rounded-full px-3 py-1 mt-1">
-                <Text className="text-brand-yellow text-xs font-bold tracking-widest">MEMBER</Text>
+              <View style={{ backgroundColor: NAV, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 2 }}>
+                <Text style={{ color: YELLOW, fontSize: 10, fontWeight: "800", letterSpacing: 1.5 }}>MEMBER</Text>
               </View>
             </View>
-            <Text className="text-[#0F0032]/50 text-xs font-semibold uppercase tracking-widest mb-0.5">
+            <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 10, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 3 }}>
               Member Since
             </Text>
-            <Text className="text-[#0F0032] font-semibold text-sm">
+            <Text style={{ color: NAV, fontWeight: "600", fontSize: 13 }}>
               {user.card_created ? memberSince(user.card_created) : "—"}
             </Text>
           </View>
 
           {/* White QR Section */}
-          <View className="bg-white items-center px-6 pt-8 pb-6">
-            <QRCode value={user.card_token} size={200} color="#0F0032" backgroundColor="white" />
-            <Text className="text-[#0F0032]/40 text-xs mt-4 tracking-wide">Scan to verify membership</Text>
+          <View style={{ backgroundColor: "white", alignItems: "center", paddingHorizontal: 24, paddingTop: 32, paddingBottom: 24 }}>
+            <QRCode value={user.card_token} size={200} color={NAV} backgroundColor="white" />
+            <Text style={{ color: "rgba(15,0,50,0.35)", fontSize: 11, marginTop: 16, letterSpacing: 0.5 }}>
+              Scan to verify membership
+            </Text>
           </View>
 
           {/* Points strip */}
-          <View className="bg-[#0F0032]/5 px-6 py-3 flex-row items-center justify-between">
-            <Text className="text-[#0F0032]/50 text-xs font-semibold uppercase tracking-wide">HU NOW Points</Text>
-            <View className="flex-row items-center gap-1.5">
-              <Ionicons name="star" size={14} color="#FBC900" />
-              <Text className="text-[#0F0032] font-bold">{user.points}</Text>
+          <View style={{ backgroundColor: "rgba(15,0,50,0.04)", paddingHorizontal: 24, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
+              HU NOW Points
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <Ionicons name="star" size={14} color={YELLOW} />
+              <Text style={{ color: NAV, fontWeight: "800", fontSize: 15 }}>{user.points}</Text>
             </View>
           </View>
 
           {/* Navy Footer */}
-          <View className="bg-[#0F0032] px-6 py-4 flex-row items-center justify-between">
+          <View style={{ backgroundColor: NAV, paddingHorizontal: 24, paddingVertical: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View>
-              <Text className="text-white text-base font-bold">{user.display_name}</Text>
-              <Text className="text-brand-yellow text-xs mt-0.5">hunow.co.uk</Text>
+              <Text style={{ color: "white", fontSize: 15, fontWeight: "700" }}>{user.display_name}</Text>
+              <Text style={{ color: YELLOW, fontSize: 11, marginTop: 2 }}>hunow.co.uk</Text>
             </View>
-            <Text className="text-white text-2xl font-black tracking-tight">
-              HU <Text className="text-brand-yellow">NOW</Text>
+            <Text style={{ color: "white", fontSize: 22, fontWeight: "900", letterSpacing: -0.5 }}>
+              HU <Text style={{ color: YELLOW }}>NOW</Text>
             </Text>
           </View>
         </View>
 
+        {/* Share */}
         <TouchableOpacity
-          className="bg-brand-yellow rounded-2xl py-4 flex-row items-center justify-center mb-8"
           onPress={handleShare}
+          style={{
+            backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 18,
+            paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center",
+            marginBottom: 28, gap: 8,
+            borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+          }}
         >
-          <Ionicons name="share-outline" size={18} color="#0F0032" />
-          <Text className="text-[#0F0032] font-bold ml-2">Share My Card</Text>
+          <Ionicons name="share-outline" size={18} color="white" />
+          <Text style={{ color: "white", fontWeight: "700" }}>Share My Card</Text>
         </TouchableOpacity>
 
-        <Text className="text-[#0F0032] font-bold text-lg mb-3">Recent Redemptions</Text>
+        {/* Redemptions */}
+        <Text style={{ color: "white", fontWeight: "800", fontSize: 17, marginBottom: 12 }}>Recent Redemptions</Text>
         {user.redemptions.length === 0 ? (
-          <View className="bg-white rounded-2xl p-5">
-            <Text className="text-[#0F0032]/40 text-sm text-center">
+          <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 24, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, textAlign: "center" }}>
               No offers redeemed yet.{"\n"}Visit a venue to get started!
             </Text>
           </View>
         ) : (
           user.redemptions.map((r, i) => (
-            <View key={i} className="bg-white rounded-2xl p-4 mb-3 flex-row items-center">
-              <View className="bg-brand-yellow/20 rounded-xl w-10 h-10 items-center justify-center mr-3">
-                <Ionicons name="ticket-outline" size={18} color="#0F0032" />
+            <View key={i} style={{
+              backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 16, padding: 14,
+              marginBottom: 10, flexDirection: "row", alignItems: "center",
+              borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+            }}>
+              <View style={{ backgroundColor: YELLOW + "33", borderRadius: 12, width: 40, height: 40, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="ticket-outline" size={18} color={YELLOW} />
               </View>
-              <View className="flex-1">
-                <Text className="text-[#0F0032] font-semibold text-sm">{r.offer_title}</Text>
-                <Text className="text-[#0F0032]/50 text-xs mt-0.5">{r.venue_name}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "white", fontWeight: "600", fontSize: 13 }}>{r.offer_title}</Text>
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{r.venue_name}</Text>
               </View>
-              <Text className="text-[#0F0032]/40 text-xs">
+              <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
                 {new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
               </Text>
             </View>
           ))
         )}
-        <View className="h-8" />
+        <View style={{ height: 16 }} />
       </ScrollView>
     </SafeAreaView>
   );

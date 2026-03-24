@@ -46,6 +46,16 @@ export interface WPEvent {
   };
 }
 
+export interface WPPost {
+  id: number;
+  slug: string;
+  date: string;
+  title: { rendered: string };
+  excerpt?: { rendered: string };
+  featured_media?: number;
+  _embedded?: { "wp:featuredmedia"?: EmbeddedMedia[] };
+}
+
 export interface WPActivity {
   id: number;
   slug: string;
@@ -165,6 +175,15 @@ export const wordpress = {
       _embed: 1,
     });
     return get<WPActivity[]>(`${BASE}/activity${q}`);
+  },
+
+  getPosts(params: ListParams = {}): Promise<WPPost[]> {
+    const q = buildQuery({
+      per_page: params.perPage ?? 6,
+      page: params.page ?? 1,
+      _embed: 1,
+    });
+    return get<WPPost[]>(`${BASE}/posts${q}`);
   },
 
   getCuisines(): Promise<{ id: number; name: string; slug: string }[]> {

@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { View } from "react-native";
 
 export default function CustomerLayout() {
   return (
@@ -7,35 +8,48 @@ export default function CustomerLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopColor: "rgba(0,0,0,0.06)",
-          height: 60,
-          paddingBottom: 8,
+          backgroundColor: "#0F0032",
+          borderTopColor: "rgba(255,255,255,0.08)",
+          height: 64,
+          paddingBottom: 10,
+          paddingTop: 6,
         },
-        tabBarActiveTintColor: "#0F0032",
-        tabBarInactiveTintColor: "rgba(15,0,50,0.3)",
-        tabBarLabelStyle: { fontSize: 11 },
+        tabBarActiveTintColor: "#FBC900",
+        tabBarInactiveTintColor: "rgba(255,255,255,0.35)",
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Browse",
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="venues"
         options={{
-          title: "Venues",
-          tabBarIcon: ({ color, size }) => <Ionicons name="storefront" size={size} color={color} />,
+          title: "Eat & Drink",
+          tabBarIcon: ({ color, size }) => <Ionicons name="restaurant" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="card"
         options={{
           title: "My Card",
-          tabBarIcon: ({ color, size }) => <Ionicons name="qr-code" size={size} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{
+              backgroundColor: focused ? "#FBC900" : "rgba(255,255,255,0.1)",
+              borderRadius: 14,
+              width: 44,
+              height: 30,
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: -2,
+            }}>
+              <Ionicons name="card" size={18} color={focused ? "#0F0032" : "rgba(255,255,255,0.5)"} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
@@ -52,7 +66,6 @@ export default function CustomerLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} />,
         }}
       />
-      {/* Hide venue detail from tab bar */}
       <Tabs.Screen name="venue/[id]" options={{ href: null }} />
     </Tabs>
   );

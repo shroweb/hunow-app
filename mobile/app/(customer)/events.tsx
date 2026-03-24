@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, ActivityIndicator, Image } from "react-native";
+import { View, Text, FlatList, ActivityIndicator, Image, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { wordpress, getFeaturedImage, type WPEvent } from "@/lib/wordpress";
 import { decodeHtml, stripHtml, parseEventDate } from "@/lib/utils";
+
+const NAV = "#0F0032";
+const YELLOW = "#FBC900";
 
 export default function EventsScreen() {
   const [events, setEvents] = useState<WPEvent[]>([]);
@@ -17,57 +20,63 @@ export default function EventsScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F5F7]">
-      <View className="px-5 pt-6 pb-3">
-        <Text className="text-[#0F0032] text-2xl font-bold">What's On</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
+      {/* Yellow header */}
+      <View style={{ backgroundColor: YELLOW, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 }}>
+        <Text style={{ color: NAV, fontSize: 28, fontWeight: "900", letterSpacing: -0.5 }}>EVENTS</Text>
       </View>
 
       {loading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#0F0032" />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color={YELLOW} />
         </View>
       ) : (
         <FlatList
           data={events}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20, gap: 12 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16, gap: 12 }}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
             const img = getFeaturedImage(item);
             const date = item.acf?.event_date ? parseEventDate(item.acf.event_date) : null;
             return (
-              <View
-                style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 }}
-                className="bg-white rounded-2xl overflow-hidden"
-              >
+              <View style={{
+                backgroundColor: "white", borderRadius: 18, overflow: "hidden",
+                shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
+              }}>
                 {img && (
-                  <Image source={{ uri: img }} className="w-full h-36" resizeMode="cover" />
+                  <Image source={{ uri: img }} style={{ width: "100%", height: 160 }} resizeMode="cover" />
                 )}
-                <View className="p-4 flex-row items-start gap-3">
+                <View style={{ padding: 14, flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
                   {/* Date badge */}
-                  <View className="bg-brand-yellow/15 rounded-xl px-3 py-2 items-center min-w-[52px]">
+                  <View style={{
+                    backgroundColor: YELLOW, borderRadius: 12,
+                    paddingHorizontal: 12, paddingVertical: 8,
+                    alignItems: "center", minWidth: 52,
+                  }}>
                     {date ? (
                       <>
-                        <Text className="text-[#0F0032] font-black text-xl leading-tight">{date.getDate()}</Text>
-                        <Text className="text-[#0F0032]/60 text-xs font-semibold uppercase">
+                        <Text style={{ color: NAV, fontWeight: "900", fontSize: 22, lineHeight: 24 }}>{date.getDate()}</Text>
+                        <Text style={{ color: NAV, fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>
                           {date.toLocaleDateString("en-GB", { month: "short" })}
                         </Text>
                       </>
                     ) : (
-                      <Ionicons name="calendar-outline" size={20} color="rgba(15,0,50,0.3)" />
+                      <Ionicons name="calendar-outline" size={20} color={NAV} />
                     )}
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-[#0F0032] font-bold text-base" numberOfLines={2}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: NAV, fontWeight: "700", fontSize: 15, marginBottom: 4 }} numberOfLines={2}>
                       {decodeHtml(item.title.rendered)}
                     </Text>
                     {date && (
-                      <Text className="text-[#0F0032]/50 text-xs mt-1">
-                        {date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                      <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 12 }}>
+                        {date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
                       </Text>
                     )}
                     {item.excerpt?.rendered ? (
-                      <Text className="text-[#0F0032]/40 text-xs mt-1" numberOfLines={2}>
+                      <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 12, marginTop: 4 }} numberOfLines={2}>
                         {stripHtml(item.excerpt.rendered)}
                       </Text>
                     ) : null}
@@ -77,9 +86,9 @@ export default function EventsScreen() {
             );
           }}
           ListEmptyComponent={
-            <View className="items-center mt-12">
-              <Ionicons name="calendar-outline" size={40} color="rgba(15,0,50,0.15)" />
-              <Text className="text-[#0F0032]/30 text-sm mt-3">No upcoming events</Text>
+            <View style={{ alignItems: "center", marginTop: 48 }}>
+              <Ionicons name="calendar-outline" size={40} color="rgba(255,255,255,0.15)" />
+              <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, marginTop: 12 }}>No upcoming events</Text>
             </View>
           }
         />
