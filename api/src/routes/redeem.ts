@@ -56,12 +56,13 @@ redeemRouter.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  // Verify the business belongs to the authenticated user
+  // Verify the business belongs to the authenticated user.
+  // We match by business_id AND wp_post_id matching the user's WP venue_id.
   const { data: business, error: bizError } = await supabase
     .from("businesses")
     .select("id, wp_post_id")
     .eq("id", business_id)
-    .eq("user_id", req.userId!)
+    .eq("wp_post_id", req.wpVenueId!)
     .single();
 
   if (bizError || !business) {

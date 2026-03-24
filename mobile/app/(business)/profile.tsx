@@ -1,83 +1,91 @@
-import { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert } from "react-native";
+import { useState } from "react";
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "@/lib/supabase";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/context/AuthContext";
 
 export default function BusinessProfileScreen() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [wpPostId, setWpPostId] = useState("");
-  const [businessId, setBusinessId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, signOut, token } = useAuth();
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const [{ data: profile }, { data: biz }] = await Promise.all([
-        supabase.from("profiles").select("name").eq("id", user.id).single(),
-        supabase.from("businesses").select("id, wp_post_id").eq("user_id", user.id).single(),
-      ]);
-      setEmail(user.email ?? "");
-      setName(profile?.name ?? "");
-      setBusinessId(biz?.id ?? null);
-      setWpPostId(String(biz?.wp_post_id ?? ""));
-      setLoading(false);
-    }
-    load();
-  }, []);
-
-  async function handleSave() {
-    if (!businessId) return;
-    setSaving(true);
-    await supabase.from("businesses").update({ wp_post_id: wpPostId ? parseInt(wpPostId) : null }).eq("id", businessId);
-    Alert.alert("Saved", "Profile updated.");
-    setSaving(false);
-  }
+  const WP_BASE = (process.env.EXPO_PUBLIC_WP_API_URL ?? "https://hunow.co.uk/wp-json").replace(/\/wp\/v2$/, "");
 
   async function handleSignOut() {
-    await supabase.auth.signOut();
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Sign Out", style: "destructive", onPress: signOut },
+    ]);
   }
 
-  if (loading) {
-    return <View className="flex-1 bg-brand-navy items-center justify-center"><ActivityIndicator color="#FBC900" /></View>;
-  }
+  if (!user) return null;
 
   return (
-    <SafeAreaView className="flex-1 bg-brand-navy px-5">
-      <Text className="text-white text-2xl font-bold mt-6 mb-6">Business Profile</Text>
+    <SafeAreaView className="flex-1 bg-[#F5F5F7]">
+      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
+        <Text className="text-[#0F0032] text-2xl font-bold mt-6 mb-6">Business Profile</Text>
 
-      <View className="bg-white/10 border border-white/20 rounded-2xl p-5 mb-4">
-        <Text className="text-white/50 text-xs mb-1">Business Name</Text>
-        <Text className="text-white font-semibold">{name}</Text>
-      </View>
+        {/* Avatar */}
+        <View className="items-center mb-6">
+          <View className="bg-[#0F0032] rounded-full w-20 h-20 items-center justify-center mb-3"
+            style={{ shadowColor: "#0F0032", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12 }}
+          >
+            <Text className="text-brand-yellow text-2xl font-bold">
+              {user.display_name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <Text className="text-[#0F0032] text-xl font-bold">{user.display_name}</Text>
+          <View className="bg-[#0F0032]/5 rounded-full px-3 py-1 mt-1">
+            <Text className="text-[#0F0032]/50 text-xs font-semibold uppercase tracking-wide">Business Account</Text>
+          </View>
+        </View>
 
-      <View className="bg-white/10 border border-white/20 rounded-2xl p-5 mb-4">
-        <Text className="text-white/50 text-xs mb-1">Email</Text>
-        <Text className="text-white font-semibold">{email}</Text>
-      </View>
+        {/* Account details */}
+        <View className="bg-white rounded-2xl overflow-hidden mb-4"
+          style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 }}
+        >
+          <View className="px-5 py-4 border-b border-[#F5F5F7]">
+            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Business Name</Text>
+            <Text className="text-[#0F0032] font-semibold">{user.display_name}</Text>
+          </View>
+          <View className="px-5 py-4 border-b border-[#F5F5F7]">
+            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Email</Text>
+            <Text className="text-[#0F0032] font-semibold">{user.email}</Text>
+          </View>
+          <View className="px-5 py-4">
+            <Text className="text-[#0F0032]/40 text-xs mb-0.5">WordPress Venue Post ID</Text>
+            <Text className="text-[#0F0032] font-semibold">
+              {user.venue_id ? String(user.venue_id) : "Not linked"}
+            </Text>
+            <Text className="text-[#0F0032]/30 text-xs mt-1">
+              {user.venue_id
+                ? "Your account is linked to your hunow.co.uk listing."
+                : "Contact HU NOW admin to link your venue listing."}
+            </Text>
+          </View>
+        </View>
 
-      <View className="bg-white/10 border border-white/20 rounded-2xl p-4 mb-6">
-        <Text className="text-white/50 text-xs mb-2">WordPress Venue Post ID</Text>
-        <TextInput
-          className="text-white text-base"
-          placeholder="e.g. 42"
-          placeholderTextColor="rgba(255,255,255,0.3)"
-          value={wpPostId}
-          onChangeText={setWpPostId}
-          keyboardType="number-pad"
-        />
-        <Text className="text-white/30 text-xs mt-2">Links this account to your listing on hunow.co.uk</Text>
-      </View>
+        {/* Info banner if no venue linked */}
+        {!user.venue_id && (
+          <View className="bg-brand-yellow/15 border border-brand-yellow/30 rounded-2xl p-4 mb-4 flex-row items-start gap-3">
+            <Ionicons name="information-circle-outline" size={20} color="#0F0032" />
+            <View className="flex-1">
+              <Text className="text-[#0F0032] font-semibold text-sm mb-1">Venue not linked</Text>
+              <Text className="text-[#0F0032]/60 text-xs">
+                Your account needs to be linked to your WordPress venue post before you can redeem offers. Contact the HU NOW team.
+              </Text>
+            </View>
+          </View>
+        )}
 
-      <TouchableOpacity className="bg-brand-yellow rounded-xl py-4 items-center mb-4" onPress={handleSave} disabled={saving}>
-        {saving ? <ActivityIndicator color="#0F0032" /> : <Text className="text-brand-navy font-bold">Save Changes</Text>}
-      </TouchableOpacity>
-
-      <TouchableOpacity className="bg-red-500/20 border border-red-500/40 rounded-xl py-4 items-center" onPress={handleSignOut}>
-        <Text className="text-red-400 font-semibold">Sign Out</Text>
-      </TouchableOpacity>
+        {/* Sign out */}
+        <TouchableOpacity
+          className="bg-white border border-red-100 rounded-2xl py-4 items-center mb-8"
+          onPress={handleSignOut}
+          style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 }}
+        >
+          <Text className="text-red-500 font-semibold">Sign Out</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }

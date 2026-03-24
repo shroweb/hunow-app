@@ -6,8 +6,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/lib/supabase";
 import { wordpress, extractOffers, type WPOffer } from "@/lib/wordpress";
 import { decodeHtml } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function ScanScreen() {
+  const { user, token } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
@@ -24,35 +26,35 @@ export default function ScanScreen() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setOffersLoading(false); return; }
 
-      const { data: biz } = await supabase
-        .from("businesses")
-        .select("id, wp_post_id")
-        .eq("user_id", user.id)
-        .single();
+      // Get Supabase business record via wp_post_id stored in WP user meta
+      const venueId = user.venue_id;
+      setWpPostId(venueId || null);
 
-      if (!biz) { setOffersLoading(false); return; }
+      if (venueId) {
+        // Load Supabase business ID (still needed for redemption recording)
+        const { data: biz } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("wp_post_id", venueId)
+          .single();
+        if (biz) setBusinessId(biz.id);
 
-      setBusinessId(biz.id);
-      setWpPostId(biz.wp_post_id);
-
-      // Load offers from WordPress ACF
-      if (biz.wp_post_id) {
+        // Load offers from WordPress ACF
         try {
-          const venue = await wordpress.getEatById(biz.wp_post_id);
+          const venue = await wordpress.getEatById(venueId);
           if (venue?.acf) {
             setOffers(extractOffers(venue.acf as Record<string, unknown>));
           }
         } catch {
-          // venue might be in a different CPT (activity, guide etc) — try others if needed
+          // venue might be in a different CPT
         }
       }
       setOffersLoading(false);
     }
     load();
-  }, []);
+  }, [user]);
 
   async function handleScan({ data }: { data: string }) {
     if (data === lastScan.current || !businessId) return;
@@ -82,12 +84,11 @@ export default function ScanScreen() {
     setRedeeming(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(`${apiUrl}/redeem`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           card_id: cardInfo.cardId,
