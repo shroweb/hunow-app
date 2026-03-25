@@ -66,10 +66,12 @@ function PeriodSelector({
   value,
   onChange,
   accent = YELLOW,
+  dark = false,
 }: {
   value?: WPOffer["limit_period"];
   onChange: (next: WPOffer["limit_period"]) => void;
   accent?: string;
+  dark?: boolean;
 }) {
   return (
     <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
@@ -83,12 +85,12 @@ function PeriodSelector({
               borderRadius: 999,
               paddingHorizontal: 12,
               paddingVertical: 8,
-              backgroundColor: active ? accent : "rgba(15,0,50,0.05)",
+              backgroundColor: active ? accent : dark ? "rgba(255,255,255,0.12)" : "rgba(15,0,50,0.05)",
               borderWidth: 1,
-              borderColor: active ? accent : "rgba(15,0,50,0.08)",
+              borderColor: active ? accent : dark ? "rgba(255,255,255,0.12)" : "rgba(15,0,50,0.08)",
             }}
           >
-            <Text style={{ color: active ? NAV : "rgba(15,0,50,0.6)", fontSize: 12, fontWeight: "800", textTransform: "capitalize" }}>{period}</Text>
+            <Text style={{ color: active ? NAV : dark ? "rgba(255,255,255,0.88)" : "rgba(15,0,50,0.6)", fontSize: 12, fontWeight: "800", textTransform: "capitalize" }}>{period}</Text>
           </TouchableOpacity>
         );
       })}
@@ -375,7 +377,7 @@ export default function BusinessOffersScreen() {
                     </View>
                     <View style={{ flex: 1.35 }}>
                       <FieldLabel light>Redemption Period</FieldLabel>
-                      <PeriodSelector value={offer.limit_period} onChange={(value) => updateTier(offer.tier, { limit_period: value })} accent={meta.colour} />
+                      <PeriodSelector value={offer.limit_period} onChange={(value) => updateTier(offer.tier, { limit_period: value })} accent={meta.colour} dark />
                     </View>
                   </View>
 
