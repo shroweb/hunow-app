@@ -191,11 +191,11 @@ export default function VenuesScreen() {
                 </View>
 
                 <View style={{ padding: 13 }}>
-                  <Text style={{ color: NAV, fontWeight: "800", fontSize: 14, marginBottom: 6 }} numberOfLines={1}>
+                  <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
                     {decodeHtml(item.title.rendered)}
                   </Text>
                   {firstOfferTitle ? (
-                    <Text style={{ color: NAV, fontSize: 13, fontWeight: "700", lineHeight: 18, marginBottom: 6 }} numberOfLines={2}>
+                    <Text style={{ color: NAV, fontSize: 15, fontWeight: "800", lineHeight: 19, marginBottom: 6 }} numberOfLines={2}>
                       {decodeHtml(String(firstOfferTitle))}
                     </Text>
                   ) : null}

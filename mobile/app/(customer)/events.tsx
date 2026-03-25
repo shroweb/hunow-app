@@ -193,6 +193,9 @@ export default function EventsScreen() {
                     <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" }}>Featured Event</Text>
                   </View>
                   <View style={{ padding: 18 }}>
+                    <Text style={{ color: "rgba(15,0,50,0.42)", fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8 }}>
+                      HU NOW Events
+                    </Text>
                     <Text style={{ color: NAV, fontWeight: "900", fontSize: 21, lineHeight: 26, marginBottom: 8 }}>{decodeHtml(featured.title.rendered)}</Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
                       <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 5 }}>
@@ -236,17 +239,21 @@ export default function EventsScreen() {
                       </View>
                     )}
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: NAV, fontSize: 15, fontWeight: "800", marginBottom: 6 }} numberOfLines={2}>
+                      {event.acf?.venue ? (
+                        <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 12, fontWeight: "700", marginBottom: 5 }} numberOfLines={1}>
+                          {event.acf.venue as string}
+                        </Text>
+                      ) : (
+                        <Text style={{ color: "rgba(15,0,50,0.42)", fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 6 }}>
+                          HU NOW Event
+                        </Text>
+                      )}
+                      <Text style={{ color: NAV, fontSize: 15, fontWeight: "800", lineHeight: 19, marginBottom: 6 }} numberOfLines={2}>
                         {decodeHtml(event.title.rendered)}
                       </Text>
                       <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 12, marginBottom: 6 }}>
                         {meta.dateLabel} · {meta.timeLabel}
                       </Text>
-                      {event.acf?.venue ? (
-                        <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 12 }} numberOfLines={1}>
-                          {event.acf.venue as string}
-                        </Text>
-                      ) : null}
                     </View>
                     <Ionicons name="chevron-forward" size={18} color="rgba(15,0,50,0.35)" />
                   </TouchableOpacity>

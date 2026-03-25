@@ -477,6 +477,9 @@ export default function HomeScreen() {
                       </View>
                     )}
                     <View style={{ padding: 14 }}>
+                      <Text style={{ color: "rgba(15,0,50,0.42)", fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8 }}>
+                        HU NOW News
+                      </Text>
                       <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 20 }} numberOfLines={3}>
                         {decodeHtml(post.title.rendered)}
                       </Text>
