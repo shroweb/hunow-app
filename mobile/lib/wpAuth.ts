@@ -5,6 +5,8 @@ const JWT_URL = `${WP_BASE}/jwt-auth/v1/token`;
 const REGISTER_URL = `${WP_BASE}/hunow/v1/register`;
 const ME_URL = `${WP_BASE}/hunow/v1/me`;
 const BUSINESS_DASHBOARD_URL = `${WP_BASE}/hunow/v1/business-dashboard`;
+const FORGOT_PASSWORD_URL = `${WP_BASE}/hunow/v1/forgot-password`;
+const UPDATE_EMAIL_URL = `${WP_BASE}/hunow/v1/update-email`;
 
 const LOOKUP_URL = `${WP_BASE}/hunow/v1/lookup-card`;
 const REDEEM_URL = `${WP_BASE}/hunow/v1/redeem`;
@@ -212,6 +214,32 @@ export async function fetchBusinessDashboard(jwt: string, range: "7d" | "30d" | 
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { message?: string };
     throw new Error(err.message ?? "Could not load business dashboard");
+  }
+  return res.json();
+}
+
+export async function requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+  const res = await fetch(FORGOT_PASSWORD_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not send reset email.");
+  }
+  return res.json();
+}
+
+export async function updateEmail(email: string, currentPassword: string, jwt: string): Promise<{ success: boolean; email: string; message: string }> {
+  const res = await fetch(UPDATE_EMAIL_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ email, current_password: currentPassword }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not update email.");
   }
   return res.json();
 }

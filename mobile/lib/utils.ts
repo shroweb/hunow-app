@@ -27,6 +27,17 @@ export function getDisplayAddress(address: unknown): string | null {
   return null;
 }
 
+export function getTodayOpeningHours(hours: unknown): string | null {
+  if (!Array.isArray(hours) || hours.length === 0) return null;
+  const today = new Date().toLocaleDateString("en-GB", { weekday: "long" }).toLowerCase();
+  const match = hours.find((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    const row = entry as Record<string, unknown>;
+    return typeof row.day === "string" && row.day.toLowerCase() === today;
+  }) as { day?: string; hours?: string } | undefined;
+  return match?.hours?.trim() || null;
+}
+
 /** Extract lat/lng from a WP ACF Google Maps address object */
 export function getLatLng(address: unknown): { lat: number; lng: number } | null {
   if (!address || typeof address !== "object") return null;

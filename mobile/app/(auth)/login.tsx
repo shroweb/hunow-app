@@ -84,6 +84,12 @@ export default function LoginScreen() {
             />
           </View>
 
+          <Link href="/(auth)/forgot-password" asChild>
+            <TouchableOpacity style={{ alignSelf: "flex-end", marginTop: -10, marginBottom: 18 }}>
+              <Text className="text-[#0F0032] text-sm font-bold">Forgot password?</Text>
+            </TouchableOpacity>
+          </Link>
+
           <TouchableOpacity
             className="bg-[#0F0032] rounded-2xl py-4 items-center"
             onPress={handleLogin}

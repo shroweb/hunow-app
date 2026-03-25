@@ -1,7 +1,9 @@
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { useState } from "react";
+import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
+import { requestPasswordReset, updateEmail } from "@/lib/wpAuth";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -11,8 +13,42 @@ function memberNumber(token: string): string {
 }
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, token, signOut, refreshUser } = useAuth();
+  const [nextEmail, setNextEmail] = useState(user?.email ?? "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [sendingReset, setSendingReset] = useState(false);
   if (!user) return null;
+  const currentUser = user;
+
+  async function handleUpdateEmail() {
+    if (!token) return;
+    if (!nextEmail.trim() || !currentPassword) {
+      Alert.alert("Missing details", "Enter your new email and current password.");
+      return;
+    }
+    setSavingEmail(true);
+    try {
+      await updateEmail(nextEmail.trim(), currentPassword, token);
+      await refreshUser();
+      setCurrentPassword("");
+      Alert.alert("Email updated", "Your account email has been changed.");
+    } catch (e: unknown) {
+      Alert.alert("Couldn’t update email", e instanceof Error ? e.message : "Please try again.");
+    }
+    setSavingEmail(false);
+  }
+
+  async function handlePasswordReset() {
+    setSendingReset(true);
+    try {
+      const result = await requestPasswordReset(currentUser.email);
+      Alert.alert("Reset email sent", result.message);
+    } catch (e: unknown) {
+      Alert.alert("Couldn’t send reset email", e instanceof Error ? e.message : "Please try again.");
+    }
+    setSendingReset(false);
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -72,6 +108,57 @@ export default function ProfileScreen() {
                 : "—"}
             </Text>
           </View>
+        </View>
+
+        <View style={{
+          backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, overflow: "hidden",
+          marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 18,
+        }}>
+          <Text style={{ color: "white", fontWeight: "800", fontSize: 16, marginBottom: 12 }}>Account security</Text>
+
+          <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 6 }}>New email</Text>
+          <TextInput
+            value={nextEmail}
+            onChangeText={setNextEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholder="new@email.com"
+            placeholderTextColor="rgba(255,255,255,0.25)"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.06)", color: "white", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14,
+              borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 12,
+            }}
+          />
+
+          <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 6 }}>Current password</Text>
+          <TextInput
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            placeholder="Enter current password"
+            placeholderTextColor="rgba(255,255,255,0.25)"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.06)", color: "white", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14,
+              borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 12,
+            }}
+          />
+
+          <TouchableOpacity
+            onPress={handleUpdateEmail}
+            disabled={savingEmail}
+            style={{ backgroundColor: YELLOW, borderRadius: 14, paddingVertical: 14, alignItems: "center", marginBottom: 10 }}
+          >
+            {savingEmail ? <ActivityIndicator color={NAV} /> : <Text style={{ color: NAV, fontWeight: "800" }}>Update Email</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handlePasswordReset}
+            disabled={sendingReset}
+            style={{ borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", borderRadius: 14, paddingVertical: 14, alignItems: "center" }}
+          >
+            {sendingReset ? <ActivityIndicator color={YELLOW} /> : <Text style={{ color: "white", fontWeight: "700" }}>Send Password Reset Email</Text>}
+          </TouchableOpacity>
         </View>
 
         {/* Recent redemptions */}

@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, extractOffers, type WPEat } from "@/lib/wordpress";
-import { decodeHtml } from "@/lib/utils";
+import { decodeHtml, getDisplayAddress, getTodayOpeningHours } from "@/lib/utils";
 import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 
 const NAV = "#0F0032";
@@ -162,6 +162,8 @@ export default function VenuesScreen() {
             const firstOfferTitle = offers[0]?.title ?? item.acf?.offer_title ?? null;
             const offerCount = offers.length;
             const featured = Boolean(offers[0]?.featured);
+            const location = getDisplayAddress(item.acf?.address);
+            const todayHours = getTodayOpeningHours(item.acf?.opening_hours);
 
             return (
               <TouchableOpacity
@@ -203,6 +205,26 @@ export default function VenuesScreen() {
                   <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
                     {offerCount > 1 ? `${offerCount} offers • Earn 35pts each` : "Earn 35pts"}
                   </Text>
+                  {(location || todayHours) ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                      {location ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "55%" }}>
+                          <Ionicons name="location-outline" size={11} color="rgba(15,0,50,0.4)" />
+                          <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 11, flexShrink: 1 }} numberOfLines={1}>
+                            {location}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {todayHours ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "45%" }}>
+                          <Ionicons name="time-outline" size={11} color="rgba(15,0,50,0.4)" />
+                          <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 11, flexShrink: 1 }} numberOfLines={1}>
+                            {todayHours}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
                 </View>
               </TouchableOpacity>
             );
