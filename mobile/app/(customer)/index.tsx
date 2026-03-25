@@ -30,7 +30,7 @@ function getTier(points: number) {
 }
 
 function getNextTier(points: number) {
-  return TIERS.find((t) => points < t.max) ?? null;
+  return TIERS.find((t) => t.min > points) ?? null;
 }
 
 function greeting() {
@@ -46,6 +46,26 @@ interface ActiveOffer {
   offerTitle: string;
   img: string | null;
   distanceKm?: number;
+}
+
+function isDateOnlyValue(raw?: string | null): boolean {
+  if (!raw) return false;
+  return /^\d{8}$/.test(raw.trim()) || /^\d{4}-\d{2}-\d{2}$/.test(raw.trim());
+}
+
+function getEventCutoff(event: WPEvent): Date | null {
+  const endRaw = typeof event.acf?.event_end === "string" ? event.acf.event_end : "";
+  const startRaw = typeof event.acf?.event_date === "string" ? event.acf.event_date : "";
+  const endDate = endRaw ? parseEventDate(endRaw) : null;
+  if (endDate) {
+    if (isDateOnlyValue(endRaw)) endDate.setHours(23, 59, 59, 999);
+    return endDate;
+  }
+  const startDate = startRaw ? parseEventDate(startRaw) : null;
+  if (startDate && isDateOnlyValue(startRaw)) {
+    startDate.setHours(23, 59, 59, 999);
+  }
+  return startDate;
 }
 
 function SectionHeader({
@@ -121,7 +141,12 @@ export default function HomeScreen() {
       wordpress.getPosts({ perPage: 4 }).catch(() => [] as WPPost[]),
       loadOffers().catch(() => [] as ActiveOffer[]),
     ]);
-    setEvents(wpEvents.slice(0, 4));
+    const now = new Date();
+    const upcomingEvents = wpEvents.filter((event) => {
+      const cutoff = getEventCutoff(event);
+      return cutoff ? cutoff.getTime() >= now.getTime() : false;
+    });
+    setEvents(upcomingEvents.slice(0, 4));
     setNews(wpNews);
     setActiveOffers(wpOffers);
 

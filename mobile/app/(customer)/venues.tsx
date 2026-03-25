@@ -13,6 +13,8 @@ import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const SURFACE = "rgba(255,255,255,0.07)";
+const BORDER = "rgba(255,255,255,0.1)";
 
 interface Cuisine { id: number | null; name: string }
 
@@ -72,18 +74,25 @@ export default function VenuesScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
-      {/* Yellow header */}
-      <View style={{ backgroundColor: YELLOW, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 }}>
-        <Text style={{ color: NAV, fontSize: 28, fontWeight: "900", letterSpacing: -0.5 }}>OFFERS</Text>
+      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
+        <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 6 }}>
+          Browse Rewards
+        </Text>
+        <Text style={{ color: "white", fontSize: 28, fontWeight: "900", letterSpacing: -0.5, marginBottom: 8 }}>
+          Offers
+        </Text>
+        <Text style={{ color: "rgba(255,255,255,0.52)", fontSize: 14, lineHeight: 20 }}>
+          Explore active rewards across partner venues near you.
+        </Text>
       </View>
 
       {/* Search */}
       <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 }}>
         <View style={{
           flexDirection: "row", alignItems: "center",
-          backgroundColor: "rgba(255,255,255,0.1)",
-          borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, gap: 8,
-          borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
+          backgroundColor: SURFACE,
+          borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, gap: 8,
+          borderWidth: 1, borderColor: BORDER,
         }}>
           <Ionicons name="search" size={16} color="rgba(255,255,255,0.4)" />
           <TextInput
@@ -115,8 +124,8 @@ export default function VenuesScreen() {
               key={c.id ?? "all"}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveFilter(c.id); }}
               style={{
-                paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-                backgroundColor: active ? YELLOW : "rgba(255,255,255,0.1)",
+                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+                backgroundColor: active ? YELLOW : SURFACE,
                 borderWidth: 1, borderColor: active ? YELLOW : "rgba(255,255,255,0.15)",
               }}
             >
@@ -136,7 +145,7 @@ export default function VenuesScreen() {
           keyExtractor={(item) => String(item.id)}
           numColumns={2}
           columnWrapperStyle={{ gap: 12, paddingHorizontal: 20 }}
-          contentContainerStyle={{ paddingBottom: 110, gap: 12 }}
+          contentContainerStyle={{ paddingBottom: 110, gap: 12, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -160,40 +169,43 @@ export default function VenuesScreen() {
                   router.push(`/(customer)/venue/${item.id}`);
                 }}
                 style={{
-                  width: CARD_W, backgroundColor: "white", borderRadius: 16, overflow: "hidden",
+                  width: CARD_W, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
                   shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
                 }}
               >
                 <View style={{ position: "relative" }}>
                   {img ? (
-                    <Image source={{ uri: img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
+                    <Image source={{ uri: img }} style={{ width: "100%", height: 122 }} resizeMode="cover" />
                   ) : (
-                    <View style={{ width: "100%", height: 110, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ width: "100%", height: 122, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
                       <Ionicons name="storefront-outline" size={32} color="rgba(15,0,50,0.2)" />
                     </View>
                   )}
-                  <View style={{ position: "absolute", top: 8, right: 8, backgroundColor: YELLOW, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 }}>
-                    <Text style={{ color: NAV, fontSize: 10, fontWeight: "800" }}>OFFER</Text>
+                  <View style={{ position: "absolute", top: 10, left: 10, backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+                    <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
+                  </View>
+                  <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(15,0,50,0.72)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 }}>
+                    <Text style={{ color: "white", fontSize: 10, fontWeight: "800" }}>{offerCount} {offerCount === 1 ? "offer" : "offers"}</Text>
                   </View>
                 </View>
 
-                <View style={{ padding: 10 }}>
-                  <Text style={{ color: NAV, fontWeight: "700", fontSize: 13, marginBottom: 3 }} numberOfLines={1}>
+                <View style={{ padding: 12 }}>
+                  <Text style={{ color: NAV, fontWeight: "800", fontSize: 14, marginBottom: 5 }} numberOfLines={1}>
                     {decodeHtml(item.title.rendered)}
                   </Text>
                   {firstOfferTitle ? (
-                    <Text style={{ color: YELLOW, fontSize: 11, fontStyle: "italic", fontWeight: "600", marginBottom: 3 }} numberOfLines={1}>
+                    <Text style={{ color: NAV, fontSize: 13, fontWeight: "700", lineHeight: 17, marginBottom: 4 }} numberOfLines={2}>
                       {decodeHtml(String(firstOfferTitle))}
                     </Text>
                   ) : null}
-                  <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 10, marginBottom: 4 }} numberOfLines={1}>
+                  <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 6 }} numberOfLines={1}>
                     {offerCount > 1 ? `${offerCount} offers • Earn 35pts each` : "Earn 35pts"}
                   </Text>
                   {getDisplayAddress(item.acf?.address) ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <Ionicons name="location" size={10} color={YELLOW} />
-                      <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 11 }} numberOfLines={1}>
+                      <Text style={{ color: "rgba(15,0,50,0.56)", fontSize: 11, flex: 1 }} numberOfLines={1}>
                         {getDisplayAddress(item.acf?.address)}
                       </Text>
                     </View>
@@ -206,6 +218,13 @@ export default function VenuesScreen() {
             <View style={{ alignItems: "center", marginTop: 48 }}>
               <Ionicons name="pricetag-outline" size={40} color="rgba(255,255,255,0.15)" />
               <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, marginTop: 12 }}>No offers found</Text>
+            </View>
+          }
+          ListHeaderComponent={
+            <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
+              <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12 }}>
+                {filtered.length} {filtered.length === 1 ? "venue" : "venues"} with active offers
+              </Text>
             </View>
           }
         />

@@ -10,9 +10,30 @@ import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const SURFACE = "rgba(255,255,255,0.07)";
+const BORDER = "rgba(255,255,255,0.08)";
+
+function isDateOnlyValue(raw?: string | null): boolean {
+  if (!raw) return false;
+  return /^\d{8}$/.test(raw.trim()) || /^\d{4}-\d{2}-\d{2}$/.test(raw.trim());
+}
+
+function getEventTiming(event: WPEvent) {
+  const startRaw = typeof event.acf?.event_date === "string" ? event.acf.event_date : "";
+  const endRaw = typeof event.acf?.event_end === "string" ? event.acf.event_end : "";
+  const date = startRaw ? parseEventDate(startRaw) : null;
+  const endDate = endRaw ? parseEventDate(endRaw) : null;
+
+  const visibleUntil = endDate ?? date;
+  if (visibleUntil && (endDate ? isDateOnlyValue(endRaw) : isDateOnlyValue(startRaw))) {
+    visibleUntil.setHours(23, 59, 59, 999);
+  }
+
+  return { date, endDate, visibleUntil };
+}
 
 function formatEventMeta(event: WPEvent) {
-  const date = event.acf?.event_date ? parseEventDate(event.acf.event_date) : null;
+  const { date } = getEventTiming(event);
   return {
     date,
     dateLabel: date ? date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) : "Date TBC",
@@ -51,11 +72,13 @@ export default function EventsScreen() {
 
     const withDates = events.map((event) => ({
       event,
-      date: event.acf?.event_date ? parseEventDate(event.acf.event_date) : null,
+      ...getEventTiming(event),
     }));
 
-    const filtered = withDates.filter(({ date }) => {
-      if (!date) return filter === "all";
+    const upcoming = withDates.filter(({ visibleUntil }) => visibleUntil && visibleUntil >= now);
+
+    const filtered = upcoming.filter(({ date }) => {
+      if (!date) return false;
       if (filter === "today") {
         return date >= startOfToday && date < new Date(startOfToday.getTime() + 86400000);
       }
@@ -107,8 +130,8 @@ export default function EventsScreen() {
                   onPress={() => setFilter(item.key as EventFilter)}
                   style={{
                     paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999,
-                    backgroundColor: active ? YELLOW : "rgba(255,255,255,0.07)",
-                    borderWidth: 1, borderColor: active ? YELLOW : "rgba(255,255,255,0.08)",
+                    backgroundColor: active ? YELLOW : SURFACE,
+                    borderWidth: 1, borderColor: active ? YELLOW : BORDER,
                   }}
                 >
                   <Text style={{ color: active ? NAV : "white", fontSize: 12, fontWeight: "800" }}>{item.label}</Text>
@@ -129,7 +152,7 @@ export default function EventsScreen() {
                   style={{
                     paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999,
                     backgroundColor: active ? "rgba(251,201,0,0.16)" : "rgba(255,255,255,0.05)",
-                    borderWidth: 1, borderColor: active ? "rgba(251,201,0,0.36)" : "rgba(255,255,255,0.08)",
+                    borderWidth: 1, borderColor: active ? "rgba(251,201,0,0.36)" : BORDER,
                   }}
                 >
                   <Text style={{ color: active ? YELLOW : "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: "700" }}>{item.label}</Text>
@@ -141,8 +164,8 @@ export default function EventsScreen() {
 
         {loading ? (
           <VenueCardSkeleton count={4} />
-        ) : events.length === 0 ? (
-          <View style={{ marginHorizontal: 20, marginTop: 12, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 22, padding: 28, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+        ) : sortedEvents.length === 0 ? (
+          <View style={{ marginHorizontal: 20, marginTop: 12, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 22, padding: 28, alignItems: "center", borderWidth: 1, borderColor: BORDER }}>
             <Ionicons name="calendar-outline" size={42} color="rgba(255,255,255,0.18)" />
             <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginTop: 12, marginBottom: 6 }}>No upcoming events</Text>
             <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, textAlign: "center", lineHeight: 19 }}>

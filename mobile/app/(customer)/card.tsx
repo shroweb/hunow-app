@@ -28,7 +28,7 @@ function getTier(points: number) {
 }
 
 function getNextTier(points: number) {
-  return TIERS.find((t) => points < t.max) ?? null;
+  return TIERS.find((t) => t.min > points) ?? null;
 }
 
 function memberNumber(token: string): string {
@@ -246,7 +246,7 @@ export default function MyCardScreen() {
 
           {/* Card header */}
           <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <View>
+            <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 10, fontWeight: "700", letterSpacing: 2.2, textTransform: "uppercase", marginBottom: 4 }}>
                 Member Pass
               </Text>
@@ -265,23 +265,13 @@ export default function MyCardScreen() {
 
           {/* Animated QR section */}
           <View style={{ paddingHorizontal: 24, paddingBottom: 20 }}>
-            <View style={{ marginBottom: 14, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <View style={{ flex: 1, paddingRight: 12 }}>
-                <Text style={{ color: "white", fontSize: 21, fontWeight: "900", marginBottom: 3 }} numberOfLines={1}>
-                  {user.display_name}
-                </Text>
-                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, lineHeight: 17 }}>
-                  Your premium membership pass for rewards, events, and city perks.
-                </Text>
-              </View>
-              <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 16, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
-                <Text style={{ color: tierTheme.accent, fontSize: 10, fontWeight: "800", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 2 }}>
-                  Status
-                </Text>
-                <Text style={{ color: "white", fontSize: 12, fontWeight: "800" }}>
-                  {currentTier.name}
-                </Text>
-              </View>
+            <View style={{ marginBottom: 14 }}>
+              <Text style={{ color: "white", fontSize: 21, fontWeight: "900", marginBottom: 4 }} numberOfLines={1}>
+                {user.display_name}
+              </Text>
+              <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, lineHeight: 17 }}>
+                Show this card when you redeem rewards or check in at partner venues.
+              </Text>
             </View>
             <Animated.View style={[{
               backgroundColor: "rgba(255,255,255,0.97)", borderRadius: 24, padding: 20, alignItems: "center",
@@ -302,7 +292,7 @@ export default function MyCardScreen() {
               </View>
               <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
                 <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: "700" }}>
-                  {nextTier ? `${ptsToNext} to ${nextTier.name}` : "Top tier"}
+                  {nextTier ? `${ptsToNext} to ${nextTier.name}` : "Top tier unlocked"}
                 </Text>
               </View>
             </View>
@@ -311,7 +301,7 @@ export default function MyCardScreen() {
             <View style={{ marginTop: 14 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
                 <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
-                  {currentTier.name} → {nextTier?.name ?? "Max tier"}
+                  {nextTier ? `${currentTier.name} -> ${nextTier.name}` : `${currentTier.name} member`}
                 </Text>
                 {nextTier && (
                   <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "700" }}>

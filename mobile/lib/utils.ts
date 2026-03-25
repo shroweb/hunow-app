@@ -37,14 +37,28 @@ export function getLatLng(address: unknown): { lat: number; lng: number } | null
   return { lat, lng };
 }
 
-/** Parse WordPress event date - handles both "YYYYMMDD" and "Month D, YYYY" formats */
+/** Parse WordPress event date - handles compact, ISO, and human-readable formats */
 export function parseEventDate(raw: string): Date | null {
   if (!raw) return null;
-  // YYYYMMDD format
-  if (/^\d{8}$/.test(raw)) {
-    return new Date(`${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`);
+  const value = raw.trim();
+
+  // YYYYMMDD
+  if (/^\d{8}$/.test(value)) {
+    return new Date(`${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T00:00:00`);
   }
-  // Human readable e.g. "August 2, 2025"
-  const d = new Date(raw);
+
+  // YYYYMMDDHHMMSS
+  if (/^\d{14}$/.test(value)) {
+    return new Date(
+      `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}T${value.slice(8, 10)}:${value.slice(10, 12)}:${value.slice(12, 14)}`
+    );
+  }
+
+  // YYYY-MM-DD HH:mm:ss
+  if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+    return new Date(value.replace(" ", "T"));
+  }
+
+  const d = new Date(value);
   return isNaN(d.getTime()) ? null : d;
 }
