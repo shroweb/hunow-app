@@ -13,6 +13,8 @@ export interface WPOffer {
   description: string;
   limit_count?: number;
   limit_period?: "week" | "month" | "year" | "ever";
+  starts_at?: string | null;
+  ends_at?: string | null;
 }
 
 export interface WPTierOffer {
@@ -21,6 +23,17 @@ export interface WPTierOffer {
   description: string;
   limit_count?: number;
   limit_period?: "week" | "month" | "year" | "ever";
+  starts_at?: string | null;
+  ends_at?: string | null;
+}
+
+export interface BusinessOffersResponse {
+  venue_id: number;
+  venue_name: string;
+  subscription_tier: string;
+  max_offers: number;
+  standard_offers: WPOffer[];
+  tier_offers: WPTierOffer[];
 }
 
 export interface WPEat {
@@ -114,12 +127,14 @@ export function extractOffers(venue: WPEat): WPOffer[] {
         description: (o.description ?? "").trim(),
         limit_count: o.limit_count ?? 1,
         limit_period: o.limit_period ?? "month",
+        starts_at: o.starts_at ?? null,
+        ends_at: o.ends_at ?? null,
       }));
   }
   // Fallback: single ACF offer_title field
   const title = venue.acf?.offer_title?.trim();
   if (title) {
-    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim(), limit_count: 1, limit_period: "month" }];
+    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim(), limit_count: 1, limit_period: "month", starts_at: null, ends_at: null }];
   }
   return [];
 }
@@ -282,6 +297,17 @@ export const wordpress = {
   /** Get featured listings by CPT */
   getFeatured(postType: "eat" | "event" | "activity" | "guide"): Promise<WPEat[]> {
     return get<WPEat[]>(`${HUNOW_BASE}/featured-archive/${postType}?_embed=1`);
+  },
+
+  getBusinessOffers(token: string): Promise<BusinessOffersResponse> {
+    return get<BusinessOffersResponse>(`${HUNOW_BASE}/business-offers`, token);
+  },
+
+  saveBusinessOffers(
+    body: { standard_offers: WPOffer[]; tier_offers: WPTierOffer[] },
+    token: string,
+  ): Promise<BusinessOffersResponse> {
+    return post<BusinessOffersResponse>(`${HUNOW_BASE}/business-offers`, body, token);
   },
 
   /** Get user's points total */
