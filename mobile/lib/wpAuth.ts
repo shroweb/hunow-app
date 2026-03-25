@@ -7,6 +7,7 @@ const ME_URL = `${WP_BASE}/hunow/v1/me`;
 const BUSINESS_DASHBOARD_URL = `${WP_BASE}/hunow/v1/business-dashboard`;
 const FORGOT_PASSWORD_URL = `${WP_BASE}/hunow/v1/forgot-password`;
 const UPDATE_EMAIL_URL = `${WP_BASE}/hunow/v1/update-email`;
+const GOOGLE_LOGIN_URL = `${WP_BASE}/hunow/v1/google-login`;
 
 const LOOKUP_URL = `${WP_BASE}/hunow/v1/lookup-card`;
 const REDEEM_URL = `${WP_BASE}/hunow/v1/redeem`;
@@ -156,6 +157,23 @@ export async function wpRegister(
     redemptions: [],
   };
 
+  return { token: data.token, user };
+}
+
+export async function wpGoogleLogin(idToken: string): Promise<{ token: string; user: WPUser }> {
+  const res = await fetch(GOOGLE_LOGIN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id_token: idToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Google login failed.");
+  }
+
+  const data = await res.json() as WPUser & { token: string };
+  await saveToken(data.token);
+  const user = await fetchMe(data.token);
   return { token: data.token, user };
 }
 

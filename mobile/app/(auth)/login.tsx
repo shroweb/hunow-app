@@ -1,17 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View, Text, TextInput, TouchableOpacity,
-  ActivityIndicator, KeyboardAvoidingView, Platform, Image,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { Link } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import * as Google from "expo-auth-session/providers/google";
 import { useAuth } from "@/context/AuthContext";
 
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_WEB_CLIENT_ID = "370997503889-4lq4s20tcpepn0rdtllb2ltk0or26a0o.apps.googleusercontent.com";
+const GOOGLE_ANDROID_CLIENT_ID = "370997503889-2k0eni9dbu320ncst9bema6sk3i5pre0.apps.googleusercontent.com";
+
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    selectAccount: true,
+  });
+
+  useEffect(() => {
+    const idToken = response?.type === "success"
+      ? response.params?.id_token || response.authentication?.idToken
+      : null;
+    if (!idToken) return;
+
+    setGoogleLoading(true);
+    setError(null);
+    loginWithGoogle(idToken)
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Google login failed."))
+      .finally(() => setGoogleLoading(false));
+  }, [response]);
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -26,6 +52,11 @@ export default function LoginScreen() {
       setError(e instanceof Error ? e.message : "Login failed. Please try again.");
     }
     setLoading(false);
+  }
+
+  async function handleGoogleLogin() {
+    setError(null);
+    await promptAsync();
   }
 
   return (
@@ -99,6 +130,17 @@ export default function LoginScreen() {
             {loading
               ? <ActivityIndicator color="#FBC900" />
               : <Text className="text-white font-bold text-base">Sign In</Text>
+            }
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="bg-white rounded-2xl py-4 items-center mt-3 border border-[#E5E5EA]"
+            onPress={handleGoogleLogin}
+            disabled={googleLoading}
+          >
+            {googleLoading
+              ? <ActivityIndicator color="#0F0032" />
+              : <Text className="text-[#0F0032] font-bold text-base">Continue with Google</Text>
             }
           </TouchableOpacity>
         </View>

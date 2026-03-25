@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { wpLogin, wpRegister, fetchMe, clearAuth, restoreSession, type WPUser } from "@/lib/wpAuth";
+import { wpLogin, wpRegister, wpGoogleLogin, fetchMe, clearAuth, restoreSession, type WPUser } from "@/lib/wpAuth";
 
 interface AuthState {
   user: WPUser | null;
@@ -9,6 +9,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -40,6 +41,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ user, token, loading: false });
   }
 
+  async function loginWithGoogle(idToken: string) {
+    const { token, user } = await wpGoogleLogin(idToken);
+    setState({ user, token, loading: false });
+  }
+
   async function signOut() {
     await clearAuth();
     setState({ user: null, token: null, loading: false });
@@ -56,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, login, register, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ ...state, login, loginWithGoogle, register, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
