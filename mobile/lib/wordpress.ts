@@ -4,7 +4,7 @@ const JWT_BASE = (process.env.EXPO_PUBLIC_WP_API_URL ?? "https://hunow.co.uk/wp-
 
 interface EmbeddedMedia {
   source_url: string;
-  media_details?: { sizes?: { medium_large?: { source_url: string }; medium?: { source_url: string } } };
+  media_details?: { sizes?: { large?: { source_url: string }; medium_large?: { source_url: string }; medium?: { source_url: string } } };
 }
 
 export interface WPOffer {

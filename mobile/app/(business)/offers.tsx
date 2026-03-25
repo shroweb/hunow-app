@@ -1,212 +1,245 @@
-import { useEffect, useState, useCallback } from "react";
-import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Modal, Switch, Alert,
-} from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Linking, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { supabase } from "@/lib/supabase";
-import type { Database } from "@/types/supabase";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { useAuth } from "@/context/AuthContext";
+import { wordpress, extractOffers, formatOfferRule, getFeaturedImage, type WPEat } from "@/lib/wordpress";
 
-type Offer = Database["public"]["Tables"]["offers"]["Row"];
-type RedemptionType = "one_time" | "unlimited" | "once_per_day" | "once_per_week" | "once_per_month";
+const NAV = "#0F0032";
+const YELLOW = "#FBC900";
+const WP_SITE = (process.env.EXPO_PUBLIC_WP_API_URL ?? "https://hunow.co.uk/wp-json").replace(/\/wp-json(?:\/wp\/v2)?$/, "");
+const PORTAL_URL = `${WP_SITE}/my-account/`;
 
-const REDEMPTION_LABELS: Record<RedemptionType, string> = {
-  one_time: "One-time only",
-  unlimited: "Unlimited",
-  once_per_day: "Once per day",
-  once_per_week: "Once per week",
-  once_per_month: "Once per month",
+const TIER_META: Record<"bronze" | "silver" | "gold", { label: string; colour: string }> = {
+  bronze: { label: "Bronze", colour: "#CD7F32" },
+  silver: { label: "Silver", colour: "#C0C0C0" },
+  gold: { label: "Gold", colour: "#FBC900" },
 };
 
-const EMPTY_FORM = {
-  title: "",
-  description: "",
-  terms: "",
-  redemption_type: "unlimited" as RedemptionType,
-  is_active: true,
-};
+function getVenuePublicUrl(venue: WPEat): string {
+  return `${WP_SITE}/eat/${venue.slug}/`;
+}
 
-export default function OffersScreen() {
-  const [offers, setOffers] = useState<Offer[]>([]);
+export default function BusinessOffersScreen() {
+  const { user } = useAuth();
+  const [venue, setVenue] = useState<WPEat | null>(null);
   const [loading, setLoading] = useState(true);
-  const [businessId, setBusinessId] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editing, setEditing] = useState<Offer | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
 
-  const loadOffers = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: biz } = await supabase.from("businesses").select("id").eq("user_id", user.id).single();
-    if (!biz) return;
-    setBusinessId(biz.id);
-    const { data } = await supabase.from("offers").select("*").eq("business_id", biz.id).order("created_at", { ascending: false });
-    setOffers(data ?? []);
-    setLoading(false);
-  }, []);
+  useEffect(() => {
+    async function load() {
+      if (!user?.venue_id) {
+        setLoading(false);
+        return;
+      }
 
-  useEffect(() => { loadOffers(); }, [loadOffers]);
-
-  function openNew() {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setModalVisible(true);
-  }
-
-  function openEdit(offer: Offer) {
-    setEditing(offer);
-    setForm({
-      title: offer.title,
-      description: offer.description ?? "",
-      terms: offer.terms ?? "",
-      redemption_type: offer.redemption_type as RedemptionType,
-      is_active: offer.is_active,
-    });
-    setModalVisible(true);
-  }
-
-  async function handleSave() {
-    if (!form.title.trim() || !businessId) return;
-    setSaving(true);
-
-    if (editing) {
-      await supabase.from("offers").update({ ...form }).eq("id", editing.id);
-    } else {
-      await supabase.from("offers").insert({ ...form, business_id: businessId });
+      try {
+        const data = await wordpress.getEatById(user.venue_id);
+        setVenue(data);
+      } catch {
+        setVenue(null);
+      } finally {
+        setLoading(false);
+      }
     }
 
-    setSaving(false);
-    setModalVisible(false);
-    loadOffers();
-  }
+    load();
+  }, [user?.venue_id]);
 
-  async function handleDelete(offer: Offer) {
-    Alert.alert("Delete Offer", `Delete "${offer.title}"?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete", style: "destructive",
-        onPress: async () => {
-          await supabase.from("offers").delete().eq("id", offer.id);
-          loadOffers();
-        },
-      },
-    ]);
+  const standardOffers = useMemo(() => (venue ? extractOffers(venue) : []), [venue]);
+  const tierOffers = useMemo(() => venue?.tier_offers ?? [], [venue]);
+  const liveOfferCount = standardOffers.length + tierOffers.length;
+  const heroImage = venue ? getFeaturedImage(venue) : null;
+
+  async function openUrl(url: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await Linking.openURL(url);
   }
 
   if (loading) {
-    return <View className="flex-1 bg-brand-navy items-center justify-center"><ActivityIndicator color="#FBC900" /></View>;
+    return (
+      <View style={{ flex: 1, backgroundColor: NAV, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={YELLOW} />
+      </View>
+    );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-brand-navy">
-      <View className="px-5 pt-4 pb-2 flex-row items-center justify-between">
-        <Text className="text-white text-2xl font-bold">Offers</Text>
-        <TouchableOpacity className="bg-brand-yellow rounded-xl px-4 py-2" onPress={openNew}>
-          <Text className="text-brand-navy font-bold text-sm">+ New Offer</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView className="flex-1 px-5">
-        {offers.length === 0 && (
-          <Text className="text-white/40 text-sm text-center mt-8">No offers yet. Create your first one!</Text>
-        )}
-        {offers.map((offer) => (
-          <View key={offer.id} className="bg-white/10 border border-white/20 rounded-2xl p-4 mb-3">
-            <View className="flex-row items-start justify-between">
-              <View className="flex-1">
-                <Text className="text-white font-semibold">{offer.title}</Text>
-                {offer.description && (
-                  <Text className="text-white/50 text-xs mt-1" numberOfLines={2}>{offer.description}</Text>
-                )}
-                <Text className="text-brand-yellow/70 text-xs mt-2">
-                  {REDEMPTION_LABELS[offer.redemption_type as RedemptionType]}
-                </Text>
-              </View>
-              <View className={`ml-3 px-2 py-1 rounded-full ${offer.is_active ? "bg-green-500/20" : "bg-white/10"}`}>
-                <Text className={`text-xs font-semibold ${offer.is_active ? "text-green-400" : "text-white/40"}`}>
-                  {offer.is_active ? "Active" : "Off"}
-                </Text>
-              </View>
-            </View>
-            <View className="flex-row mt-3 gap-2">
-              <TouchableOpacity className="flex-1 bg-white/10 rounded-lg py-2 items-center" onPress={() => openEdit(offer)}>
-                <Text className="text-white/70 text-xs">Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity className="flex-1 bg-red-500/10 border border-red-500/20 rounded-lg py-2 items-center" onPress={() => handleDelete(offer)}>
-                <Text className="text-red-400 text-xs">Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* Add/Edit Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-[#1a0a4a] rounded-t-3xl p-6">
-            <Text className="text-white font-bold text-lg mb-4">{editing ? "Edit Offer" : "New Offer"}</Text>
-
-            <TextInput
-              className="bg-white/10 text-white rounded-xl px-4 py-3 mb-3 border border-white/20"
-              placeholder="Offer title"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={form.title}
-              onChangeText={(t) => setForm((f) => ({ ...f, title: t }))}
-            />
-            <TextInput
-              className="bg-white/10 text-white rounded-xl px-4 py-3 mb-3 border border-white/20"
-              placeholder="Description (optional)"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={form.description}
-              onChangeText={(t) => setForm((f) => ({ ...f, description: t }))}
-              multiline
-              numberOfLines={3}
-            />
-            <TextInput
-              className="bg-white/10 text-white rounded-xl px-4 py-3 mb-4 border border-white/20"
-              placeholder="Terms & conditions (optional)"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              value={form.terms}
-              onChangeText={(t) => setForm((f) => ({ ...f, terms: t }))}
-            />
-
-            <Text className="text-white/60 text-xs mb-2">Redemption Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
-              {(Object.keys(REDEMPTION_LABELS) as RedemptionType[]).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  className={`mr-2 px-3 py-2 rounded-xl border ${form.redemption_type === type ? "bg-brand-yellow border-brand-yellow" : "bg-white/10 border-white/20"}`}
-                  onPress={() => setForm((f) => ({ ...f, redemption_type: type }))}
-                >
-                  <Text className={`text-xs font-semibold ${form.redemption_type === type ? "text-brand-navy" : "text-white/60"}`}>
-                    {REDEMPTION_LABELS[type]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <View className="flex-row items-center justify-between mb-6">
-              <Text className="text-white/70 text-sm">Active</Text>
-              <Switch
-                value={form.is_active}
-                onValueChange={(v) => setForm((f) => ({ ...f, is_active: v }))}
-                trackColor={{ true: "#FBC900", false: "rgba(255,255,255,0.2)" }}
-                thumbColor={form.is_active ? "#0F0032" : "#fff"}
-              />
-            </View>
-
-            <View className="flex-row gap-3">
-              <TouchableOpacity className="flex-1 bg-white/10 rounded-xl py-4 items-center" onPress={() => setModalVisible(false)}>
-                <Text className="text-white/70 font-semibold">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity className="flex-1 bg-brand-yellow rounded-xl py-4 items-center" onPress={handleSave} disabled={saving}>
-                {saving ? <ActivityIndicator color="#0F0032" /> : <Text className="text-brand-navy font-bold">Save</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 110 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>
+            Venue Rewards
+          </Text>
+          <Text style={{ color: "white", fontSize: 26, fontWeight: "900", letterSpacing: -0.5, marginBottom: 8 }}>
+            Offers
+          </Text>
+          <Text style={{ color: "rgba(255,255,255,0.52)", fontSize: 14, lineHeight: 20 }}>
+            Review the offers currently live for your venue and jump to the web portal to update them.
+          </Text>
         </View>
-      </Modal>
+
+        {!user?.venue_id ? (
+          <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 22, padding: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: YELLOW + "22", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+              <Ionicons name="link-outline" size={20} color={YELLOW} />
+            </View>
+            <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 6 }}>Venue not linked yet</Text>
+            <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, lineHeight: 19, marginBottom: 18 }}>
+              Your business account needs to be linked to a WordPress venue listing before offers can be managed or redeemed.
+            </Text>
+            <TouchableOpacity
+              onPress={() => openUrl(PORTAL_URL)}
+              style={{ backgroundColor: YELLOW, borderRadius: 16, paddingVertical: 14, alignItems: "center" }}
+            >
+              <Text style={{ color: NAV, fontWeight: "800", fontSize: 14 }}>Open Business Portal</Text>
+            </TouchableOpacity>
+          </View>
+        ) : venue ? (
+          <>
+            <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 18 }}>
+              <View style={{ height: 150, backgroundColor: "rgba(255,255,255,0.04)", alignItems: "center", justifyContent: "center" }}>
+                {heroImage ? <Image source={{ uri: heroImage }} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }} resizeMode="cover" /> : null}
+                <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15,0,50,0.55)" }} />
+                <View style={{ position: "absolute", left: 18, right: 18, bottom: 18 }}>
+                  <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 6 }}>
+                    Linked Venue
+                  </Text>
+                  <Text style={{ color: "white", fontSize: 24, fontWeight: "900", marginBottom: 10 }}>
+                    {venue.title.rendered.replace(/&amp;/g, "&")}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                    <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>{liveOfferCount} live rewards</Text>
+                    </View>
+                    <View style={{ backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: "white", fontSize: 11, fontWeight: "700" }}>Post ID {user.venue_id}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              <View style={{ padding: 16, flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => openUrl(PORTAL_URL)}
+                  style={{ flex: 1, backgroundColor: YELLOW, borderRadius: 16, paddingVertical: 14, alignItems: "center" }}
+                >
+                  <Text style={{ color: NAV, fontWeight: "800", fontSize: 14 }}>Manage in Portal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => openUrl(getVenuePublicUrl(venue))}
+                  style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, paddingVertical: 14, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}
+                >
+                  <Text style={{ color: "white", fontWeight: "700", fontSize: 14 }}>View Live Page</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 12, marginBottom: 22 }}>
+              <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 11, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 }}>
+                  Standard
+                </Text>
+                <Text style={{ color: "white", fontSize: 24, fontWeight: "900" }}>{standardOffers.length}</Text>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, marginTop: 4 }}>Offers for every member</Text>
+              </View>
+              <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 11, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 }}>
+                  Tier
+                </Text>
+                <Text style={{ color: "white", fontSize: 24, fontWeight: "900" }}>{tierOffers.length}</Text>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, marginTop: 4 }}>Bronze, Silver, Gold rewards</Text>
+              </View>
+            </View>
+
+            <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 10 }}>Standard Offers</Text>
+            {standardOffers.length === 0 ? (
+              <View style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 18, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 22 }}>
+                <Text style={{ color: "white", fontWeight: "700", marginBottom: 4 }}>No standard offers live</Text>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13, lineHeight: 19 }}>
+                  Add your first standard offer in the venue portal and it will appear here automatically.
+                </Text>
+              </View>
+            ) : (
+              <View style={{ marginBottom: 22 }}>
+                {standardOffers.map((offer) => (
+                  <View key={offer.id} style={{ backgroundColor: "white", borderRadius: 18, padding: 16, marginBottom: 10 }}>
+                    <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 10 }}>
+                      <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
+                    </View>
+                    <Text style={{ color: NAV, fontSize: 16, fontWeight: "800", marginBottom: 6 }}>{offer.title}</Text>
+                    {offer.description ? (
+                      <Text style={{ color: "rgba(15,0,50,0.55)", fontSize: 13, lineHeight: 19, marginBottom: 10 }}>
+                        {offer.description}
+                      </Text>
+                    ) : null}
+                    <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 12, fontWeight: "700" }}>
+                      {formatOfferRule(offer.limit_count, offer.limit_period)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 10 }}>Tier Offers</Text>
+            {tierOffers.length === 0 ? (
+              <View style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 18, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+                <Text style={{ color: "white", fontWeight: "700", marginBottom: 4 }}>No tier rewards live</Text>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13, lineHeight: 19 }}>
+                  Bronze, Silver, and Gold rewards are optional. Add them in the portal whenever you’re ready.
+                </Text>
+              </View>
+            ) : (
+              tierOffers.map((offer) => {
+                const meta = TIER_META[offer.tier];
+                return (
+                  <View
+                    key={offer.tier}
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.06)",
+                      borderRadius: 18,
+                      padding: 16,
+                      marginBottom: 10,
+                      borderWidth: 1,
+                      borderColor: meta.colour + "55",
+                    }}
+                  >
+                    <View style={{ alignSelf: "flex-start", backgroundColor: meta.colour + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 10 }}>
+                      <Text style={{ color: meta.colour, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{meta.label.toUpperCase()}</Text>
+                    </View>
+                    <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginBottom: 6 }}>{offer.title}</Text>
+                    {offer.description ? (
+                      <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 19, marginBottom: 10 }}>
+                        {offer.description}
+                      </Text>
+                    ) : null}
+                    <Text style={{ color: meta.colour, fontSize: 12, fontWeight: "700" }}>
+                      {formatOfferRule(offer.limit_count, offer.limit_period)}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
+          </>
+        ) : (
+          <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 22, padding: 20, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 6 }}>Couldn’t load venue details</Text>
+            <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13, lineHeight: 19, marginBottom: 18 }}>
+              Your business account is linked, but the venue record could not be loaded right now.
+            </Text>
+            <TouchableOpacity
+              onPress={() => openUrl(PORTAL_URL)}
+              style={{ backgroundColor: YELLOW, borderRadius: 16, paddingVertical: 14, alignItems: "center" }}
+            >
+              <Text style={{ color: NAV, fontWeight: "800", fontSize: 14 }}>Open Business Portal</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
