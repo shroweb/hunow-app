@@ -27,7 +27,7 @@ export default function VenuesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const CARD_W = (width - 20 * 2 - 12) / 2;
+  const CARD_W = (width - 20 * 2 - 14) / 2;
 
   useEffect(() => { load(); }, []);
 
@@ -144,8 +144,8 @@ export default function VenuesScreen() {
           data={filtered}
           keyExtractor={(item) => String(item.id)}
           numColumns={2}
-          columnWrapperStyle={{ gap: 12, paddingHorizontal: 20 }}
-          contentContainerStyle={{ paddingBottom: 110, gap: 12, paddingTop: 8 }}
+          columnWrapperStyle={{ gap: 14, paddingHorizontal: 20 }}
+          contentContainerStyle={{ paddingBottom: 110, gap: 14, paddingTop: 8 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -190,16 +190,16 @@ export default function VenuesScreen() {
                   </View>
                 </View>
 
-                <View style={{ padding: 12 }}>
-                  <Text style={{ color: NAV, fontWeight: "800", fontSize: 14, marginBottom: 5 }} numberOfLines={1}>
+                <View style={{ padding: 13 }}>
+                  <Text style={{ color: NAV, fontWeight: "800", fontSize: 14, marginBottom: 6 }} numberOfLines={1}>
                     {decodeHtml(item.title.rendered)}
                   </Text>
                   {firstOfferTitle ? (
-                    <Text style={{ color: NAV, fontSize: 13, fontWeight: "700", lineHeight: 17, marginBottom: 4 }} numberOfLines={2}>
+                    <Text style={{ color: NAV, fontSize: 13, fontWeight: "700", lineHeight: 18, marginBottom: 6 }} numberOfLines={2}>
                       {decodeHtml(String(firstOfferTitle))}
                     </Text>
                   ) : null}
-                  <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 6 }} numberOfLines={1}>
+                  <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 8 }} numberOfLines={1}>
                     {offerCount > 1 ? `${offerCount} offers • Earn 35pts each` : "Earn 35pts"}
                   </Text>
                   {getDisplayAddress(item.acf?.address) ? (

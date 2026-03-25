@@ -303,11 +303,6 @@ export default function MyCardScreen() {
                 <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
                   {nextTier ? `${currentTier.name} -> ${nextTier.name}` : `${currentTier.name} member`}
                 </Text>
-                {nextTier && (
-                  <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "700" }}>
-                    {ptsToNext} pts to {nextTier.name}
-                  </Text>
-                )}
               </View>
               <View style={{ height: 6, backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 3, overflow: "hidden" }}>
                 <View style={{
