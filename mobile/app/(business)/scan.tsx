@@ -343,7 +343,7 @@ export default function ScanScreen() {
 
                 {/* Tier offers section */}
                 {wpPostId && cardInfo && (() => {
-                  const TIER_MIN: Record<string, number> = { bronze: 500, silver: 1000, gold: 2000 };
+                  const TIER_MIN: Record<string, number> = { bronze: 200, silver: 600, gold: 1400 };
                   const TIER_COLOUR: Record<string, string> = { bronze: "#CD7F32", silver: "#C0C0C0", gold: "#FBC900" };
                   const TIER_EMOJI: Record<string, string> = { bronze: "🥉", silver: "🥈", gold: "🥇" };
                   const memberPoints = cardInfo.points;

@@ -20,9 +20,9 @@ const NAV = "#0F0032";
 const YELLOW = "#FBC900";
 const AMBER = "#F59E0B";
 const TIER_CONFIG: Record<string, { min: number; label: string; colour: string; icon: keyof typeof Ionicons.glyphMap; accent: string }> = {
-  bronze: { min: 500, label: "Bronze", colour: "#CD7F32", icon: "medal-outline", accent: "#F1D2B5" },
-  silver: { min: 1000, label: "Silver", colour: "#C0C0C0", icon: "diamond-outline", accent: "#ECEEF3" },
-  gold: { min: 2000, label: "Gold", colour: "#FBC900", icon: "trophy-outline", accent: "#FFF0A6" },
+  bronze: { min: 200, label: "Bronze", colour: "#CD7F32", icon: "medal-outline", accent: "#F1D2B5" },
+  silver: { min: 600, label: "Silver", colour: "#C0C0C0", icon: "diamond-outline", accent: "#ECEEF3" },
+  gold: { min: 1400, label: "Gold", colour: "#FBC900", icon: "trophy-outline", accent: "#FFF0A6" },
 };
 
 export default function VenueDetailScreen() {

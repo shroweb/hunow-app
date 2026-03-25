@@ -18,9 +18,9 @@ const SEEN_TIER_KEY = "hunow_seen_member_tier";
 
 const TIERS = [
   { name: "Standard", min: 0,    max: 499,  colour: "rgba(255,255,255,0.5)" },
-  { name: "Bronze",   min: 500,  max: 999,  colour: "#CD7F32" },
-  { name: "Silver",   min: 1000, max: 1999, colour: "#C0C0C0" },
-  { name: "Gold",     min: 2000, max: 99999, colour: YELLOW },
+  { name: "Bronze",   min: 200,  max: 599,  colour: "#CD7F32" },
+  { name: "Silver",   min: 600, max: 1399, colour: "#C0C0C0" },
+  { name: "Gold",     min: 1400, max: 99999, colour: YELLOW },
 ];
 
 function getTier(points: number) {
@@ -145,6 +145,13 @@ export default function MyCardScreen() {
     ? (currentPoints - currentTier.min) / (nextTier.min - currentTier.min)
     : 1;
   const ptsToNext = nextTier ? nextTier.min - currentPoints : 0;
+  const tierTheme = currentTier.name === "Gold"
+    ? { base: "#11031F", accent: "#FBC900", secondary: "#5B4300" }
+    : currentTier.name === "Silver"
+      ? { base: "#111827", accent: "#C0C0C0", secondary: "#334155" }
+      : currentTier.name === "Bronze"
+        ? { base: "#1A0A08", accent: "#CD7F32", secondary: "#5A2D12" }
+        : { base: "#0F0032", accent: YELLOW, secondary: "#24105C" };
 
   const redemptionGroups = groupRedemptionsByDate(user.redemptions ?? []);
 
@@ -204,31 +211,39 @@ export default function MyCardScreen() {
 
         {/* ── Premium Card ── */}
         <View style={{
-          width: cardWidth, borderRadius: 28, backgroundColor: NAV, overflow: "hidden",
-          shadowColor: YELLOW, shadowOffset: { width: 0, height: 16 },
+          width: cardWidth, borderRadius: 30, backgroundColor: tierTheme.base, overflow: "hidden",
+          shadowColor: tierTheme.accent, shadowOffset: { width: 0, height: 16 },
           shadowOpacity: 0.22, shadowRadius: 40, elevation: 24, marginBottom: 20,
         }}>
           {/* Top yellow bar */}
-          <View style={{ height: 5, backgroundColor: YELLOW }} />
+          <View style={{ height: 5, backgroundColor: tierTheme.accent }} />
 
           {/* Decorative accents */}
           <View style={{
             position: "absolute", top: 5, right: -50, width: 160, height: 160,
-            backgroundColor: YELLOW, opacity: 0.06, transform: [{ rotate: "35deg" }],
+            backgroundColor: tierTheme.accent, opacity: 0.08, transform: [{ rotate: "35deg" }],
           }} />
           <View style={{
             position: "absolute", top: -20, right: 20, width: 120, height: 120,
-            borderRadius: 60, backgroundColor: YELLOW, opacity: 0.05,
+            borderRadius: 60, backgroundColor: tierTheme.accent, opacity: 0.05,
+          }} />
+          <View style={{
+            position: "absolute", top: 60, left: -40, width: 220, height: 220,
+            borderRadius: 110, backgroundColor: tierTheme.secondary, opacity: 0.22,
+          }} />
+          <View style={{
+            position: "absolute", top: 18, left: -30, right: -30, height: 70,
+            backgroundColor: "rgba(255,255,255,0.08)", transform: [{ rotate: "-7deg" }],
           }} />
 
           {/* Card header */}
           <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text style={{ fontSize: 22, fontWeight: "900", letterSpacing: 0.5 }}>
-              <Text style={{ color: YELLOW }}>HU </Text>
+              <Text style={{ color: tierTheme.accent }}>HU </Text>
               <Text style={{ color: "white" }}>NOW</Text>
             </Text>
             {/* Tier badge */}
-            <View style={{ backgroundColor: currentTier.colour + "22", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: currentTier.colour + "55" }}>
+            <View style={{ backgroundColor: currentTier.colour + "18", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: currentTier.colour + "55" }}>
               <Text style={{ color: currentTier.colour, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>
                 {currentTier.name.toUpperCase()}
               </Text>
@@ -238,8 +253,8 @@ export default function MyCardScreen() {
           {/* Animated QR section */}
           <View style={{ paddingHorizontal: 24, paddingBottom: 20 }}>
             <Animated.View style={[{
-              backgroundColor: "rgba(255,255,255,0.96)", borderRadius: 20, padding: 20, alignItems: "center",
-              shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12,
+              backgroundColor: "rgba(255,255,255,0.97)", borderRadius: 24, padding: 20, alignItems: "center",
+              shadowColor: tierTheme.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 18,
             }, qrAnimStyle]}>
               <QRCode value={user.card_token} size={qrSize} color={NAV} backgroundColor="transparent" />
               <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, marginTop: 14, letterSpacing: 0.8, textTransform: "uppercase" }}>
@@ -250,7 +265,7 @@ export default function MyCardScreen() {
             {/* Points pill */}
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16 }}>
               <Ionicons name="star" size={13} color={YELLOW} />
-              <Text style={{ color: YELLOW, fontWeight: "800", fontSize: 14 }}>{currentPoints}</Text>
+              <Text style={{ color: tierTheme.accent, fontWeight: "800", fontSize: 14 }}>{currentPoints}</Text>
               <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, fontWeight: "600" }}>HU NOW Points</Text>
             </View>
 
@@ -270,7 +285,7 @@ export default function MyCardScreen() {
                 <View style={{
                   height: "100%",
                   width: `${Math.min(tierProgress * 100, 100)}%`,
-                  backgroundColor: currentTier.colour,
+                  backgroundColor: tierTheme.accent,
                   borderRadius: 3,
                 }} />
               </View>
@@ -283,7 +298,7 @@ export default function MyCardScreen() {
           {/* Card footer */}
           <View style={{ paddingHorizontal: 24, paddingTop: 16, paddingBottom: 20 }}>
             <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 9, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 4 }}>Member Number</Text>
-            <Text style={{ color: YELLOW, fontSize: 15, fontWeight: "800", letterSpacing: 2, marginBottom: 12 }}>
+            <Text style={{ color: tierTheme.accent, fontSize: 15, fontWeight: "800", letterSpacing: 2, marginBottom: 12 }}>
               {memberNumber(user.card_token)}
             </Text>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>

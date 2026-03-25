@@ -18,9 +18,9 @@ const NAV = "#0F0032";
 const YELLOW = "#FBC900";
 const TIERS = [
   { name: "Standard", min: 0, max: 499, colour: "rgba(255,255,255,0.5)" },
-  { name: "Bronze", min: 500, max: 999, colour: "#CD7F32" },
-  { name: "Silver", min: 1000, max: 1999, colour: "#C0C0C0" },
-  { name: "Gold", min: 2000, max: 99999, colour: YELLOW },
+  { name: "Bronze", min: 200, max: 599, colour: "#CD7F32" },
+  { name: "Silver", min: 600, max: 1399, colour: "#C0C0C0" },
+  { name: "Gold", min: 1400, max: 99999, colour: YELLOW },
 ];
 
 function getTier(points: number) {
@@ -43,6 +43,7 @@ interface ActiveOffer {
   venueName: string;
   offerTitle: string;
   img: string | null;
+  distanceKm?: number;
 }
 
 async function loadOffers(): Promise<ActiveOffer[]> {
@@ -73,7 +74,7 @@ export default function HomeScreen() {
   const [events, setEvents]     = useState<WPEvent[]>([]);
   const [news, setNews]         = useState<WPPost[]>([]);
   const [activeOffers, setActiveOffers] = useState<ActiveOffer[]>([]);
-  const [nearbyVenues, setNearbyVenues] = useState<(WPEat & { distanceKm: number })[]>([]);
+  const [nearbyOffers, setNearbyOffers] = useState<ActiveOffer[]>([]);
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -87,21 +88,29 @@ export default function HomeScreen() {
     setNews(wpNews);
     setActiveOffers(wpOffers);
 
-    // Near You — non-blocking
+    // Rewards Near You — non-blocking
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         const allVenues = await wordpress.getEat({ page: 1, perPage: 100 });
-        const withDist = allVenues
-          .map((v) => {
+        const nearbyOfferItems = allVenues
+          .flatMap((v) => {
             const coords = getLatLng(v.acf?.address);
-            if (!coords) return null;
-            return { ...v, distanceKm: haversineKm(loc.coords.latitude, loc.coords.longitude, coords.lat, coords.lng) };
+            if (!coords) return [];
+            const distanceKm = haversineKm(loc.coords.latitude, loc.coords.longitude, coords.lat, coords.lng);
+            const offers = v.offers?.items?.filter((o) => o.title?.trim()) ?? [];
+            return offers.map((offer) => ({
+              venueId: v.id,
+              venueName: decodeHtml(v.title.rendered),
+              offerTitle: offer.title,
+              img: getFeaturedImage(v),
+              distanceKm,
+            }));
           })
-          .filter(Boolean) as (WPEat & { distanceKm: number })[];
-        withDist.sort((a, b) => a.distanceKm - b.distanceKm);
-        setNearbyVenues(withDist.slice(0, 4));
+          .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+          .slice(0, 6);
+        setNearbyOffers(nearbyOfferItems);
       }
     } catch {
       // Location denied or unavailable — hide section silently
@@ -209,12 +218,12 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* ── Near You ──────────────────────────────────── */}
-        {nearbyVenues.length > 0 && (
+        {nearbyOffers.length > 0 && (
           <View style={{ marginTop: 28 }}>
             <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                 <Ionicons name="location" size={16} color={YELLOW} />
-                <Text style={{ color: "white", fontSize: 18, fontWeight: "800" }}>NEAR YOU</Text>
+                <Text style={{ color: "white", fontSize: 18, fontWeight: "800" }}>REWARDS NEAR YOU</Text>
               </View>
               <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(customer)/venues"); }} style={{ flexDirection: "row", alignItems: "center" }}>
                 <Text style={{ color: YELLOW, fontSize: 13, fontWeight: "600" }}>View All </Text>
@@ -222,23 +231,22 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-              {nearbyVenues.map((venue) => {
-                const img = getFeaturedImage(venue);
-                const dist = venue.distanceKm < 1
-                  ? `${Math.round(venue.distanceKm * 1000)}m`
-                  : `${venue.distanceKm.toFixed(1)}km`;
+              {nearbyOffers.map((offer, index) => {
+                const dist = (offer.distanceKm ?? 0) < 1
+                  ? `${Math.round((offer.distanceKm ?? 0) * 1000)}m`
+                  : `${(offer.distanceKm ?? 0).toFixed(1)}km`;
                 return (
                   <TouchableOpacity
-                    key={venue.id}
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/(customer)/venue/${venue.id}` as any); }}
+                    key={`${offer.venueId}-${index}`}
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/(customer)/venue/${offer.venueId}` as any); }}
                     style={{
-                      width: 190, backgroundColor: "white", borderRadius: 16, overflow: "hidden",
+                      width: 210, backgroundColor: "white", borderRadius: 16, overflow: "hidden",
                       shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
                     }}
                   >
-                    {img ? (
-                      <Image source={{ uri: img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
+                    {offer.img ? (
+                      <Image source={{ uri: offer.img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
                     ) : (
                       <View style={{ width: "100%", height: 110, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
                         <Ionicons name="storefront-outline" size={28} color="rgba(15,0,50,0.2)" />
@@ -249,8 +257,12 @@ export default function HomeScreen() {
                       <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{dist}</Text>
                     </View>
                     <View style={{ padding: 10 }}>
+                      <Text style={{ color: YELLOW, fontWeight: "800", fontSize: 11, marginBottom: 4 }}>AVAILABLE NOW</Text>
+                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 13 }} numberOfLines={2}>
+                        {decodeHtml(offer.offerTitle)}
+                      </Text>
                       <Text style={{ color: NAV, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
-                        {decodeHtml(venue.title.rendered)}
+                        {offer.venueName}
                       </Text>
                     </View>
                   </TouchableOpacity>
