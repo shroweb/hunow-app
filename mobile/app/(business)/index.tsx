@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
-import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/context/AuthContext";
 import { fetchBusinessDashboard, type BusinessDashboardResponse } from "@/lib/wpAuth";
 
@@ -15,16 +16,29 @@ export default function BusinessDashboard() {
   const [dashboard, setDashboard] = useState<BusinessDashboardResponse | null>(null);
   const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async (mode: "initial" | "refresh" = "initial") => {
+    if (!token) return;
+    if (mode === "refresh") setRefreshing(true);
+    else setLoading(true);
+    const data = await fetchBusinessDashboard(token, range).catch(() => null);
+    setDashboard(data);
+    setLoading(false);
+    setRefreshing(false);
+  }, [token, range]);
 
   useEffect(() => {
-    async function load() {
-      if (!token) return;
-      const data = await fetchBusinessDashboard(token, range).catch(() => null);
-      setDashboard(data);
-      setLoading(false);
-    }
     load();
-  }, [token, range]);
+  }, [load]);
+
+  useFocusEffect(useCallback(() => {
+    load("refresh");
+  }, [load]));
+
+  function onRefresh() {
+    load("refresh");
+  }
 
   if (loading) {
     return (
@@ -44,7 +58,12 @@ export default function BusinessDashboard() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 110 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={YELLOW} />}
+      >
         <View style={{ marginBottom: 20 }}>
           <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>Business Dashboard</Text>
           <Text style={{ color: "white", fontSize: 26, fontWeight: "900", letterSpacing: -0.5 }}>{dashboard?.venue_name ?? user?.display_name ?? "Your venue"}</Text>
