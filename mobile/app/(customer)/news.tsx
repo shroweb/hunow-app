@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/Skeleton";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 function formatNewsDate(value: string) {
   return new Date(value).toLocaleDateString("en-GB", {
@@ -26,7 +27,6 @@ function getExcerpt(post: WPPost) {
 export default function NewsScreen() {
   const router = useRouter();
   const [posts, setPosts] = useState<WPPost[]>([]);
-  const [brandLogo, setBrandLogo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -34,10 +34,6 @@ export default function NewsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { load(1); }, []);
-  useEffect(() => {
-    wordpress.getSiteBrand().then((brand) => setBrandLogo(brand.logo_url)).catch(() => {});
-  }, []);
-
   async function load(p: number) {
     if (p === 1) setLoading(true); else setLoadingMore(true);
     const results = await wordpress.getPosts({ page: p, perPage: 10 });
@@ -58,15 +54,11 @@ export default function NewsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
-        {brandLogo ? (
-          <View style={{ width: 78, height: 24, overflow: "hidden", marginBottom: 10 }}>
-            <Image
-              source={{ uri: brandLogo }}
-              style={{ width: 96, height: 24, marginLeft: -10 }}
-              resizeMode="contain"
-            />
-          </View>
-        ) : null}
+        <Image
+          source={{ uri: BRAND_LOGO_URL }}
+          style={{ width: 96, height: 24, marginBottom: 10 }}
+          resizeMode="contain"
+        />
         <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 6 }}>
           City Stories
         </Text>

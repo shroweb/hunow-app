@@ -18,6 +18,7 @@ const NAV = "#0F0032";
 const YELLOW = "#FBC900";
 const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.09)";
+const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 const TIERS = [
   { name: "Standard", min: 0, max: 499, colour: "rgba(255,255,255,0.5)" },
   { name: "Bronze", min: 200, max: 599, colour: "#CD7F32" },
@@ -132,7 +133,6 @@ export default function HomeScreen() {
   const [news, setNews]         = useState<WPPost[]>([]);
   const [activeOffers, setActiveOffers] = useState<ActiveOffer[]>([]);
   const [nearbyOffers, setNearbyOffers] = useState<ActiveOffer[]>([]);
-  const [brandLogo, setBrandLogo] = useState<string | null>(null);
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -185,9 +185,6 @@ export default function HomeScreen() {
   }
 
   useEffect(() => { load(); }, []);
-  useEffect(() => {
-    wordpress.getSiteBrand().then((brand) => setBrandLogo(brand.logo_url)).catch(() => {});
-  }, []);
   function onRefresh() { setRefreshing(true); load(); }
 
   // Skeleton state — show header and nav instantly, skeleton for content sections
@@ -208,15 +205,11 @@ export default function HomeScreen() {
         {/* ── Header ────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View>
-            {brandLogo ? (
-              <View style={{ width: 78, height: 24, overflow: "hidden", marginBottom: 10 }}>
-                <Image
-                  source={{ uri: brandLogo }}
-                  style={{ width: 96, height: 24, marginLeft: -10 }}
-                  resizeMode="contain"
-                />
-              </View>
-            ) : null}
+            <Image
+              source={{ uri: BRAND_LOGO_URL }}
+              style={{ width: 96, height: 24, marginBottom: 10 }}
+              resizeMode="contain"
+            />
             <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{greeting()}</Text>
             <Text style={{ color: "white", fontSize: 28, fontWeight: "900", letterSpacing: -0.5, marginTop: 2 }}>
               {user?.display_name?.split(" ")[0] ?? "Welcome"}
