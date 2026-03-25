@@ -20,11 +20,16 @@ function formatEventMeta(event: WPEvent) {
   };
 }
 
+type EventFilter = "all" | "today" | "week";
+type EventSort = "soonest" | "latest";
+
 export default function EventsScreen() {
   const router = useRouter();
   const [events, setEvents] = useState<WPEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<EventFilter>("all");
+  const [sort, setSort] = useState<EventSort>("soonest");
 
   useEffect(() => { load(); }, []);
 
@@ -38,12 +43,36 @@ export default function EventsScreen() {
   function onRefresh() { setRefreshing(true); load(); }
 
   const sortedEvents = useMemo(() => {
-    return [...events].sort((a, b) => {
-      const aDate = a.acf?.event_date ? parseEventDate(a.acf.event_date)?.getTime() ?? 0 : 0;
-      const bDate = b.acf?.event_date ? parseEventDate(b.acf.event_date)?.getTime() ?? 0 : 0;
-      return aDate - bDate;
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfToday);
+    endOfWeek.setDate(startOfToday.getDate() + 7);
+
+    const withDates = events.map((event) => ({
+      event,
+      date: event.acf?.event_date ? parseEventDate(event.acf.event_date) : null,
+    }));
+
+    const filtered = withDates.filter(({ date }) => {
+      if (!date) return filter === "all";
+      if (filter === "today") {
+        return date >= startOfToday && date < new Date(startOfToday.getTime() + 86400000);
+      }
+      if (filter === "week") {
+        return date >= startOfToday && date < endOfWeek;
+      }
+      return true;
     });
-  }, [events]);
+
+    return filtered
+      .sort((a, b) => {
+        const aTime = a.date?.getTime() ?? 0;
+        const bTime = b.date?.getTime() ?? 0;
+        return sort === "soonest" ? aTime - bTime : bTime - aTime;
+      })
+      .map(({ event }) => event);
+  }, [events, filter, sort]);
 
   const featured = sortedEvents[0];
   const remaining = sortedEvents.slice(1);
@@ -62,6 +91,52 @@ export default function EventsScreen() {
           <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 20 }}>
             Discover what&apos;s happening tonight, this weekend, and across the city.
           </Text>
+        </View>
+
+        <View style={{ paddingHorizontal: 20, marginBottom: 18, gap: 10 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {[
+              { key: "all", label: "All Events" },
+              { key: "today", label: "Today" },
+              { key: "week", label: "This Week" },
+            ].map((item) => {
+              const active = filter === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  onPress={() => setFilter(item.key as EventFilter)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999,
+                    backgroundColor: active ? YELLOW : "rgba(255,255,255,0.07)",
+                    borderWidth: 1, borderColor: active ? YELLOW : "rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <Text style={{ color: active ? NAV : "white", fontSize: 12, fontWeight: "800" }}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {[
+              { key: "soonest", label: "Soonest First" },
+              { key: "latest", label: "Latest First" },
+            ].map((item) => {
+              const active = sort === item.key;
+              return (
+                <TouchableOpacity
+                  key={item.key}
+                  onPress={() => setSort(item.key as EventSort)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999,
+                    backgroundColor: active ? "rgba(251,201,0,0.16)" : "rgba(255,255,255,0.05)",
+                    borderWidth: 1, borderColor: active ? "rgba(251,201,0,0.36)" : "rgba(255,255,255,0.08)",
+                  }}
+                >
+                  <Text style={{ color: active ? YELLOW : "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: "700" }}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {loading ? (

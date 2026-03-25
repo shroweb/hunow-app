@@ -16,6 +16,8 @@ import { OfferCardSkeleton } from "@/components/OfferCardSkeleton";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const SURFACE = "rgba(255,255,255,0.07)";
+const BORDER = "rgba(255,255,255,0.09)";
 const TIERS = [
   { name: "Standard", min: 0, max: 499, colour: "rgba(255,255,255,0.5)" },
   { name: "Bronze", min: 200, max: 599, colour: "#CD7F32" },
@@ -44,6 +46,41 @@ interface ActiveOffer {
   offerTitle: string;
   img: string | null;
   distanceKm?: number;
+}
+
+function SectionHeader({
+  icon,
+  title,
+  actionLabel,
+  onPress,
+}: {
+  icon?: keyof typeof Ionicons.glyphMap;
+  title: string;
+  actionLabel?: string;
+  onPress?: () => void;
+}) {
+  return (
+    <View
+      style={{
+        paddingHorizontal: 20,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 12,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        {icon ? <Ionicons name={icon} size={16} color={YELLOW} /> : null}
+        <Text style={{ color: "white", fontSize: 18, fontWeight: "800", letterSpacing: -0.2 }}>{title}</Text>
+      </View>
+      {actionLabel && onPress ? (
+        <TouchableOpacity onPress={onPress} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Text style={{ color: YELLOW, fontSize: 13, fontWeight: "700" }}>{actionLabel}</Text>
+          <Ionicons name="arrow-forward" size={13} color={YELLOW} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
 }
 
 async function loadOffers(): Promise<ActiveOffer[]> {
@@ -173,9 +210,9 @@ export default function HomeScreen() {
               key={item.label}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(item.route as any); }}
               style={{
-                flex: 1, backgroundColor: "rgba(255,255,255,0.07)",
-                borderRadius: 16, alignItems: "center", paddingVertical: 12,
-                borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+                flex: 1, backgroundColor: SURFACE,
+                borderRadius: 18, alignItems: "center", paddingVertical: 13,
+                borderWidth: 1, borderColor: BORDER,
               }}
             >
               <Ionicons name={item.icon} size={22} color={YELLOW} />
@@ -191,8 +228,8 @@ export default function HomeScreen() {
         <TouchableOpacity
           onPress={() => router.push("/(customer)/card")}
           style={{
-            marginHorizontal: 20, marginTop: 18, backgroundColor: "rgba(255,255,255,0.07)",
-            borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+            marginHorizontal: 20, marginTop: 18, backgroundColor: SURFACE,
+            borderRadius: 22, padding: 18, borderWidth: 1, borderColor: BORDER,
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -220,16 +257,15 @@ export default function HomeScreen() {
         {/* ── Near You ──────────────────────────────────── */}
         {nearbyOffers.length > 0 && (
           <View style={{ marginTop: 28 }}>
-            <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Ionicons name="location" size={16} color={YELLOW} />
-                <Text style={{ color: "white", fontSize: 18, fontWeight: "800" }}>REWARDS NEAR YOU</Text>
-              </View>
-              <TouchableOpacity onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push("/(customer)/venues"); }} style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text style={{ color: YELLOW, fontSize: 13, fontWeight: "600" }}>View All </Text>
-                <Text style={{ color: YELLOW, fontSize: 13 }}>→</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader
+              icon="location"
+              title="Rewards Near You"
+              actionLabel="View All"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(customer)/venues");
+              }}
+            />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
               {nearbyOffers.map((offer, index) => {
                 const dist = (offer.distanceKm ?? 0) < 1
@@ -240,7 +276,7 @@ export default function HomeScreen() {
                     key={`${offer.venueId}-${index}`}
                     onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/(customer)/venue/${offer.venueId}` as any); }}
                     style={{
-                      width: 210, backgroundColor: "white", borderRadius: 16, overflow: "hidden",
+                      width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
                       shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
                     }}
@@ -253,15 +289,17 @@ export default function HomeScreen() {
                       </View>
                     )}
                     {/* Distance badge */}
-                    <View style={{ position: "absolute", top: 8, right: 8, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 }}>
+                    <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(0,0,0,0.64)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
                       <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{dist}</Text>
                     </View>
-                    <View style={{ padding: 10 }}>
-                      <Text style={{ color: YELLOW, fontWeight: "800", fontSize: 11, marginBottom: 4 }}>AVAILABLE NOW</Text>
-                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 13 }} numberOfLines={2}>
+                    <View style={{ padding: 14 }}>
+                      <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
+                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>AVAILABLE NOW</Text>
+                      </View>
+                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19, marginBottom: 6 }} numberOfLines={2}>
                         {decodeHtml(offer.offerTitle)}
                       </Text>
-                      <Text style={{ color: NAV, fontWeight: "700", fontSize: 13 }} numberOfLines={1}>
+                      <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12 }} numberOfLines={1}>
                         {offer.venueName}
                       </Text>
                     </View>
@@ -283,23 +321,17 @@ export default function HomeScreen() {
           </View>
         ) : activeOffers.length > 0 && (
           <View style={{ marginTop: 28 }}>
-            <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <Text style={{ color: "white", fontSize: 18, fontWeight: "800" }}>ACTIVE OFFERS</Text>
-              <TouchableOpacity onPress={() => router.push("/(customer)/venues")} style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text style={{ color: YELLOW, fontSize: 13, fontWeight: "600" }}>View All </Text>
-                <Text style={{ color: YELLOW, fontSize: 13 }}>→</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader title="Active Offers" actionLabel="View All" onPress={() => router.push("/(customer)/venues")} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
               {activeOffers.map((offer, index) => (
                 <TouchableOpacity
                   key={`${offer.venueId}-${index}`}
                   onPress={() => router.push(`/(customer)/venue/${offer.venueId}` as any)}
                   style={{
-                    width: 200,
-                    height: 130,
+                    width: 224,
+                    height: 154,
                     backgroundColor: "white",
-                    borderRadius: 16,
+                    borderRadius: 22,
                     overflow: "hidden",
                     shadowColor: "#000",
                     shadowOffset: { width: 0, height: 4 },
@@ -309,7 +341,7 @@ export default function HomeScreen() {
                   }}
                 >
                   {/* Image top half */}
-                  <View style={{ position: "relative", height: 65 }}>
+                  <View style={{ position: "relative", height: 82 }}>
                     {offer.img ? (
                       <Image source={{ uri: offer.img }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
                     ) : (
@@ -319,20 +351,20 @@ export default function HomeScreen() {
                     )}
                     {/* Yellow OFFER pill overlay */}
                     <View style={{
-                      position: "absolute", top: 7, left: 8,
-                      backgroundColor: YELLOW, borderRadius: 8,
-                      paddingHorizontal: 7, paddingVertical: 3,
+                      position: "absolute", top: 10, left: 10,
+                      backgroundColor: YELLOW, borderRadius: 999,
+                      paddingHorizontal: 9, paddingVertical: 5,
                     }}>
-                      <Text style={{ color: NAV, fontSize: 9, fontWeight: "800" }}>OFFER</Text>
+                      <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
                     </View>
                   </View>
 
                   {/* Text bottom half */}
-                  <View style={{ padding: 8, flex: 1, justifyContent: "center" }}>
-                    <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 10, fontWeight: "600", marginBottom: 2 }} numberOfLines={1}>
+                  <View style={{ paddingHorizontal: 12, paddingVertical: 12, flex: 1, justifyContent: "center" }}>
+                    <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 11, fontWeight: "700", marginBottom: 4 }} numberOfLines={1}>
                       {offer.venueName}
                     </Text>
-                    <Text style={{ color: NAV, fontWeight: "800", fontSize: 12, lineHeight: 15 }} numberOfLines={2}>
+                    <Text style={{ color: NAV, fontWeight: "800", fontSize: 14, lineHeight: 18 }} numberOfLines={2}>
                       {offer.offerTitle}
                     </Text>
                   </View>
@@ -345,13 +377,7 @@ export default function HomeScreen() {
         {/* ── Events ────────────────────────────────────── */}
         {events.length > 0 && (
           <View style={{ marginTop: 28 }}>
-            <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <Text style={{ color: "white", fontSize: 18, fontWeight: "800" }}>EVENTS</Text>
-              <TouchableOpacity onPress={() => router.push("/(customer)/events")} style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text style={{ color: YELLOW, fontSize: 13, fontWeight: "600" }}>View All </Text>
-                <Text style={{ color: YELLOW, fontSize: 13 }}>→</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader title="Events" actionLabel="View All" onPress={() => router.push("/(customer)/events")} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
               {events.map((event) => {
                 const img  = getFeaturedImage(event);
@@ -361,15 +387,15 @@ export default function HomeScreen() {
                     key={event.id}
                     onPress={() => router.push(`/(customer)/event/${event.id}` as any)}
                     style={{
-                      width: 200, backgroundColor: "white", borderRadius: 16, overflow: "hidden",
+                      width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
                       shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
                     }}
                   >
                     {img ? (
-                      <Image source={{ uri: img }} style={{ width: "100%", height: 120 }} resizeMode="cover" />
+                      <Image source={{ uri: img }} style={{ width: "100%", height: 132 }} resizeMode="cover" />
                     ) : (
-                      <View style={{ width: "100%", height: 120, backgroundColor: YELLOW + "33", alignItems: "center", justifyContent: "center" }}>
+                      <View style={{ width: "100%", height: 132, backgroundColor: YELLOW + "33", alignItems: "center", justifyContent: "center" }}>
                         {date ? (
                           <View style={{ alignItems: "center" }}>
                             <Text style={{ color: NAV, fontWeight: "900", fontSize: 28, lineHeight: 30 }}>{date.getDate()}</Text>
@@ -382,12 +408,12 @@ export default function HomeScreen() {
                         )}
                       </View>
                     )}
-                    <View style={{ padding: 10 }}>
-                      <Text style={{ color: NAV, fontWeight: "700", fontSize: 13 }} numberOfLines={2}>
+                    <View style={{ padding: 14 }}>
+                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
                         {decodeHtml(event.title.rendered)}
                       </Text>
                       {date && (
-                        <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 11, marginTop: 3 }}>
+                        <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 12, marginTop: 5, fontWeight: "700" }}>
                           {date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                         </Text>
                       )}
@@ -402,13 +428,7 @@ export default function HomeScreen() {
         {/* ── News ──────────────────────────────────────── */}
         {news.length > 0 && (
           <View style={{ marginTop: 28, marginBottom: 16 }}>
-            <View style={{ paddingHorizontal: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <Text style={{ color: "white", fontSize: 18, fontWeight: "800" }}>NEWS</Text>
-              <TouchableOpacity onPress={() => router.push("/(customer)/news" as any)} style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text style={{ color: YELLOW, fontSize: 13, fontWeight: "600" }}>View All </Text>
-                <Text style={{ color: YELLOW, fontSize: 13 }}>→</Text>
-              </TouchableOpacity>
-            </View>
+            <SectionHeader title="News" actionLabel="View All" onPress={() => router.push("/(customer)/news" as any)} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
               {news.map((post) => {
                 const img = getFeaturedImage(post as any);
@@ -418,21 +438,21 @@ export default function HomeScreen() {
                     activeOpacity={0.88}
                     onPress={() => router.push(`/(customer)/post/${post.id}` as any)}
                     style={{
-                      width: 220, backgroundColor: "white", borderRadius: 16,
+                      width: 224, backgroundColor: "white", borderRadius: 22,
                       overflow: "hidden",
                       shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
                     }}
                   >
                     {img ? (
-                      <Image source={{ uri: img }} style={{ width: "100%", height: 120 }} resizeMode="cover" />
+                      <Image source={{ uri: img }} style={{ width: "100%", height: 132 }} resizeMode="cover" />
                     ) : (
-                      <View style={{ width: "100%", height: 120, backgroundColor: "rgba(15,0,50,0.06)", alignItems: "center", justifyContent: "center" }}>
+                      <View style={{ width: "100%", height: 132, backgroundColor: "rgba(15,0,50,0.06)", alignItems: "center", justifyContent: "center" }}>
                         <Ionicons name="newspaper-outline" size={32} color="rgba(15,0,50,0.2)" />
                       </View>
                     )}
-                    <View style={{ padding: 12 }}>
-                      <Text style={{ color: NAV, fontWeight: "700", fontSize: 13, lineHeight: 17 }} numberOfLines={3}>
+                    <View style={{ padding: 14 }}>
+                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 20 }} numberOfLines={3}>
                         {decodeHtml(post.title.rendered)}
                       </Text>
                     </View>

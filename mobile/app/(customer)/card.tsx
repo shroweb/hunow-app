@@ -235,13 +235,26 @@ export default function MyCardScreen() {
             position: "absolute", top: 18, left: -30, right: -30, height: 70,
             backgroundColor: "rgba(255,255,255,0.08)", transform: [{ rotate: "-7deg" }],
           }} />
+          <View style={{
+            position: "absolute", top: -10, left: 30, right: 30, height: 120,
+            borderRadius: 999, backgroundColor: "rgba(255,255,255,0.05)",
+          }} />
+          <View style={{
+            position: "absolute", bottom: -50, right: -10, width: 220, height: 220,
+            borderRadius: 110, backgroundColor: tierTheme.accent, opacity: 0.06,
+          }} />
 
           {/* Card header */}
           <View style={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text style={{ fontSize: 22, fontWeight: "900", letterSpacing: 0.5 }}>
-              <Text style={{ color: tierTheme.accent }}>HU </Text>
-              <Text style={{ color: "white" }}>NOW</Text>
-            </Text>
+            <View>
+              <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 10, fontWeight: "700", letterSpacing: 2.2, textTransform: "uppercase", marginBottom: 4 }}>
+                Member Pass
+              </Text>
+              <Text style={{ fontSize: 22, fontWeight: "900", letterSpacing: 0.5 }}>
+                <Text style={{ color: tierTheme.accent }}>HU </Text>
+                <Text style={{ color: "white" }}>NOW</Text>
+              </Text>
+            </View>
             {/* Tier badge */}
             <View style={{ backgroundColor: currentTier.colour + "18", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: currentTier.colour + "55" }}>
               <Text style={{ color: currentTier.colour, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>
@@ -252,6 +265,24 @@ export default function MyCardScreen() {
 
           {/* Animated QR section */}
           <View style={{ paddingHorizontal: 24, paddingBottom: 20 }}>
+            <View style={{ marginBottom: 14, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={{ color: "white", fontSize: 21, fontWeight: "900", marginBottom: 3 }} numberOfLines={1}>
+                  {user.display_name}
+                </Text>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, lineHeight: 17 }}>
+                  Your premium membership pass for rewards, events, and city perks.
+                </Text>
+              </View>
+              <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 16, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+                <Text style={{ color: tierTheme.accent, fontSize: 10, fontWeight: "800", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 2 }}>
+                  Status
+                </Text>
+                <Text style={{ color: "white", fontSize: 12, fontWeight: "800" }}>
+                  {currentTier.name}
+                </Text>
+              </View>
+            </View>
             <Animated.View style={[{
               backgroundColor: "rgba(255,255,255,0.97)", borderRadius: 24, padding: 20, alignItems: "center",
               shadowColor: tierTheme.accent, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 18,
@@ -263,10 +294,17 @@ export default function MyCardScreen() {
             </Animated.View>
 
             {/* Points pill */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16 }}>
-              <Ionicons name="star" size={13} color={YELLOW} />
-              <Text style={{ color: tierTheme.accent, fontWeight: "800", fontSize: 14 }}>{currentPoints}</Text>
-              <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, fontWeight: "600" }}>HU NOW Points</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="star" size={13} color={YELLOW} />
+                <Text style={{ color: tierTheme.accent, fontWeight: "800", fontSize: 14 }}>{currentPoints}</Text>
+                <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, fontWeight: "600" }}>HU NOW Points</Text>
+              </View>
+              <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: "700" }}>
+                  {nextTier ? `${ptsToNext} to ${nextTier.name}` : "Top tier"}
+                </Text>
+              </View>
             </View>
 
             {/* Points Progress Bar */}
@@ -317,7 +355,7 @@ export default function MyCardScreen() {
         <TouchableOpacity
           onPress={handleShare}
           style={{
-            backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18,
+            backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20,
             paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center",
             marginBottom: 32, gap: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
           }}
@@ -348,6 +386,9 @@ export default function MyCardScreen() {
         )}
 
         {/* ── Redemption Timeline ── */}
+        <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 11, fontWeight: "700", letterSpacing: 1.8, textTransform: "uppercase", marginBottom: 4 }}>
+          Activity
+        </Text>
         <Text style={{ color: "white", fontWeight: "800", fontSize: 17, marginBottom: 4 }}>Redemptions</Text>
 
         {redemptionGroups.length === 0 ? (
