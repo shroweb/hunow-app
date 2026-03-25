@@ -140,12 +140,19 @@ export async function wpRedeem(
   offerTitle: string,
   wpPostId: number,
   jwt: string,
+  offerIndex?: number,
   tier?: string,
 ): Promise<{ success: boolean; member_name: string; offer: string; venue: string; points_awarded: number }> {
   const res = await fetch(REDEEM_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
-    body: JSON.stringify({ card_token: cardToken, offer_title: offerTitle, wp_post_id: wpPostId, ...(tier ? { tier } : {}) }),
+    body: JSON.stringify({
+      card_token: cardToken,
+      offer_title: offerTitle,
+      wp_post_id: wpPostId,
+      ...(offerIndex ? { offer_index: offerIndex } : {}),
+      ...(tier ? { tier } : {}),
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { message?: string };

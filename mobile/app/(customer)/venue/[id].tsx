@@ -9,7 +9,7 @@ import * as Brightness from "expo-brightness";
 import Animated, {
   useSharedValue, withSpring, withSequence, withTiming, useAnimatedStyle,
 } from "react-native-reanimated";
-import { wordpress, getFeaturedImage, extractOffers, type WPEat, type WPOffer, type WPTierOffer } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, type WPEat, type WPOffer } from "@/lib/wordpress";
 import { decodeHtml, stripHtml } from "@/lib/utils";
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +18,11 @@ import { Skeleton } from "@/components/Skeleton";
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
 const AMBER = "#F59E0B";
+const TIER_CONFIG: Record<string, { min: number; label: string; colour: string; icon: keyof typeof Ionicons.glyphMap; accent: string }> = {
+  bronze: { min: 500, label: "Bronze", colour: "#CD7F32", icon: "medal-outline", accent: "#F1D2B5" },
+  silver: { min: 1000, label: "Silver", colour: "#C0C0C0", icon: "diamond-outline", accent: "#ECEEF3" },
+  gold: { min: 2000, label: "Gold", colour: "#FBC900", icon: "trophy-outline", accent: "#FFF0A6" },
+};
 
 export default function VenueDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -239,91 +244,133 @@ export default function VenueDetailScreen() {
           {/* ── Tier Offers ── */}
           {venue.tier_offers && venue.tier_offers.length > 0 && (
             <View style={{ marginBottom: 24 }}>
-              <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 4 }}>Member Tier Offers</Text>
-              <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, marginBottom: 14 }}>
-                Exclusive rewards for loyalty members
-              </Text>
+              <View style={{ marginBottom: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ color: "white", fontWeight: "800", fontSize: 20, marginBottom: 4 }}>Member Tier Offers</Text>
+                    <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13, lineHeight: 18 }}>
+                      Exclusive rewards that unlock as your HU NOW points grow
+                    </Text>
+                  </View>
+                  <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, alignSelf: "flex-start" }}>
+                    <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>{user?.points ?? 0} pts</Text>
+                  </View>
+                </View>
+              </View>
               {venue.tier_offers.map((to) => {
-                const TIER_CONFIG: Record<string, { min: number; label: string; colour: string; emoji: string }> = {
-                  bronze: { min: 500,  label: "Bronze", colour: "#CD7F32", emoji: "🥉" },
-                  silver: { min: 1000, label: "Silver", colour: "#C0C0C0", emoji: "🥈" },
-                  gold:   { min: 2000, label: "Gold",   colour: "#FBC900", emoji: "🥇" },
-                };
                 const cfg = TIER_CONFIG[to.tier];
                 if (!cfg) return null;
                 const userPoints = user?.points ?? 0;
                 const unlocked = userPoints >= cfg.min;
-                const ptsNeeded = cfg.min - userPoints;
+                const ptsNeeded = Math.max(cfg.min - userPoints, 0);
+                const progress = Math.min(userPoints / cfg.min, 1);
 
                 return (
                   <View
                     key={to.tier}
                     style={{
-                      backgroundColor: unlocked ? "white" : "rgba(255,255,255,0.04)",
-                      borderRadius: 18, overflow: "hidden", marginBottom: 10,
+                      backgroundColor: unlocked ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.035)",
+                      borderRadius: 22, overflow: "hidden", marginBottom: 12,
                       borderWidth: 1.5,
-                      borderColor: unlocked ? cfg.colour + "88" : "rgba(255,255,255,0.08)",
-                      opacity: unlocked ? 1 : 0.75,
+                      borderColor: unlocked ? cfg.colour + "99" : "rgba(255,255,255,0.08)",
+                      shadowColor: unlocked ? cfg.colour : "#000",
+                      shadowOpacity: unlocked ? 0.18 : 0,
+                      shadowRadius: 14,
+                      shadowOffset: { width: 0, height: 8 },
+                      elevation: unlocked ? 4 : 0,
                     }}
                   >
-                    {/* Tier colour bar */}
-                    <View style={{ height: 4, backgroundColor: cfg.colour, opacity: unlocked ? 1 : 0.4 }} />
-                    <View style={{ padding: 16 }}>
-                      {/* Header row */}
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <Text style={{ fontSize: 14 }}>{cfg.emoji}</Text>
-                          <View style={{ backgroundColor: cfg.colour + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                            <Text style={{ color: cfg.colour, fontSize: 11, fontWeight: "800" }}>{cfg.label.toUpperCase()}</Text>
+                    <View style={{ backgroundColor: unlocked ? cfg.colour + "18" : "rgba(255,255,255,0.03)", borderBottomWidth: 1, borderBottomColor: unlocked ? cfg.colour + "22" : "rgba(255,255,255,0.06)", paddingHorizontal: 16, paddingVertical: 14 }}>
+                      <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, flex: 1, minWidth: 0 }}>
+                          <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: unlocked ? cfg.colour + "26" : "rgba(255,255,255,0.07)" }}>
+                            <Ionicons name={cfg.icon} size={17} color={cfg.colour} />
+                          </View>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                              <Text style={{ color: unlocked ? NAV : "white", fontSize: 16, fontWeight: "900" }}>{cfg.label}</Text>
+                              <View style={{ backgroundColor: unlocked ? cfg.colour + "22" : "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                <Text style={{ color: unlocked ? cfg.colour : "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: "800" }}>
+                                  {cfg.min.toLocaleString()} PTS
+                                </Text>
+                              </View>
+                            </View>
+                            <Text style={{ color: unlocked ? "rgba(15,0,50,0.55)" : "rgba(255,255,255,0.42)", fontSize: 12, marginTop: 3 }}>
+                              {unlocked ? `${formatOfferRule(to.limit_count, to.limit_period)} available` : `${ptsNeeded} more points to unlock`}
+                            </Text>
                           </View>
                         </View>
                         {unlocked ? (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(34,197,94,0.1)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(34,197,94,0.11)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
                             <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
-                            <Text style={{ color: "#22C55E", fontSize: 11, fontWeight: "700" }}>UNLOCKED</Text>
+                            <Text style={{ color: "#22C55E", fontSize: 11, fontWeight: "800" }}>UNLOCKED</Text>
                           </View>
                         ) : (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                            <Ionicons name="lock-closed" size={11} color="rgba(255,255,255,0.4)" />
-                            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "600" }}>{ptsNeeded} pts to unlock</Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
+                            <Ionicons name="lock-closed" size={11} color="rgba(255,255,255,0.45)" />
+                            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700" }}>LOCKED</Text>
                           </View>
                         )}
                       </View>
 
-                      {/* Offer content */}
-                      <Text style={{ color: unlocked ? NAV : "white", fontWeight: "800", fontSize: 15, marginBottom: to.description ? 4 : 0 }}>
+                      {!unlocked && (
+                        <View style={{ marginTop: 12 }}>
+                          <View style={{ height: 7, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                            <View style={{ width: `${Math.max(progress * 100, 4)}%`, height: "100%", borderRadius: 999, backgroundColor: cfg.colour }} />
+                          </View>
+                          <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 6 }}>
+                            You&apos;re {Math.round(progress * 100)}% of the way there
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={{ padding: 16 }}>
+                      <Text style={{ color: unlocked ? NAV : "white", fontWeight: "800", fontSize: 17, marginBottom: to.description ? 6 : 10 }}>
                         {decodeHtml(to.title)}
                       </Text>
                       {to.description ? (
-                        <Text style={{ color: unlocked ? "rgba(15,0,50,0.5)" : "rgba(255,255,255,0.4)", fontSize: 13, lineHeight: 18 }}>
+                        <Text style={{ color: unlocked ? "rgba(15,0,50,0.58)" : "rgba(255,255,255,0.45)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
                           {decodeHtml(to.description)}
                         </Text>
                       ) : null}
 
-                      {/* Redeemable monthly badge + CTA */}
-                      {unlocked && (
-                        <>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: YELLOW + "22", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
-                              <Ionicons name="star" size={11} color={NAV} />
-                              <Text style={{ color: NAV, fontSize: 12, fontWeight: "700" }}>+35 pts</Text>
-                            </View>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(15,0,50,0.08)", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
-                              <Ionicons name="refresh-outline" size={11} color="rgba(15,0,50,0.5)" />
-                              <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 12 }}>Once per month</Text>
-                            </View>
-                          </View>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: unlocked ? cfg.accent : "rgba(255,255,255,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                          <Ionicons name="refresh-outline" size={11} color={unlocked ? NAV : "rgba(255,255,255,0.5)"} />
+                          <Text style={{ color: unlocked ? NAV : "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700" }}>
+                            {formatOfferRule(to.limit_count, to.limit_period)}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: unlocked ? YELLOW + "22" : "rgba(255,255,255,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                          <Ionicons name="star" size={11} color={unlocked ? NAV : "rgba(255,255,255,0.5)"} />
+                          <Text style={{ color: unlocked ? NAV : "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700" }}>+35 pts on redemption</Text>
+                        </View>
+                      </View>
+
+                      {unlocked ? (
                           <TouchableOpacity
-                            style={{ marginTop: 12, backgroundColor: cfg.colour, borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                            style={{ marginTop: 14, backgroundColor: cfg.colour, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                             onPress={() => {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                               setQrModalOffer({ id: -1, title: to.title, description: to.description, tier: to.tier } as any);
                             }}
                           >
-                            <Ionicons name="qr-code-outline" size={16} color={unlocked && to.tier === "silver" ? "white" : NAV} />
-                            <Text style={{ color: unlocked && to.tier === "silver" ? "white" : NAV, fontSize: 14, fontWeight: "800" }}>Show QR to Redeem</Text>
+                            <Ionicons name="qr-code-outline" size={16} color={NAV} />
+                            <Text style={{ color: NAV, fontSize: 14, fontWeight: "900" }}>Show QR to Redeem</Text>
                           </TouchableOpacity>
-                        </>
+                      ) : (
+                        <View style={{ marginTop: 14, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, paddingRight: 10 }}>
+                            <Ionicons name="trending-up-outline" size={16} color={cfg.colour} />
+                            <Text style={{ color: "rgba(255,255,255,0.62)", fontSize: 12, fontWeight: "700", flex: 1, lineHeight: 17 }}>
+                              Earn {ptsNeeded} more points to unlock this reward
+                            </Text>
+                          </View>
+                          <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: cfg.colour + "20", alignItems: "center", justifyContent: "center" }}>
+                            <Ionicons name="lock-closed" size={12} color={cfg.colour} />
+                          </View>
+                        </View>
                       )}
                     </View>
                   </View>
@@ -334,10 +381,10 @@ export default function VenueDetailScreen() {
 
           {/* HU NOW Offers */}
           <View style={{ marginBottom: 32 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <Text style={{ color: "white", fontWeight: "800", fontSize: 18 }}>HU NOW Offers</Text>
               {offers.length > 0 && (
-                <View style={{ backgroundColor: YELLOW + "33", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                   <Text style={{ color: YELLOW, fontSize: 12, fontWeight: "700" }}>{offers.length} available</Text>
                 </View>
               )}
@@ -369,53 +416,72 @@ export default function VenueDetailScreen() {
                   <View
                     key={offer.id}
                     style={{
-                      backgroundColor: "white", borderRadius: 18, overflow: "hidden",
+                      backgroundColor: "rgba(255,255,255,0.98)", borderRadius: 22, overflow: "hidden",
                       marginBottom: 12,
-                      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.15, shadowRadius: 10, elevation: 4,
+                      borderWidth: 1.5,
+                      borderColor: YELLOW + "66",
+                      shadowColor: YELLOW, shadowOffset: { width: 0, height: 8 },
+                      shadowOpacity: 0.18, shadowRadius: 14, elevation: 4,
                     }}
                   >
-                    <View style={{ backgroundColor: YELLOW, height: 4 }} />
-                    <View style={{ padding: 16 }}>
-                      <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: NAV, fontWeight: "800", fontSize: 15 }}>{decodeHtml(offer.title)}</Text>
-                          {offer.description ? (
-                            <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 13, marginTop: 4 }}>{decodeHtml(offer.description)}</Text>
-                          ) : null}
+                    <View style={{ backgroundColor: YELLOW + "18", borderBottomWidth: 1, borderBottomColor: YELLOW + "33", paddingHorizontal: 16, paddingVertical: 14 }}>
+                      <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, flex: 1, minWidth: 0 }}>
+                          <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: YELLOW + "22" }}>
+                            <Ionicons name="ticket-outline" size={17} color={NAV} />
+                          </View>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={{ color: NAV, fontWeight: "900", fontSize: 17 }}>{decodeHtml(offer.title)}</Text>
+                            <Text style={{ color: "rgba(15,0,50,0.52)", fontSize: 12, marginTop: 3 }}>
+                              Available to all HU NOW members
+                            </Text>
+                          </View>
                         </View>
-                        <View style={{ backgroundColor: YELLOW + "33", borderRadius: 20, width: 38, height: 38, alignItems: "center", justifyContent: "center", marginLeft: 12 }}>
-                          <Ionicons name="ticket-outline" size={18} color={NAV} />
+                        <View style={{ backgroundColor: YELLOW + "26", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
+                          <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>STANDARD</Text>
                         </View>
                       </View>
+                    </View>
 
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: YELLOW + "22", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
+                    <View style={{ padding: 16 }}>
+                      {offer.description ? (
+                        <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
+                          {decodeHtml(offer.description)}
+                        </Text>
+                      ) : null}
+
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                           <Ionicons name="star" size={11} color={NAV} />
-                          <Text style={{ color: NAV, fontSize: 12, fontWeight: "700" }}>+35 pts</Text>
+                          <Text style={{ color: NAV, fontSize: 11, fontWeight: "700" }}>+35 pts on redemption</Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                          <Ionicons name="people-outline" size={11} color={NAV} />
+                          <Text style={{ color: NAV, fontSize: 11, fontWeight: "700" }}>{formatOfferRule(offer.limit_count, offer.limit_period)}</Text>
                         </View>
                         {expiryLabel && (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: AMBER + "22", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
-                            <Ionicons name="time-outline" size={12} color={AMBER} />
-                            <Text style={{ color: AMBER, fontSize: 12, fontWeight: "600" }}>{expiryLabel}</Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: AMBER + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                            <Ionicons name="time-outline" size={11} color={AMBER} />
+                            <Text style={{ color: AMBER, fontSize: 11, fontWeight: "700" }}>{expiryLabel}</Text>
                           </View>
                         )}
                       </View>
 
                       {ctaText && ctaUrl && (
                         <TouchableOpacity
-                          style={{ marginTop: 12, backgroundColor: NAV, borderRadius: 12, paddingVertical: 10, alignItems: "center" }}
+                          style={{ marginTop: 12, backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 14, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                           onPress={() => Linking.openURL(ctaUrl)}
                         >
-                          <Text style={{ color: "white", fontSize: 13, fontWeight: "700" }}>{decodeHtml(ctaText)}</Text>
+                          <Ionicons name="open-outline" size={15} color={NAV} />
+                          <Text style={{ color: NAV, fontSize: 13, fontWeight: "800" }}>{decodeHtml(ctaText)}</Text>
                         </TouchableOpacity>
                       )}
 
                       <TouchableOpacity
                         style={{
-                          marginTop: 10, backgroundColor: YELLOW, borderRadius: 12,
-                          paddingVertical: 12, alignItems: "center", flexDirection: "row",
-                          justifyContent: "center", gap: 6,
+                          marginTop: 12, backgroundColor: YELLOW, borderRadius: 14,
+                          paddingVertical: 13, alignItems: "center", flexDirection: "row",
+                          justifyContent: "center", gap: 8,
                         }}
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -423,7 +489,7 @@ export default function VenueDetailScreen() {
                         }}
                       >
                         <Ionicons name="qr-code-outline" size={16} color={NAV} />
-                        <Text style={{ color: NAV, fontSize: 14, fontWeight: "800" }}>Show QR to Redeem</Text>
+                        <Text style={{ color: NAV, fontSize: 14, fontWeight: "900" }}>Show QR to Redeem</Text>
                       </TouchableOpacity>
                     </View>
                   </View>

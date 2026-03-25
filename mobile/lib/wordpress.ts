@@ -11,12 +11,16 @@ export interface WPOffer {
   id: number;
   title: string;
   description: string;
+  limit_count?: number;
+  limit_period?: "week" | "month" | "year" | "ever";
 }
 
 export interface WPTierOffer {
   tier: "bronze" | "silver" | "gold";
   title: string;
   description: string;
+  limit_count?: number;
+  limit_period?: "week" | "month" | "year" | "ever";
 }
 
 export interface WPEat {
@@ -104,14 +108,30 @@ export function extractOffers(venue: WPEat): WPOffer[] {
   if (venue.offers?.items?.length) {
     return venue.offers.items
       .filter((o) => o.title?.trim())
-      .map((o) => ({ id: o.id, title: o.title.trim(), description: (o.description ?? "").trim() }));
+      .map((o) => ({
+        id: o.id,
+        title: o.title.trim(),
+        description: (o.description ?? "").trim(),
+        limit_count: o.limit_count ?? 1,
+        limit_period: o.limit_period ?? "month",
+      }));
   }
   // Fallback: single ACF offer_title field
   const title = venue.acf?.offer_title?.trim();
   if (title) {
-    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim() }];
+    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim(), limit_count: 1, limit_period: "month" }];
   }
   return [];
+}
+
+export function formatOfferRule(limitCount = 1, limitPeriod: WPOffer["limit_period"] = "month"): string {
+  const count = Math.max(1, limitCount);
+  const period = limitPeriod ?? "month";
+  if (period === "ever") {
+    return count === 1 ? "Once ever" : `${count}x ever`;
+  }
+  const periodLabel = count === 1 ? period : `${period}s`;
+  return count === 1 ? `1x per ${period}` : `${count}x per ${periodLabel}`;
 }
 
 /** Get the best available image URL from an embedded WP post, with ACF fallbacks */

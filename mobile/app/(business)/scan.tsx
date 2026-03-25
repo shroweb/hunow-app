@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { wordpress, extractOffers, type WPOffer, type WPTierOffer } from "@/lib/wordpress";
+import { wordpress, extractOffers, formatOfferRule, type WPOffer, type WPTierOffer } from "@/lib/wordpress";
 import { lookupCard, wpRedeem } from "@/lib/wpAuth";
 import { decodeHtml } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -75,7 +75,8 @@ export default function ScanScreen() {
 
     try {
       const tier = (selectedOffer as any)._tier as string | undefined;
-      const result = await wpRedeem(cardToken, selectedOffer.title, wpPostId, token, tier);
+      const offerIndex = tier ? undefined : selectedOffer.id;
+      const result = await wpRedeem(cardToken, selectedOffer.title, wpPostId, token, offerIndex, tier);
       setPointsAwarded(result.points_awarded ?? 35);
       setRedeemSuccess(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -265,6 +266,9 @@ export default function ScanScreen() {
                               {decodeHtml(offer.description)}
                             </Text>
                           ) : null}
+                          <Text style={{ color: "rgba(15,0,50,0.38)", fontSize: 11, marginTop: 5 }}>
+                            {formatOfferRule(offer.limit_count, offer.limit_period)}
+                          </Text>
                         </View>
                         {selectedOffer?.id === offer.id && (
                           <Ionicons name="checkmark-circle" size={22} color="#0F0032" style={{ marginLeft: 10 }} />
@@ -272,16 +276,6 @@ export default function ScanScreen() {
                       </View>
                     </TouchableOpacity>
                   ))}
-                  {/* Tier offers the member qualifies for */}
-                  {(() => {
-                    const TIER_MIN: Record<string, number> = { bronze: 500, silver: 1000, gold: 2000 };
-                    const TIER_COLOUR: Record<string, string> = { bronze: "#CD7F32", silver: "#C0C0C0", gold: "#FBC900" };
-                    const memberPoints = cardInfo?.points ?? 0;
-                    const qualifying = (offers as any[])
-                      .filter((o: any) => o._tier && memberPoints >= (TIER_MIN[o._tier] ?? 99999));
-                    // Also get tier offers from venue tier_offers loaded separately
-                    return null; // tier offers shown via separate section below
-                  })()}
                 </ScrollView>
 
                 {/* Tier offers section */}
@@ -326,6 +320,9 @@ export default function ScanScreen() {
                                 {to.description ? (
                                   <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, marginTop: 2 }} numberOfLines={1}>{to.description}</Text>
                                 ) : null}
+                                <Text style={{ color: "rgba(15,0,50,0.38)", fontSize: 11, marginTop: 5 }}>
+                                  {formatOfferRule(to.limit_count, to.limit_period)}
+                                </Text>
                               </View>
                               {isSelected && <Ionicons name="checkmark-circle" size={22} color="#0F0032" style={{ marginLeft: 10 }} />}
                             </View>
