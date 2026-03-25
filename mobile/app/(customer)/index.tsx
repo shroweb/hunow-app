@@ -209,7 +209,13 @@ export default function HomeScreen() {
         <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View>
             {brandLogo ? (
-              <Image source={{ uri: brandLogo }} style={{ width: 96, height: 24, marginBottom: 10 }} resizeMode="contain" />
+              <View style={{ width: 78, height: 24, overflow: "hidden", marginBottom: 10 }}>
+                <Image
+                  source={{ uri: brandLogo }}
+                  style={{ width: 96, height: 24, marginLeft: -10 }}
+                  resizeMode="contain"
+                />
+              </View>
             ) : null}
             <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{greeting()}</Text>
             <Text style={{ color: "white", fontSize: 28, fontWeight: "900", letterSpacing: -0.5, marginTop: 2 }}>

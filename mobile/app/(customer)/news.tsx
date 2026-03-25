@@ -59,7 +59,13 @@ export default function NewsScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
         {brandLogo ? (
-          <Image source={{ uri: brandLogo }} style={{ width: 96, height: 24, marginBottom: 10 }} resizeMode="contain" />
+          <View style={{ width: 78, height: 24, overflow: "hidden", marginBottom: 10 }}>
+            <Image
+              source={{ uri: brandLogo }}
+              style={{ width: 96, height: 24, marginLeft: -10 }}
+              resizeMode="contain"
+            />
+          </View>
         ) : null}
         <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 6 }}>
           City Stories
