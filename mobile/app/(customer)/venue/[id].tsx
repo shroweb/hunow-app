@@ -32,6 +32,7 @@ export default function VenueDetailScreen() {
   const [venue, setVenue] = useState<WPEat | null>(null);
   const [offers, setOffers] = useState<WPOffer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [isFavourite, setIsFavourite] = useState(false);
   const [qrModalOffer, setQrModalOffer] = useState<WPOffer | null>(null);
   const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
@@ -46,25 +47,23 @@ export default function VenueDetailScreen() {
   useEffect(() => {
     async function load() {
       if (!id) return;
-      const wpVenue = await wordpress.getEatById(Number(id)).catch(() => null);
+      setStatusLoading(!!token);
+      const [wpVenue, statusData] = await Promise.all([
+        wordpress.getEatById(Number(id)).catch(() => null),
+        token ? fetchOfferStatuses(Number(id), token).catch(() => null) : Promise.resolve(null),
+      ]);
       setVenue(wpVenue);
       if (wpVenue) setOffers(extractOffers(wpVenue));
+      if (statusData) {
+        setOfferStatuses({
+          standard: Object.fromEntries((statusData.standard ?? []).map((s) => [s.offer_index ?? 0, s])),
+          tier: Object.fromEntries((statusData.tier ?? []).map((s) => [s.tier ?? "", s])),
+        });
+      }
+      setStatusLoading(false);
       setLoading(false);
     }
     load();
-  }, [id]);
-
-  useEffect(() => {
-    async function loadStatuses() {
-      if (!token || !id) return;
-      const data = await fetchOfferStatuses(Number(id), token).catch(() => null);
-      if (!data) return;
-      setOfferStatuses({
-        standard: Object.fromEntries((data.standard ?? []).map((s) => [s.offer_index ?? 0, s])),
-        tier: Object.fromEntries((data.tier ?? []).map((s) => [s.tier ?? "", s])),
-      });
-    }
-    loadStatuses();
   }, [id, token]);
 
   // Load real favourite state from WP
@@ -267,8 +266,13 @@ export default function VenueDetailScreen() {
                       Exclusive rewards that unlock as your HU NOW points grow
                     </Text>
                   </View>
-                  <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, alignSelf: "flex-start" }}>
-                    <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>{user?.points ?? 0} pts</Text>
+                  <View style={{ alignItems: "flex-end", gap: 6 }}>
+                    <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, alignSelf: "flex-start" }}>
+                      <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>{user?.points ?? 0} pts</Text>
+                    </View>
+                    {statusLoading && (
+                      <Text style={{ color: "rgba(255,255,255,0.32)", fontSize: 10, fontWeight: "700" }}>Checking status…</Text>
+                    )}
                   </View>
                 </View>
               </View>
@@ -416,11 +420,16 @@ export default function VenueDetailScreen() {
           <View style={{ marginBottom: 32 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <Text style={{ color: "white", fontWeight: "800", fontSize: 18 }}>HU NOW Offers</Text>
-              {offers.length > 0 && (
-                <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-                  <Text style={{ color: YELLOW, fontSize: 12, fontWeight: "700" }}>{offers.length} available</Text>
-                </View>
-              )}
+              <View style={{ alignItems: "flex-end", gap: 6 }}>
+                {offers.length > 0 && (
+                  <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                    <Text style={{ color: YELLOW, fontSize: 12, fontWeight: "700" }}>{offers.length} available</Text>
+                  </View>
+                )}
+                {statusLoading && (
+                  <Text style={{ color: "rgba(255,255,255,0.32)", fontSize: 10, fontWeight: "700" }}>Checking status…</Text>
+                )}
+              </View>
             </View>
 
             {offers.length === 0 ? (

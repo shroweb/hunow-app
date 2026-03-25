@@ -123,6 +123,17 @@ export default function ScanScreen() {
     };
   }
 
+  const selectedTier = (selectedOffer as any)?._tier as string | undefined;
+  const selectedStatus = selectedTier
+    ? offerStatuses.tier[selectedTier]
+    : selectedOffer
+      ? offerStatuses.standard[selectedOffer.id]
+      : undefined;
+  const selectedRule = selectedOffer ? formatOfferRule(selectedOffer.limit_count, selectedOffer.limit_period) : null;
+  const remainingAfterRedeem = selectedStatus && selectedOffer
+    ? Math.max(0, selectedStatus.remaining_count - 1)
+    : null;
+
   if (!permission) return <View style={{ flex: 1, backgroundColor: "#F5F5F7" }} />;
 
   if (!permission.granted) {
@@ -216,6 +227,17 @@ export default function ScanScreen() {
                 <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 13, textAlign: "center", marginBottom: 20 }}>
                   for {cardInfo?.name ?? "member"}
                 </Text>
+                {selectedRule && (
+                  <View style={{ backgroundColor: "rgba(15,0,50,0.05)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12, width: "100%" }}>
+                    <Text style={{ color: "#0F0032", fontSize: 12, fontWeight: "800", marginBottom: 3 }}>Redemption Rule</Text>
+                    <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 12 }}>
+                      {selectedRule}
+                      {remainingAfterRedeem !== null && selectedOffer?.limit_period !== "ever"
+                        ? ` • ${remainingAfterRedeem} left this ${selectedOffer?.limit_period}`
+                        : ""}
+                    </Text>
+                  </View>
+                )}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(251,201,0,0.12)", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 28 }}>
                   <Ionicons name="star" size={14} color="#FBC900" />
                   <Text style={{ color: "#0F0032", fontWeight: "800", fontSize: 14 }}>{pointsAwarded} points awarded</Text>
@@ -350,7 +372,7 @@ export default function ScanScreen() {
                             }}
                             onPress={() => {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                              setSelectedOffer({ id: -1, title: to.title, description: to.description, _tier: to.tier } as any);
+                              setSelectedOffer({ id: -1, title: to.title, description: to.description, _tier: to.tier, limit_count: to.limit_count, limit_period: to.limit_period } as any);
                             }}
                           >
                             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>

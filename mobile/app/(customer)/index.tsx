@@ -16,6 +16,20 @@ import { OfferCardSkeleton } from "@/components/OfferCardSkeleton";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const TIERS = [
+  { name: "Standard", min: 0, max: 499, colour: "rgba(255,255,255,0.5)" },
+  { name: "Bronze", min: 500, max: 999, colour: "#CD7F32" },
+  { name: "Silver", min: 1000, max: 1999, colour: "#C0C0C0" },
+  { name: "Gold", min: 2000, max: 99999, colour: YELLOW },
+];
+
+function getTier(points: number) {
+  return [...TIERS].reverse().find((t) => points >= t.min) ?? TIERS[0];
+}
+
+function getNextTier(points: number) {
+  return TIERS.find((t) => points < t.max) ?? null;
+}
 
 function greeting() {
   const h = new Date().getHours();
@@ -102,6 +116,11 @@ export default function HomeScreen() {
 
   // Skeleton state — show header and nav instantly, skeleton for content sections
   const showSkeleton = loading;
+  const currentPoints = user?.points ?? 0;
+  const currentTier = getTier(currentPoints);
+  const nextTier = getNextTier(currentPoints);
+  const tierProgress = nextTier ? (currentPoints - currentTier.min) / (nextTier.min - currentTier.min) : 1;
+  const pointsToNext = nextTier ? nextTier.min - currentPoints : 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -159,6 +178,35 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        <TouchableOpacity
+          onPress={() => router.push("/(customer)/card")}
+          style={{
+            marginHorizontal: 20, marginTop: 18, backgroundColor: "rgba(255,255,255,0.07)",
+            borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <View>
+              <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 3 }}>
+                Tier Progress
+              </Text>
+              <Text style={{ color: "white", fontSize: 17, fontWeight: "800" }}>{currentTier.name}</Text>
+            </View>
+            <View style={{ backgroundColor: currentTier.colour + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+              <Text style={{ color: currentTier.colour, fontSize: 11, fontWeight: "800" }}>{currentPoints} pts</Text>
+            </View>
+          </View>
+          <Text style={{ color: "rgba(255,255,255,0.52)", fontSize: 13, marginBottom: 10 }}>
+            {nextTier ? `${pointsToNext} pts to unlock ${nextTier.name}` : "You’ve reached the top tier. Enjoy your unlocked venue rewards."}
+          </Text>
+          <View style={{ height: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 10 }}>
+            <View style={{ width: `${Math.max(Math.min(tierProgress * 100, 100), 6)}%`, height: "100%", backgroundColor: currentTier.colour, borderRadius: 999 }} />
+          </View>
+          <Text style={{ color: YELLOW, fontSize: 12, fontWeight: "700" }}>
+            View rewards and your full card
+          </Text>
+        </TouchableOpacity>
 
         {/* ── Near You ──────────────────────────────────── */}
         {nearbyVenues.length > 0 && (

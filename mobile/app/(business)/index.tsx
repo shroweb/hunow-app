@@ -1,127 +1,117 @@
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "@/lib/supabase";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+import { fetchBusinessDashboard, type BusinessDashboardResponse } from "@/lib/wpAuth";
+
+const NAV = "#0F0032";
+const YELLOW = "#FBC900";
 
 export default function BusinessDashboard() {
-  const { user } = useAuth();
-  const [totalRedemptions, setTotalRedemptions] = useState(0);
-  const [redemptionsThisMonth, setRedemptionsThisMonth] = useState(0);
-  const [recentRedemptions, setRecentRedemptions] = useState<any[]>([]);
+  const router = useRouter();
+  const { user, token } = useAuth();
+  const [dashboard, setDashboard] = useState<BusinessDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
-      if (!user) return;
-
-      // Get Supabase business record via wp_post_id
-      const { data: biz } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("wp_post_id", user.venue_id)
-        .single();
-
-      if (!biz) { setLoading(false); return; }
-
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-      const [
-        { count: total },
-        { count: monthly },
-        { data: recent },
-      ] = await Promise.all([
-        supabase.from("redemptions").select("*", { count: "exact", head: true }).eq("business_id", biz.id),
-        supabase.from("redemptions").select("*", { count: "exact", head: true }).eq("business_id", biz.id).gte("redeemed_at", monthStart),
-        supabase.from("redemptions").select("offer_title, redeemed_at").eq("business_id", biz.id).order("redeemed_at", { ascending: false }).limit(5),
-      ]);
-
-      setTotalRedemptions(total ?? 0);
-      setRedemptionsThisMonth(monthly ?? 0);
-      setRecentRedemptions(recent ?? []);
+      if (!token) return;
+      const data = await fetchBusinessDashboard(token).catch(() => null);
+      setDashboard(data);
       setLoading(false);
     }
     load();
-  }, [user]);
+  }, [token]);
 
   if (loading) {
     return (
-      <View className="flex-1 bg-[#F5F5F7] items-center justify-center">
-        <ActivityIndicator color="#0F0032" />
+      <View style={{ flex: 1, backgroundColor: NAV, alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color={YELLOW} />
       </View>
     );
   }
 
+  const stats = dashboard?.stats;
+  const recent = stats?.recent_scans ?? [];
+
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F5F7]">
-      <ScrollView className="flex-1 px-5" showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View className="pt-6 pb-4">
-          <Text className="text-[#0F0032]/40 text-sm">Welcome back</Text>
-          <Text className="text-[#0F0032] text-2xl font-bold">{user?.display_name}</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+        <View style={{ marginBottom: 20 }}>
+          <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>Business Dashboard</Text>
+          <Text style={{ color: "white", fontSize: 26, fontWeight: "900", letterSpacing: -0.5 }}>{dashboard?.venue_name ?? user?.display_name ?? "Your venue"}</Text>
         </View>
 
-        {/* Stats */}
-        <View className="flex-row gap-3 mb-6">
-          <View className="flex-1 bg-white rounded-2xl p-4"
-            style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 }}
-          >
-            <Text className="text-[#0F0032] text-3xl font-black">{totalRedemptions}</Text>
-            <Text className="text-[#0F0032]/40 text-xs mt-1">Total Redemptions</Text>
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+          <View style={{ flex: 1, backgroundColor: YELLOW, borderRadius: 20, padding: 18 }}>
+            <Text style={{ color: "rgba(15,0,50,0.6)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>This Month</Text>
+            <Text style={{ color: NAV, fontSize: 32, fontWeight: "900" }}>{stats?.monthly_scans ?? 0}</Text>
+            <Text style={{ color: "rgba(15,0,50,0.55)", fontSize: 12, marginTop: 4 }}>QR redemptions</Text>
           </View>
-          <View className="flex-1 bg-brand-yellow rounded-2xl p-4"
-            style={{ shadowColor: "#FBC900", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 8 }}
-          >
-            <Text className="text-[#0F0032] text-3xl font-black">{redemptionsThisMonth}</Text>
-            <Text className="text-[#0F0032]/60 text-xs mt-1">This Month</Text>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Total</Text>
+            <Text style={{ color: "white", fontSize: 32, fontWeight: "900" }}>{stats?.total_scans ?? 0}</Text>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 }}>All-time scans</Text>
           </View>
         </View>
 
-        {/* Quick actions */}
-        <View className="bg-white rounded-2xl p-5 mb-6"
-          style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 }}
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Today</Text>
+            <Text style={{ color: "white", fontSize: 24, fontWeight: "900" }}>{stats?.today_scans ?? 0}</Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Last 7 Days</Text>
+            <Text style={{ color: "white", fontSize: 24, fontWeight: "900" }}>{stats?.weekly_scans ?? 0}</Text>
+          </View>
+        </View>
+
+        <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 20 }}>
+          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Most Active Day</Text>
+          <Text style={{ color: "white", fontSize: 20, fontWeight: "800", marginBottom: 4 }}>{stats?.most_active_day ?? "N/A"}</Text>
+          <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13 }}>Your busiest redemption day right now.</Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => router.push("/(business)/scan")}
+          style={{ backgroundColor: "white", borderRadius: 20, padding: 18, marginBottom: 24, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
         >
-          <Text className="text-[#0F0032] font-bold mb-3">Quick Actions</Text>
-          <View className="flex-row items-center gap-3">
-            <View className="bg-[#0F0032]/5 rounded-2xl w-10 h-10 items-center justify-center">
-              <Ionicons name="qr-code-outline" size={20} color="#0F0032" />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+            <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: YELLOW + "22", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="qr-code-outline" size={20} color={NAV} />
             </View>
-            <View>
-              <Text className="text-[#0F0032] font-semibold text-sm">Scan to Redeem</Text>
-              <Text className="text-[#0F0032]/40 text-xs">Use the Scan tab to redeem offers</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: NAV, fontSize: 16, fontWeight: "800", marginBottom: 2 }}>Start scanning</Text>
+              <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 13 }}>Redeem rewards and see member status live.</Text>
             </View>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={18} color={NAV} />
+        </TouchableOpacity>
 
-        {/* Recent redemptions */}
-        <Text className="text-[#0F0032] font-bold text-base mb-3">Recent Redemptions</Text>
-        {recentRedemptions.length === 0 ? (
-          <View className="bg-white rounded-2xl p-6 items-center mb-8"
-            style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 }}
-          >
-            <Text className="text-[#0F0032]/30 text-sm">No redemptions yet</Text>
-            <Text className="text-[#0F0032]/20 text-xs mt-1">Scan a customer card to get started</Text>
+        <Text style={{ color: "white", fontWeight: "800", fontSize: 17, marginBottom: 10 }}>Recent Scans</Text>
+        {recent.length === 0 ? (
+          <View style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 18, padding: 24, alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)" }}>
+            <Ionicons name="radio-outline" size={34} color="rgba(255,255,255,0.2)" />
+            <Text style={{ color: "white", fontWeight: "700", marginTop: 12, marginBottom: 4 }}>No scans yet</Text>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, textAlign: "center" }}>Your latest reward scans will show up here once staff start redeeming offers.</Text>
           </View>
         ) : (
-          recentRedemptions.map((r, i) => (
-            <View key={i} className="bg-white rounded-2xl p-4 mb-2 flex-row items-center"
-              style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 }}
-            >
-              <View className="bg-brand-yellow/20 rounded-full w-9 h-9 items-center justify-center mr-3">
-                <Ionicons name="ticket-outline" size={18} color="#0F0032" />
+          recent.map((item, index) => (
+            <View key={`${item.timestamp}-${index}`} style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 18, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)", flexDirection: "row", alignItems: "center" }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: YELLOW + "22", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                <Ionicons name="ticket-outline" size={18} color={YELLOW} />
               </View>
-              <View className="flex-1">
-                <Text className="text-[#0F0032] font-semibold text-sm">{r.offer_title}</Text>
-                <Text className="text-[#0F0032]/40 text-xs">
-                  {new Date(r.redeemed_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>{item.offer_title || "Reward scan"}</Text>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, marginTop: 2 }}>
+                  {item.member_email || "Member"} · {item.timestamp ? new Date(item.timestamp).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Unknown time"}
                 </Text>
               </View>
             </View>
           ))
         )}
-        <View className="h-8" />
       </ScrollView>
     </SafeAreaView>
   );

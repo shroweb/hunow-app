@@ -4,6 +4,7 @@ const WP_BASE = (process.env.EXPO_PUBLIC_WP_API_URL ?? "https://hunow.co.uk/wp-j
 const JWT_URL = `${WP_BASE}/jwt-auth/v1/token`;
 const REGISTER_URL = `${WP_BASE}/hunow/v1/register`;
 const ME_URL = `${WP_BASE}/hunow/v1/me`;
+const BUSINESS_DASHBOARD_URL = `${WP_BASE}/hunow/v1/business-dashboard`;
 
 const LOOKUP_URL = `${WP_BASE}/hunow/v1/lookup-card`;
 const REDEEM_URL = `${WP_BASE}/hunow/v1/redeem`;
@@ -61,6 +62,19 @@ export interface OfferStatusesResponse {
   member_tier: string;
   standard: OfferStatus[];
   tier: OfferStatus[];
+}
+
+export interface BusinessDashboardResponse {
+  venue_ids: number[];
+  venue_name: string | null;
+  stats: {
+    total_scans: number;
+    today_scans: number;
+    weekly_scans: number;
+    monthly_scans: number;
+    most_active_day: string;
+    recent_scans: { offer_title: string; timestamp: string; member_email: string }[];
+  };
 }
 
 /** Persist token to AsyncStorage */
@@ -179,6 +193,17 @@ export async function fetchOfferStatuses(
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { message?: string };
     throw new Error(err.message ?? "Could not load offer statuses");
+  }
+  return res.json();
+}
+
+export async function fetchBusinessDashboard(jwt: string): Promise<BusinessDashboardResponse> {
+  const res = await fetch(BUSINESS_DASHBOARD_URL, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not load business dashboard");
   }
   return res.json();
 }
