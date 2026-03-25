@@ -40,6 +40,12 @@ export interface BusinessOffersResponse {
   tier_offers: WPTierOffer[];
 }
 
+export interface SiteBrand {
+  name: string;
+  logo_url: string | null;
+  home_url: string;
+}
+
 export interface WPEat {
   id: number;
   slug: string;
@@ -309,6 +315,10 @@ export const wordpress = {
 
   getBusinessOffers(token: string): Promise<BusinessOffersResponse> {
     return get<BusinessOffersResponse>(`${HUNOW_BASE}/business-offers`, token);
+  },
+
+  getSiteBrand(): Promise<SiteBrand> {
+    return get<SiteBrand>(`${HUNOW_BASE}/site-brand`);
   },
 
   saveBusinessOffers(

@@ -79,6 +79,8 @@ export interface BusinessDashboardResponse {
     tier_redemptions: number;
     top_offers: { offer_title: string; count: number }[];
     tier_breakdown: { bronze: number; silver: number; gold: number };
+    day_counts: Record<string, number>;
+    range: "7d" | "30d" | "90d" | "all";
     recent_scans: { offer_title: string; timestamp: string; member_email: string }[];
   };
 }
@@ -203,8 +205,8 @@ export async function fetchOfferStatuses(
   return res.json();
 }
 
-export async function fetchBusinessDashboard(jwt: string): Promise<BusinessDashboardResponse> {
-  const res = await fetch(BUSINESS_DASHBOARD_URL, {
+export async function fetchBusinessDashboard(jwt: string, range: "7d" | "30d" | "90d" | "all" = "30d"): Promise<BusinessDashboardResponse> {
+  const res = await fetch(`${BUSINESS_DASHBOARD_URL}?range=${range}`, {
     headers: { Authorization: `Bearer ${jwt}` },
   });
   if (!res.ok) {

@@ -132,6 +132,7 @@ export default function HomeScreen() {
   const [news, setNews]         = useState<WPPost[]>([]);
   const [activeOffers, setActiveOffers] = useState<ActiveOffer[]>([]);
   const [nearbyOffers, setNearbyOffers] = useState<ActiveOffer[]>([]);
+  const [brandLogo, setBrandLogo] = useState<string | null>(null);
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -184,6 +185,9 @@ export default function HomeScreen() {
   }
 
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    wordpress.getSiteBrand().then((brand) => setBrandLogo(brand.logo_url)).catch(() => {});
+  }, []);
   function onRefresh() { setRefreshing(true); load(); }
 
   // Skeleton state — show header and nav instantly, skeleton for content sections
@@ -204,6 +208,9 @@ export default function HomeScreen() {
         {/* ── Header ────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View>
+            {brandLogo ? (
+              <Image source={{ uri: brandLogo }} style={{ width: 96, height: 24, marginBottom: 10 }} resizeMode="contain" />
+            ) : null}
             <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{greeting()}</Text>
             <Text style={{ color: "white", fontSize: 28, fontWeight: "900", letterSpacing: -0.5, marginTop: 2 }}>
               {user?.display_name?.split(" ")[0] ?? "Welcome"}

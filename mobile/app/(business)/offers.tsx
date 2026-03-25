@@ -134,21 +134,11 @@ export default function BusinessOffersScreen() {
   }, [token]);
 
   function updateStandard(id: number, patch: Partial<WPOffer>) {
-    setStandardOffers((current) =>
-      current.map((offer) => {
-        if (patch.featured && offer.id !== id) return { ...offer, featured: false };
-        return offer.id === id ? { ...offer, ...patch } : offer;
-      })
-    );
+    setStandardOffers((current) => current.map((offer) => (offer.id === id ? { ...offer, ...patch } : offer)));
   }
 
   function updateTier(tier: WPTierOffer["tier"], patch: Partial<WPTierOffer>) {
-    setTierOffers((current) =>
-      current.map((offer) => {
-        if (patch.featured && offer.tier !== tier) return { ...offer, featured: false };
-        return offer.tier === tier ? { ...offer, ...patch } : offer;
-      })
-    );
+    setTierOffers((current) => current.map((offer) => (offer.tier === tier ? { ...offer, ...patch } : offer)));
   }
 
   function duplicateStandard(id: number) {
@@ -165,7 +155,6 @@ export default function BusinessOffersScreen() {
               ...offer,
               title: source.title,
               description: source.description,
-              featured: false,
               paused: source.paused,
               limit_count: source.limit_count,
               limit_period: source.limit_period,
@@ -281,12 +270,6 @@ export default function BusinessOffersScreen() {
               </View>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <TouchableOpacity
-                  onPress={() => updateStandard(offer.id, { featured: !offer.featured })}
-                  style={{ backgroundColor: offer.featured ? YELLOW + "22" : "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                >
-                  <Text style={{ color: offer.featured ? NAV : "rgba(15,0,50,0.72)", fontSize: 11, fontWeight: "800" }}>{offer.featured ? "Featured" : "Feature"}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
                   onPress={() => updateStandard(offer.id, { paused: !offer.paused })}
                   style={{ backgroundColor: offer.paused ? "rgba(239,68,68,0.12)" : "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
                 >
@@ -364,7 +347,7 @@ export default function BusinessOffersScreen() {
               </>
             ) : (
               <View style={{ gap: 8 }}>
-                {offer.featured ? <Text style={{ color: "#8A6A00", fontSize: 12, fontWeight: "800" }}>Featured reward</Text> : null}
+                {offer.featured ? <Text style={{ color: "#8A6A00", fontSize: 12, fontWeight: "800" }}>Featured by HU NOW</Text> : null}
                 <Text style={{ color: "rgba(15,0,50,0.68)", fontSize: 14, lineHeight: 20 }}>
                   {offer.description.trim() || "No description set yet."}
                 </Text>
@@ -394,12 +377,6 @@ export default function BusinessOffersScreen() {
                   <Text style={{ color: meta.colour, fontSize: 12, fontWeight: "700", marginTop: 2 }}>Unlocks at {meta.unlock}</Text>
                 </View>
                 <View style={{ flexDirection: "row", gap: 8 }}>
-                  <TouchableOpacity
-                    onPress={() => updateTier(offer.tier, { featured: !offer.featured })}
-                    style={{ backgroundColor: offer.featured ? meta.colour + "33" : "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                  >
-                    <Text style={{ color: offer.featured ? meta.colour : "rgba(255,255,255,0.86)", fontSize: 11, fontWeight: "800" }}>{offer.featured ? "Featured" : "Feature"}</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => updateTier(offer.tier, { paused: !offer.paused })}
                     style={{ backgroundColor: offer.paused ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
@@ -466,7 +443,7 @@ export default function BusinessOffersScreen() {
                 </>
               ) : (
                 <View style={{ gap: 8 }}>
-                  {offer.featured ? <Text style={{ color: meta.colour, fontSize: 12, fontWeight: "800" }}>Featured tier reward</Text> : null}
+                  {offer.featured ? <Text style={{ color: meta.colour, fontSize: 12, fontWeight: "800" }}>Featured by HU NOW</Text> : null}
                   <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 15, fontWeight: "800" }}>{offer.title.trim() || "No tier reward set yet"}</Text>
                   <Text style={{ color: "rgba(255,255,255,0.74)", fontSize: 14, lineHeight: 20 }}>
                     {offer.description.trim() || "Add a reward for this tier if you want to offer one."}

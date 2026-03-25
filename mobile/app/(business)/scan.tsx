@@ -107,8 +107,10 @@ export default function ScanScreen() {
   function getStaffFailureMessage(errorMessage: string) {
     if (errorMessage.includes("already used this offer") || errorMessage.includes("already used this bronze") || errorMessage.includes("already used this silver") || errorMessage.includes("already used this gold")) {
       return {
-        title: "Offer Already Used",
-        body: errorMessage,
+        title: "Already Used",
+        body: selectedStatus?.next_available_text
+          ? `${errorMessage} ${selectedStatus.next_available_text}`
+          : errorMessage,
       };
     }
     if (errorMessage.includes("required tier")) {
@@ -132,6 +134,15 @@ export default function ScanScreen() {
   const selectedRule = selectedOffer ? formatOfferRule(selectedOffer.limit_count, selectedOffer.limit_period) : null;
   const remainingAfterRedeem = selectedStatus && selectedOffer
     ? Math.max(0, selectedStatus.remaining_count - 1)
+    : null;
+  const nextResetSummary = selectedOffer
+    ? remainingAfterRedeem === 0
+      ? selectedOffer.limit_period === "ever"
+        ? "This reward is now fully used for this member."
+        : `This reward will be available again next ${selectedOffer.limit_period}.`
+      : remainingAfterRedeem !== null
+        ? `${remainingAfterRedeem} redemption${remainingAfterRedeem === 1 ? "" : "s"} left in this ${selectedOffer.limit_period}.`
+        : null
     : null;
 
   if (!permission) return <View style={{ flex: 1, backgroundColor: "#F5F5F7" }} />;
@@ -232,10 +243,12 @@ export default function ScanScreen() {
                     <Text style={{ color: "#0F0032", fontSize: 12, fontWeight: "800", marginBottom: 3 }}>Redemption Rule</Text>
                     <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 12 }}>
                       {selectedRule}
-                      {remainingAfterRedeem !== null && selectedOffer?.limit_period !== "ever"
-                        ? ` • ${remainingAfterRedeem} left this ${selectedOffer?.limit_period}`
-                        : ""}
                     </Text>
+                    {nextResetSummary ? (
+                      <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 12, marginTop: 4 }}>
+                        {nextResetSummary}
+                      </Text>
+                    ) : null}
                   </View>
                 )}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(251,201,0,0.12)", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 28 }}>

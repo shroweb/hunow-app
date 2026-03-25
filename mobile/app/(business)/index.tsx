@@ -13,17 +13,18 @@ export default function BusinessDashboard() {
   const router = useRouter();
   const { user, token } = useAuth();
   const [dashboard, setDashboard] = useState<BusinessDashboardResponse | null>(null);
+  const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       if (!token) return;
-      const data = await fetchBusinessDashboard(token).catch(() => null);
+      const data = await fetchBusinessDashboard(token, range).catch(() => null);
       setDashboard(data);
       setLoading(false);
     }
     load();
-  }, [token]);
+  }, [token, range]);
 
   if (loading) {
     return (
@@ -37,6 +38,9 @@ export default function BusinessDashboard() {
   const recent = stats?.recent_scans ?? [];
   const topOffers = stats?.top_offers ?? [];
   const tierBreakdown = stats?.tier_breakdown ?? { bronze: 0, silver: 0, gold: 0 };
+  const dayCounts = stats?.day_counts ?? {};
+  const busiestCount = Math.max(...Object.values(dayCounts).map((value) => Number(value)), 0);
+  const repeatRate = (stats?.unique_members ?? 0) > 0 ? Math.round(((stats?.repeat_members ?? 0) / (stats?.unique_members ?? 1)) * 100) : 0;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -44,6 +48,26 @@ export default function BusinessDashboard() {
         <View style={{ marginBottom: 20 }}>
           <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>Business Dashboard</Text>
           <Text style={{ color: "white", fontSize: 26, fontWeight: "900", letterSpacing: -0.5 }}>{dashboard?.venue_name ?? user?.display_name ?? "Your venue"}</Text>
+        </View>
+
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+          {[
+            { value: "7d", label: "7 Days" },
+            { value: "30d", label: "30 Days" },
+            { value: "90d", label: "90 Days" },
+            { value: "all", label: "All Time" },
+          ].map((item) => {
+            const active = range === item.value;
+            return (
+              <TouchableOpacity
+                key={item.value}
+                onPress={() => setRange(item.value as typeof range)}
+                style={{ backgroundColor: active ? YELLOW : "rgba(255,255,255,0.07)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: active ? YELLOW : "rgba(255,255,255,0.08)" }}
+              >
+                <Text style={{ color: active ? NAV : "rgba(255,255,255,0.78)", fontSize: 12, fontWeight: "800" }}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
@@ -76,6 +100,22 @@ export default function BusinessDashboard() {
           <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13 }}>Your busiest redemption day right now.</Text>
         </View>
 
+        <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 20 }}>
+          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Activity Pattern</Text>
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 108 }}>
+            {Object.entries(dayCounts).map(([day, value]) => {
+              const count = Number(value);
+              const height = busiestCount > 0 ? Math.max(14, Math.round((count / busiestCount) * 76)) : 14;
+              return (
+                <View key={day} style={{ flex: 1, alignItems: "center" }}>
+                  <View style={{ width: "100%", maxWidth: 24, height, borderRadius: 999, backgroundColor: count > 0 ? YELLOW : "rgba(255,255,255,0.12)", marginBottom: 8 }} />
+                  <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 10, fontWeight: "700" }}>{day.slice(0, 3)}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
         <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
           <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
             <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Members</Text>
@@ -87,6 +127,15 @@ export default function BusinessDashboard() {
             <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>{stats?.standard_redemptions ?? 0} / {stats?.tier_redemptions ?? 0}</Text>
             <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 }}>Standard vs tier</Text>
           </View>
+        </View>
+
+        <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 20 }}>
+          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Customer Story</Text>
+          <Text style={{ color: "white", fontSize: 16, lineHeight: 22 }}>
+            {stats?.repeat_members
+              ? `${stats.repeat_members} repeat members make up ${repeatRate}% of your active customer base in this range.`
+              : "No repeat-member pattern yet in this range. Keep an eye on the next few redemptions."}
+          </Text>
         </View>
 
         <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 20 }}>

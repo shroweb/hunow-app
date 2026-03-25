@@ -290,10 +290,10 @@ export default function VenueDetailScreen() {
                   <View
                     key={to.tier}
                     style={{
-                      backgroundColor: unlocked ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.035)",
+                      backgroundColor: to.featured && unlocked ? "#FFF9E8" : unlocked ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.035)",
                       borderRadius: 22, overflow: "hidden", marginBottom: 12,
                       borderWidth: 1.5,
-                      borderColor: unlocked ? cfg.colour + "99" : "rgba(255,255,255,0.08)",
+                      borderColor: to.featured ? YELLOW : unlocked ? cfg.colour + "99" : "rgba(255,255,255,0.08)",
                       shadowColor: unlocked ? cfg.colour : "#000",
                       shadowOpacity: unlocked ? 0.18 : 0,
                       shadowRadius: 14,
@@ -354,6 +354,11 @@ export default function VenueDetailScreen() {
                     </View>
 
                     <View style={{ padding: 16 }}>
+                      {to.featured ? (
+                        <View style={{ alignSelf: "flex-start", backgroundColor: unlocked ? YELLOW + "22" : "rgba(251,201,0,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 10 }}>
+                          <Text style={{ color: unlocked ? NAV : YELLOW, fontSize: 10, fontWeight: "900", letterSpacing: 0.8 }}>FEATURED REWARD</Text>
+                        </View>
+                      ) : null}
                       <Text style={{ color: unlocked ? NAV : "white", fontWeight: "800", fontSize: 17, marginBottom: to.description ? 6 : 10 }}>
                         {decodeHtml(to.title)}
                       </Text>
@@ -393,7 +398,7 @@ export default function VenueDetailScreen() {
                             {status?.status_label ?? "Currently unavailable"}
                           </Text>
                           <Text style={{ color: unlocked ? "rgba(15,0,50,0.58)" : "rgba(255,255,255,0.55)", fontSize: 12, marginTop: 4, lineHeight: 17 }}>
-                            {status?.next_available_text ?? status?.message ?? "This reward has already been used for the current period."}
+                            {status?.next_available_text ?? status?.message ?? "This reward has been used for the current period. It will come back automatically when the next window opens."}
                           </Text>
                         </View>
                       ) : (
@@ -460,10 +465,10 @@ export default function VenueDetailScreen() {
                   <View
                     key={offer.id}
                     style={{
-                      backgroundColor: "rgba(255,255,255,0.98)", borderRadius: 22, overflow: "hidden",
+                      backgroundColor: offer.featured ? "#FFF9E8" : "rgba(255,255,255,0.98)", borderRadius: 22, overflow: "hidden",
                       marginBottom: 12,
                       borderWidth: 1.5,
-                      borderColor: availableNow ? YELLOW + "66" : "rgba(245,158,11,0.35)",
+                      borderColor: offer.featured ? YELLOW : availableNow ? YELLOW + "66" : "rgba(245,158,11,0.35)",
                       shadowColor: YELLOW, shadowOffset: { width: 0, height: 8 },
                       shadowOpacity: availableNow ? 0.18 : 0.08, shadowRadius: 14, elevation: 4,
                       opacity: availableNow ? 1 : 0.88,
@@ -482,13 +487,23 @@ export default function VenueDetailScreen() {
                             </Text>
                           </View>
                         </View>
-                        <View style={{ backgroundColor: YELLOW + "26", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
-                          <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>STANDARD</Text>
+                        <View style={{ flexDirection: "row", gap: 6, alignSelf: "flex-start" }}>
+                          {offer.featured ? (
+                            <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                              <Text style={{ color: NAV, fontSize: 11, fontWeight: "900" }}>FEATURED</Text>
+                            </View>
+                          ) : null}
+                          <View style={{ backgroundColor: YELLOW + "26", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                            <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>STANDARD</Text>
+                          </View>
                         </View>
                       </View>
                     </View>
 
                     <View style={{ padding: 16 }}>
+                      {offer.featured ? (
+                        <Text style={{ color: "#8A6A00", fontSize: 12, fontWeight: "900", marginBottom: 10 }}>Promoted reward</Text>
+                      ) : null}
                       {offer.description ? (
                         <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
                           {decodeHtml(offer.description)}
@@ -547,7 +562,7 @@ export default function VenueDetailScreen() {
                         <View style={{ marginTop: 12, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, backgroundColor: "rgba(245,158,11,0.10)", borderWidth: 1, borderColor: "rgba(245,158,11,0.24)" }}>
                           <Text style={{ color: NAV, fontSize: 12, fontWeight: "800" }}>{status?.status_label ?? "Currently unavailable"}</Text>
                           <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 12, marginTop: 4, lineHeight: 17 }}>
-                            {status?.next_available_text ?? status?.message ?? "This offer has already been used for the current period."}
+                            {status?.next_available_text ?? status?.message ?? "This offer has been used for the current period. It will reappear automatically when it resets."}
                           </Text>
                         </View>
                       )}

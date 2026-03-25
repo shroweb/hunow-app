@@ -26,6 +26,7 @@ function getExcerpt(post: WPPost) {
 export default function NewsScreen() {
   const router = useRouter();
   const [posts, setPosts] = useState<WPPost[]>([]);
+  const [brandLogo, setBrandLogo] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -33,6 +34,9 @@ export default function NewsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => { load(1); }, []);
+  useEffect(() => {
+    wordpress.getSiteBrand().then((brand) => setBrandLogo(brand.logo_url)).catch(() => {});
+  }, []);
 
   async function load(p: number) {
     if (p === 1) setLoading(true); else setLoadingMore(true);
@@ -54,6 +58,9 @@ export default function NewsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
+        {brandLogo ? (
+          <Image source={{ uri: brandLogo }} style={{ width: 96, height: 24, marginBottom: 10 }} resizeMode="contain" />
+        ) : null}
         <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 6 }}>
           City Stories
         </Text>
