@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, extractOffers, type WPEat } from "@/lib/wordpress";
-import { decodeHtml, getDisplayAddress } from "@/lib/utils";
+import { decodeHtml } from "@/lib/utils";
 import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 
 const NAV = "#0F0032";
@@ -159,8 +159,9 @@ export default function VenuesScreen() {
           renderItem={({ item }) => {
             const img = getFeaturedImage(item);
             const offers = extractOffers(item);
-            const firstOfferTitle = item.offers?.items?.[0]?.title ?? item.acf?.offer_title ?? null;
+            const firstOfferTitle = offers[0]?.title ?? item.acf?.offer_title ?? null;
             const offerCount = offers.length;
+            const featured = Boolean(offers[0]?.featured);
 
             return (
               <TouchableOpacity
@@ -182,8 +183,8 @@ export default function VenuesScreen() {
                       <Ionicons name="storefront-outline" size={32} color="rgba(15,0,50,0.2)" />
                     </View>
                   )}
-                  <View style={{ position: "absolute", top: 10, left: 10, backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
-                    <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
+                  <View style={{ position: "absolute", top: 10, left: 10, backgroundColor: featured ? "#F59E0B" : YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+                    <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{featured ? "FEATURED" : "STANDARD"}</Text>
                   </View>
                   <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(15,0,50,0.72)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 }}>
                     <Text style={{ color: "white", fontSize: 10, fontWeight: "800" }}>{offerCount} {offerCount === 1 ? "offer" : "offers"}</Text>
@@ -199,17 +200,9 @@ export default function VenuesScreen() {
                       {decodeHtml(String(firstOfferTitle))}
                     </Text>
                   ) : null}
-                  <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 8 }} numberOfLines={1}>
+                  <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
                     {offerCount > 1 ? `${offerCount} offers • Earn 35pts each` : "Earn 35pts"}
                   </Text>
-                  {getDisplayAddress(item.acf?.address) ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                      <Ionicons name="location" size={10} color={YELLOW} />
-                      <Text style={{ color: "rgba(15,0,50,0.56)", fontSize: 11, flex: 1 }} numberOfLines={1}>
-                        {getDisplayAddress(item.acf?.address)}
-                      </Text>
-                    </View>
-                  ) : null}
                 </View>
               </TouchableOpacity>
             );

@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { wordpress, getFeaturedImage, type WPEvent, type WPPost, type WPEat } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, extractOffers, type WPEvent, type WPPost, type WPEat } from "@/lib/wordpress";
 import { decodeHtml, parseEventDate, getLatLng } from "@/lib/utils";
 import { haversineKm } from "@/lib/haversine";
 import { useAuth } from "@/context/AuthContext";
@@ -45,6 +45,7 @@ interface ActiveOffer {
   venueName: string;
   offerTitle: string;
   img: string | null;
+  featured?: boolean;
   distanceKm?: number;
 }
 
@@ -107,19 +108,18 @@ async function loadOffers(): Promise<ActiveOffer[]> {
   const venues = await wordpress.getEat({ page: 1, perPage: 100 });
   const result: ActiveOffer[] = [];
   for (const v of venues) {
-    const offers =
-      v.offers?.items?.filter((o) => o.title?.trim()) ??
-      (v.acf?.offer_title ? [{ id: 1, title: v.acf.offer_title, description: "" }] : []);
+    const offers = extractOffers(v);
     for (const o of offers) {
       result.push({
         venueId: v.id,
         venueName: decodeHtml(v.title.rendered),
         offerTitle: o.title,
         img: getFeaturedImage(v),
+        featured: Boolean(o.featured),
       });
     }
   }
-  return result;
+  return result.sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
 }
 
 export default function HomeScreen() {
@@ -147,7 +147,7 @@ export default function HomeScreen() {
       return cutoff ? cutoff.getTime() >= now.getTime() : false;
     });
     setEvents(upcomingEvents.slice(0, 4));
-    setNews(wpNews);
+    setNews([...wpNews].sort((a, b) => Number(Boolean(b.sticky)) - Number(Boolean(a.sticky)) || new Date(b.date).getTime() - new Date(a.date).getTime()));
     setActiveOffers(wpOffers);
 
     // Rewards Near You — non-blocking
@@ -156,21 +156,22 @@ export default function HomeScreen() {
       if (status === "granted") {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         const allVenues = await wordpress.getEat({ page: 1, perPage: 100 });
-        const nearbyOfferItems = allVenues
+            const nearbyOfferItems = allVenues
           .flatMap((v) => {
             const coords = getLatLng(v.acf?.address);
             if (!coords) return [];
             const distanceKm = haversineKm(loc.coords.latitude, loc.coords.longitude, coords.lat, coords.lng);
-            const offers = v.offers?.items?.filter((o) => o.title?.trim()) ?? [];
+            const offers = extractOffers(v);
             return offers.map((offer) => ({
               venueId: v.id,
               venueName: decodeHtml(v.title.rendered),
               offerTitle: offer.title,
               img: getFeaturedImage(v),
+              featured: Boolean(offer.featured),
               distanceKm,
             }));
           })
-          .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+          .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
           .slice(0, 6);
         setNearbyOffers(nearbyOfferItems);
       }
@@ -318,8 +319,8 @@ export default function HomeScreen() {
                       <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{dist}</Text>
                     </View>
                     <View style={{ padding: 14 }}>
-                      <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
-                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>AVAILABLE NOW</Text>
+                      <View style={{ alignSelf: "flex-start", backgroundColor: offer.featured ? YELLOW : YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
+                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>{offer.featured ? "FEATURED" : "AVAILABLE NOW"}</Text>
                       </View>
                       <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
                         {offer.venueName}
@@ -377,10 +378,10 @@ export default function HomeScreen() {
                     {/* Yellow OFFER pill overlay */}
                     <View style={{
                       position: "absolute", top: 10, left: 10,
-                      backgroundColor: YELLOW, borderRadius: 999,
+                      backgroundColor: offer.featured ? "#F59E0B" : YELLOW, borderRadius: 999,
                       paddingHorizontal: 9, paddingVertical: 5,
                     }}>
-                      <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
+                      <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{offer.featured ? "FEATURED" : "STANDARD"}</Text>
                     </View>
                   </View>
 

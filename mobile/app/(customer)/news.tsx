@@ -5,11 +5,23 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, type WPPost } from "@/lib/wordpress";
-import { decodeHtml } from "@/lib/utils";
+import { decodeHtml, stripHtml } from "@/lib/utils";
 import { Skeleton } from "@/components/Skeleton";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+
+function formatNewsDate(value: string) {
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function getExcerpt(post: WPPost) {
+  return stripHtml(post.excerpt?.rendered ?? "").trim();
+}
 
 export default function NewsScreen() {
   const router = useRouter();
@@ -35,10 +47,22 @@ export default function NewsScreen() {
 
   function onRefresh() { setRefreshing(true); load(1); }
 
+  const sortedPosts = [...posts].sort((a, b) => Number(Boolean(b.sticky)) - Number(Boolean(a.sticky)) || new Date(b.date).getTime() - new Date(a.date).getTime());
+  const featuredPost = sortedPosts[0] ?? null;
+  const remainingPosts = featuredPost ? sortedPosts.slice(1) : [];
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
-      <View style={{ backgroundColor: YELLOW, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 }}>
-        <Text style={{ color: NAV, fontSize: 28, fontWeight: "900", letterSpacing: -0.5 }}>NEWS</Text>
+      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
+        <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 6 }}>
+          City Stories
+        </Text>
+        <Text style={{ color: "white", fontSize: 28, fontWeight: "900", letterSpacing: -0.5, marginBottom: 8 }}>
+          News
+        </Text>
+        <Text style={{ color: "rgba(255,255,255,0.52)", fontSize: 14, lineHeight: 20 }}>
+          Updates, launches, and local stories from the HU NOW network.
+        </Text>
       </View>
 
       {loading ? (
@@ -56,43 +80,110 @@ export default function NewsScreen() {
         </View>
       ) : (
         <FlatList
-          data={posts}
+          data={remainingPosts}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 110 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={YELLOW} title="Loading..." titleColor="rgba(255,255,255,0.4)" />
           }
+          ListHeaderComponent={
+            featuredPost ? (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, fontWeight: "800", letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 10 }}>
+                  Featured Story
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/(customer)/post/${featuredPost.id}` as any); }}
+                  style={{
+                    backgroundColor: "white",
+                    borderRadius: 24,
+                    overflow: "hidden",
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.18,
+                    shadowRadius: 18,
+                    elevation: 6,
+                  }}
+                >
+                  {getFeaturedImage(featuredPost as any) ? (
+                    <Image source={{ uri: getFeaturedImage(featuredPost as any)! }} style={{ width: "100%", height: 220 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ width: "100%", height: 160, backgroundColor: "#1a0052", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="newspaper" size={42} color={YELLOW} />
+                    </View>
+                  )}
+                  <View style={{ position: "absolute", top: 14, left: 14, backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 }}>
+                    <Text style={{ color: NAV, fontSize: 10, fontWeight: "900", letterSpacing: 0.8 }}>FEATURED</Text>
+                  </View>
+                  <View style={{ padding: 18 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                      <Ionicons name="calendar-outline" size={12} color={YELLOW} />
+                      <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 11, fontWeight: "800" }}>{formatNewsDate(featuredPost.date)}</Text>
+                    </View>
+                    <Text style={{ color: NAV, fontWeight: "900", fontSize: 22, lineHeight: 28, marginBottom: 8 }}>
+                      {decodeHtml(featuredPost.title.rendered)}
+                    </Text>
+                    {getExcerpt(featuredPost) ? (
+                      <Text style={{ color: "rgba(15,0,50,0.62)", fontSize: 14, lineHeight: 21 }} numberOfLines={3}>
+                        {getExcerpt(featuredPost)}
+                      </Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+
+                {remainingPosts.length > 0 ? (
+                  <Text style={{ color: "white", fontWeight: "800", fontSize: 19, marginTop: 22, marginBottom: 10 }}>
+                    More Stories
+                  </Text>
+                ) : null}
+              </View>
+            ) : null
+          }
           renderItem={({ item }) => {
             const img = getFeaturedImage(item as any);
-            const date = new Date(item.date).toLocaleDateString("en-GB", {
-              day: "numeric", month: "long", year: "numeric",
-            });
+            const date = formatNewsDate(item.date);
+            const excerpt = getExcerpt(item);
             return (
               <TouchableOpacity
                 activeOpacity={0.88}
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/(customer)/post/${item.id}` as any); }}
                 style={{
-                  backgroundColor: "white", borderRadius: 18, overflow: "hidden",
-                  shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.15, shadowRadius: 10, elevation: 4,
+                  backgroundColor: "white",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 10,
+                  elevation: 4,
+                  flexDirection: "row",
                 }}
               >
                 {img ? (
-                  <Image source={{ uri: img }} style={{ width: "100%", height: 180 }} resizeMode="cover" />
+                  <Image source={{ uri: img }} style={{ width: 126, height: "100%" }} resizeMode="cover" />
                 ) : (
-                  <View style={{ width: "100%", height: 120, backgroundColor: "#1a0052", alignItems: "center", justifyContent: "center" }}>
-                    <Ionicons name="newspaper" size={40} color={YELLOW} />
+                  <View style={{ width: 126, minHeight: 138, backgroundColor: "#1a0052", alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="newspaper" size={32} color={YELLOW} />
                   </View>
                 )}
-                <View style={{ padding: 16 }}>
+                <View style={{ flex: 1, padding: 16, justifyContent: "center" }}>
+                  <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 10, fontWeight: "900", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                    HU NOW News
+                  </Text>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 8 }}>
                     <Ionicons name="calendar-outline" size={12} color={YELLOW} />
-                    <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "700" }}>{date}</Text>
+                    <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 11, fontWeight: "800" }}>{date}</Text>
                   </View>
-                  <Text style={{ color: NAV, fontWeight: "800", fontSize: 16, lineHeight: 22 }} numberOfLines={2}>
+                  <Text style={{ color: NAV, fontWeight: "800", fontSize: 17, lineHeight: 23, marginBottom: excerpt ? 8 : 0 }} numberOfLines={2}>
                     {decodeHtml(item.title.rendered)}
                   </Text>
+                  {excerpt ? (
+                    <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 13, lineHeight: 19 }} numberOfLines={3}>
+                      {excerpt}
+                    </Text>
+                  ) : null}
                 </View>
               </TouchableOpacity>
             );

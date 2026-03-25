@@ -11,6 +11,7 @@ export interface WPOffer {
   id: number;
   title: string;
   description: string;
+  featured?: boolean;
   paused?: boolean;
   limit_count?: number;
   limit_period?: "week" | "month" | "year" | "ever";
@@ -22,6 +23,7 @@ export interface WPTierOffer {
   tier: "bronze" | "silver" | "gold";
   title: string;
   description: string;
+  featured?: boolean;
   paused?: boolean;
   limit_count?: number;
   limit_period?: "week" | "month" | "year" | "ever";
@@ -89,6 +91,7 @@ export interface WPPost {
   id: number;
   slug: string;
   date: string;
+  sticky?: boolean;
   title: { rendered: string };
   excerpt?: { rendered: string };
   content?: { rendered: string };
@@ -127,17 +130,19 @@ export function extractOffers(venue: WPEat): WPOffer[] {
         id: o.id,
         title: o.title.trim(),
         description: (o.description ?? "").trim(),
+        featured: Boolean(o.featured),
         paused: Boolean(o.paused),
         limit_count: o.limit_count ?? 1,
         limit_period: o.limit_period ?? "month",
         starts_at: o.starts_at ?? null,
         ends_at: o.ends_at ?? null,
-      }));
+      }))
+      .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || a.id - b.id);
   }
   // Fallback: single ACF offer_title field
   const title = venue.acf?.offer_title?.trim();
   if (title) {
-    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim(), paused: false, limit_count: 1, limit_period: "month", starts_at: null, ends_at: null }];
+    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim(), featured: false, paused: false, limit_count: 1, limit_period: "month", starts_at: null, ends_at: null }];
   }
   return [];
 }
