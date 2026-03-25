@@ -207,7 +207,7 @@ export default function HomeScreen() {
           <View>
             <Image
               source={{ uri: BRAND_LOGO_URL }}
-              style={{ width: 96, height: 24, marginBottom: 10 }}
+              style={{ width: 112, height: 52, marginBottom: 10, marginLeft: -18, alignSelf: "flex-start" }}
               resizeMode="contain"
             />
             <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{greeting()}</Text>

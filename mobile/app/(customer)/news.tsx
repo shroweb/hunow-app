@@ -56,17 +56,14 @@ export default function NewsScreen() {
       <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
         <Image
           source={{ uri: BRAND_LOGO_URL }}
-          style={{ width: 96, height: 24, marginBottom: 10 }}
+          style={{ width: 112, height: 52, marginBottom: 10, marginLeft: -18, alignSelf: "flex-start" }}
           resizeMode="contain"
         />
-        <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 6 }}>
-          City Stories
-        </Text>
-        <Text style={{ color: "white", fontSize: 28, fontWeight: "900", letterSpacing: -0.5, marginBottom: 8 }}>
+        <Text style={{ color: "white", fontSize: 30, fontWeight: "900", letterSpacing: -0.6, marginBottom: 4 }}>
           News
         </Text>
-        <Text style={{ color: "rgba(255,255,255,0.52)", fontSize: 14, lineHeight: 20 }}>
-          Updates, launches, and local stories from the HU NOW network.
+        <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 14, lineHeight: 20 }}>
+          Local updates from the HU NOW network.
         </Text>
       </View>
 
