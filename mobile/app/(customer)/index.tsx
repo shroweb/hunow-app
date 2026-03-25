@@ -20,7 +20,7 @@ const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.09)";
 const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 const TIERS = [
-  { name: "Standard", min: 0, max: 499, colour: "rgba(255,255,255,0.5)" },
+  { name: "Standard", min: 0, max: 199, colour: "rgba(255,255,255,0.5)" },
   { name: "Bronze", min: 200, max: 599, colour: "#CD7F32" },
   { name: "Silver", min: 600, max: 1399, colour: "#C0C0C0" },
   { name: "Gold", min: 1400, max: 99999, colour: YELLOW },
@@ -133,6 +133,7 @@ export default function HomeScreen() {
   const [news, setNews]         = useState<WPPost[]>([]);
   const [activeOffers, setActiveOffers] = useState<ActiveOffer[]>([]);
   const [nearbyOffers, setNearbyOffers] = useState<ActiveOffer[]>([]);
+  const [nearbyState, setNearbyState] = useState<"idle" | "ready" | "empty" | "denied" | "unavailable">("idle");
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -153,7 +154,11 @@ export default function HomeScreen() {
 
     // Rewards Near You — non-blocking
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (permission.status === "undetermined") {
+        permission = await Location.requestForegroundPermissionsAsync();
+      }
+      const { status } = permission;
       if (status === "granted") {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         const allVenues = await wordpress.getEat({ page: 1, perPage: 100 });
@@ -175,9 +180,14 @@ export default function HomeScreen() {
           .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
           .slice(0, 6);
         setNearbyOffers(nearbyOfferItems);
+        setNearbyState(nearbyOfferItems.length > 0 ? "ready" : "empty");
+      } else {
+        setNearbyOffers([]);
+        setNearbyState("denied");
       }
     } catch {
-      // Location denied or unavailable — hide section silently
+      setNearbyOffers([]);
+      setNearbyState("unavailable");
     }
 
     setLoading(false);
@@ -287,7 +297,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {/* ── Near You ──────────────────────────────────── */}
-        {nearbyOffers.length > 0 && (
+        {(nearbyOffers.length > 0 || nearbyState === "denied" || nearbyState === "unavailable") && (
           <View style={{ marginTop: 28 }}>
             <SectionHeader
               icon="location"
@@ -298,47 +308,67 @@ export default function HomeScreen() {
                 router.push("/(customer)/venues");
               }}
             />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-              {nearbyOffers.map((offer, index) => {
-                const dist = (offer.distanceKm ?? 0) < 1
-                  ? `${Math.round((offer.distanceKm ?? 0) * 1000)}m`
-                  : `${(offer.distanceKm ?? 0).toFixed(1)}km`;
-                return (
+            {nearbyOffers.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                {nearbyOffers.map((offer, index) => {
+                  const dist = (offer.distanceKm ?? 0) < 1
+                    ? `${Math.round((offer.distanceKm ?? 0) * 1000)}m`
+                    : `${(offer.distanceKm ?? 0).toFixed(1)}km`;
+                  return (
+                    <TouchableOpacity
+                      key={`${offer.venueId}-${index}`}
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/(customer)/venue/${offer.venueId}` as any); }}
+                      style={{
+                        width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
+                        shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
+                      }}
+                    >
+                      {offer.img ? (
+                        <Image source={{ uri: offer.img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ width: "100%", height: 110, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
+                          <Ionicons name="storefront-outline" size={28} color="rgba(15,0,50,0.2)" />
+                        </View>
+                      )}
+                      <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(0,0,0,0.64)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{dist}</Text>
+                      </View>
+                      <View style={{ padding: 14 }}>
+                        <View style={{ alignSelf: "flex-start", backgroundColor: offer.featured ? YELLOW : YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
+                          <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>{offer.featured ? "FEATURED" : "AVAILABLE NOW"}</Text>
+                        </View>
+                        <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
+                          {offer.venueName}
+                        </Text>
+                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
+                          {decodeHtml(offer.offerTitle)}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <View style={{ paddingHorizontal: 20 }}>
+                <View style={{ backgroundColor: SURFACE, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: BORDER }}>
+                  <Text style={{ color: "white", fontSize: 15, fontWeight: "800", marginBottom: 4 }}>
+                    {nearbyState === "denied" ? "Turn on location to see nearby rewards" : "Nearby rewards are unavailable right now"}
+                  </Text>
+                  <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
+                    {nearbyState === "denied"
+                      ? "You can still browse every live HU NOW reward across the city."
+                      : "You can still explore all current offers while we load venue distances again."}
+                  </Text>
                   <TouchableOpacity
-                    key={`${offer.venueId}-${index}`}
-                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/(customer)/venue/${offer.venueId}` as any); }}
-                    style={{
-                      width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
-                      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
-                    }}
+                    onPress={() => router.push("/(customer)/venues")}
+                    style={{ alignSelf: "flex-start", backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}
                   >
-                    {offer.img ? (
-                      <Image source={{ uri: offer.img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
-                    ) : (
-                      <View style={{ width: "100%", height: 110, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
-                        <Ionicons name="storefront-outline" size={28} color="rgba(15,0,50,0.2)" />
-                      </View>
-                    )}
-                    {/* Distance badge */}
-                    <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(0,0,0,0.64)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
-                      <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{dist}</Text>
-                    </View>
-                    <View style={{ padding: 14 }}>
-                      <View style={{ alignSelf: "flex-start", backgroundColor: offer.featured ? YELLOW : YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
-                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>{offer.featured ? "FEATURED" : "AVAILABLE NOW"}</Text>
-                      </View>
-                      <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
-                        {offer.venueName}
-                      </Text>
-                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
-                        {decodeHtml(offer.offerTitle)}
-                      </Text>
-                    </View>
+                    <Text style={{ color: NAV, fontSize: 12, fontWeight: "800" }}>Browse All Offers</Text>
                   </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+                </View>
+              </View>
+            )}
           </View>
         )}
 

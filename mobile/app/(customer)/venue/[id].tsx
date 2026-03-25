@@ -11,7 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, type WPEat, type WPOffer } from "@/lib/wordpress";
 import { fetchOfferStatuses, type OfferStatus } from "@/lib/wpAuth";
-import { decodeHtml, stripHtml } from "@/lib/utils";
+import { decodeHtml, stripHtml, getDisplayAddress } from "@/lib/utils";
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/Skeleton";
@@ -151,6 +151,8 @@ export default function VenueDetailScreen() {
   const img = getFeaturedImage(venue);
   const ctaUrl = venue.acf?.offer_cta_url as string | undefined;
   const ctaText = venue.acf?.offer_cta_text as string | undefined;
+  const venueName = decodeHtml(venue.title.rendered);
+  const locationText = getDisplayAddress(venue.acf?.address);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -195,13 +197,23 @@ export default function VenueDetailScreen() {
             </Animated.View>
           </TouchableOpacity>
 
-          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 80, backgroundColor: "rgba(15,0,50,0.5)" }} />
+          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 108, backgroundColor: "rgba(15,0,50,0.58)" }} />
+          <View style={{ position: "absolute", left: 20, right: 20, bottom: 18 }}>
+            <Text style={{ color: "white", fontSize: 22, fontWeight: "900", letterSpacing: -0.5, marginBottom: locationText ? 8 : 0 }}>
+              {venueName}
+            </Text>
+            {locationText ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+                <Ionicons name="location-outline" size={14} color={YELLOW} />
+                <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 13, fontWeight: "600", flex: 1 }}>
+                  {locationText}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
-          <Text style={{ color: "white", fontSize: 26, fontWeight: "900", marginBottom: 6, letterSpacing: -0.5 }}>
-            {decodeHtml(venue.title.rendered)}
-          </Text>
           {venue.excerpt?.rendered ? (
             <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
               {stripHtml(venue.excerpt.rendered)}

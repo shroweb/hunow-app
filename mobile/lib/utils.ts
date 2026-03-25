@@ -19,10 +19,17 @@ export function stripHtml(str: string): string {
 /** Extract a display string from a WP ACF address field (can be string or Google Maps object) */
 export function getDisplayAddress(address: unknown): string | null {
   if (!address) return null;
-  if (typeof address === "string") return address;
+  if (typeof address === "string") return address.trim() || null;
   if (typeof address === "object") {
     const a = address as Record<string, unknown>;
-    return (a.name ?? a.street_name ?? a.city ?? null) as string | null;
+    const preferred = [
+      a.formatted_address,
+      a.address,
+      a.name,
+      a.street_name,
+      a.city,
+    ].find((value) => typeof value === "string" && value.trim().length > 0);
+    return typeof preferred === "string" ? preferred.trim() : null;
   }
   return null;
 }

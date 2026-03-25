@@ -18,7 +18,7 @@ const SEEN_TIER_KEY = "hunow_seen_member_tier";
 const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 const TIERS = [
-  { name: "Standard", min: 0,    max: 499,  colour: "rgba(255,255,255,0.5)" },
+  { name: "Standard", min: 0,    max: 199,  colour: "rgba(255,255,255,0.5)" },
   { name: "Bronze",   min: 200,  max: 599,  colour: "#CD7F32" },
   { name: "Silver",   min: 600, max: 1399, colour: "#C0C0C0" },
   { name: "Gold",     min: 1400, max: 99999, colour: YELLOW },
