@@ -25,23 +25,37 @@ function sanitiseDateInput(value: string) {
   return value.trim();
 }
 
-function FieldLabel({ children }: { children: string }) {
-  return <Text style={{ color: "rgba(15,0,50,0.55)", fontSize: 11, fontWeight: "800", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 6 }}>{children}</Text>;
+function FieldLabel({ children, light = false }: { children: string; light?: boolean }) {
+  return (
+    <Text
+      style={{
+        color: light ? "rgba(255,255,255,0.7)" : "rgba(15,0,50,0.55)",
+        fontSize: 11,
+        fontWeight: "800",
+        letterSpacing: 0.7,
+        textTransform: "uppercase",
+        marginBottom: 6,
+      }}
+    >
+      {children}
+    </Text>
+  );
 }
 
-function Input(props: React.ComponentProps<typeof TextInput>) {
+function Input({ dark = false, style, ...props }: React.ComponentProps<typeof TextInput> & { dark?: boolean }) {
   return (
     <TextInput
-      placeholderTextColor="rgba(15,0,50,0.28)"
+      placeholderTextColor={dark ? "rgba(255,255,255,0.35)" : "rgba(15,0,50,0.28)"}
       style={{
-        backgroundColor: "rgba(15,0,50,0.04)",
+        backgroundColor: dark ? "rgba(255,255,255,0.12)" : "rgba(15,0,50,0.04)",
         borderWidth: 1,
-        borderColor: "rgba(15,0,50,0.08)",
+        borderColor: dark ? "rgba(255,255,255,0.12)" : "rgba(15,0,50,0.08)",
         borderRadius: 14,
         paddingHorizontal: 14,
         paddingVertical: 12,
-        color: NAV,
+        color: dark ? "white" : NAV,
         fontSize: 14,
+        ...(style as object),
       }}
       {...props}
     />
@@ -330,26 +344,19 @@ export default function BusinessOffersScreen() {
               {editingTier[offer.tier] ? (
                 <>
                   <View style={{ marginBottom: 12 }}>
-                    <FieldLabel>Offer Title</FieldLabel>
-                    <Input value={offer.title} onChangeText={(value) => updateTier(offer.tier, { title: value })} placeholder={`e.g. ${meta.label} member reward`} />
+                    <FieldLabel light>Offer Title</FieldLabel>
+                    <Input dark value={offer.title} onChangeText={(value) => updateTier(offer.tier, { title: value })} placeholder={`e.g. ${meta.label} member reward`} />
                   </View>
 
                   <View style={{ marginBottom: 12 }}>
-                    <FieldLabel>Description</FieldLabel>
+                    <FieldLabel light>Description</FieldLabel>
                     <Input
+                      dark
                       value={offer.description}
                       onChangeText={(value) => updateTier(offer.tier, { description: value })}
                       placeholder="Reward details shown to members and staff"
                       multiline
                       style={{
-                        backgroundColor: "rgba(255,255,255,0.12)",
-                        borderWidth: 1,
-                        borderColor: "rgba(255,255,255,0.12)",
-                        borderRadius: 14,
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
-                        color: "white",
-                        fontSize: 14,
                         minHeight: 96,
                         textAlignVertical: "top",
                       }}
@@ -358,27 +365,28 @@ export default function BusinessOffersScreen() {
 
                   <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
-                      <FieldLabel>Limit Count</FieldLabel>
+                      <FieldLabel light>Limit Count</FieldLabel>
                       <Input
+                        dark
                         value={String(offer.limit_count ?? 1)}
                         onChangeText={(value) => updateTier(offer.tier, { limit_count: Math.max(1, Number(value || 1)) })}
                         keyboardType="number-pad"
                       />
                     </View>
                     <View style={{ flex: 1.35 }}>
-                      <FieldLabel>Redemption Period</FieldLabel>
+                      <FieldLabel light>Redemption Period</FieldLabel>
                       <PeriodSelector value={offer.limit_period} onChange={(value) => updateTier(offer.tier, { limit_period: value })} accent={meta.colour} />
                     </View>
                   </View>
 
                   <View style={{ flexDirection: "row", gap: 12, marginBottom: 10 }}>
                     <View style={{ flex: 1 }}>
-                      <FieldLabel>Starts At</FieldLabel>
-                      <Input value={offer.starts_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { starts_at: value })} placeholder="2026-03-25T18:00" autoCapitalize="none" />
+                      <FieldLabel light>Starts At</FieldLabel>
+                      <Input dark value={offer.starts_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { starts_at: value })} placeholder="2026-03-25T18:00" autoCapitalize="none" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <FieldLabel>Ends At</FieldLabel>
-                      <Input value={offer.ends_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { ends_at: value })} placeholder="2026-03-31T23:59" autoCapitalize="none" />
+                      <FieldLabel light>Ends At</FieldLabel>
+                      <Input dark value={offer.ends_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { ends_at: value })} placeholder="2026-03-31T23:59" autoCapitalize="none" />
                     </View>
                   </View>
                 </>
