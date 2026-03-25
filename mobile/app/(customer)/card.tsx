@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView, Share, TouchableOpacity, useWindowDimensions, RefreshControl } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, useWindowDimensions, RefreshControl, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import QRCode from "react-native-qrcode-svg";
@@ -15,6 +15,7 @@ import { formatOfferRule } from "@/lib/wordpress";
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
 const SEEN_TIER_KEY = "hunow_seen_member_tier";
+const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 const TIERS = [
   { name: "Standard", min: 0,    max: 499,  colour: "rgba(255,255,255,0.5)" },
@@ -158,11 +159,6 @@ export default function MyCardScreen() {
   const tierRedemptionCount = (user.redemptions ?? []).filter((r) => !!r.tier).length;
   const latestRedemption = user.redemptions?.[0] ?? null;
 
-  async function handleShare() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await Share.share({ message: `My HU NOW member card: ${memberNumber(user!.card_token)}` });
-  }
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#080018" }}>
       <ScrollView
@@ -182,6 +178,11 @@ export default function MyCardScreen() {
         {/* Screen header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <View>
+            <Image
+              source={{ uri: BRAND_LOGO_URL }}
+              style={{ width: 112, height: 52, marginLeft: -18, marginBottom: 10, alignSelf: "flex-start" }}
+              resizeMode="contain"
+            />
             <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>My Card</Text>
             <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: "600" }}>
               Your HU NOW membership
@@ -339,19 +340,6 @@ export default function MyCardScreen() {
           </View>
         </View>
 
-        {/* Share */}
-        <TouchableOpacity
-          onPress={handleShare}
-          style={{
-            backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20,
-            paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center",
-            marginBottom: 32, gap: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-          }}
-        >
-          <Ionicons name="share-outline" size={18} color="white" />
-          <Text style={{ color: "white", fontWeight: "700" }}>Share My Card</Text>
-        </TouchableOpacity>
-
         {celebrationTier && (
           <TouchableOpacity
             onPress={() => setCelebrationTier(null)}
@@ -372,6 +360,8 @@ export default function MyCardScreen() {
             </Text>
           </TouchableOpacity>
         )}
+
+        <View style={{ marginBottom: 32 }} />
 
         {/* ── Redemption Timeline ── */}
         <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 11, fontWeight: "700", letterSpacing: 1.8, textTransform: "uppercase", marginBottom: 4 }}>

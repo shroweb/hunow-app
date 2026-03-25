@@ -1,14 +1,15 @@
-import { Modal, View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { Modal, View, Text, TouchableOpacity, ScrollView, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 const TIERS = [
-  { name: "Standard", min: 0,    max: 499,  colour: "rgba(255,255,255,0.3)", benefit: "Access to all HU NOW offers" },
-  { name: "Bronze",   min: 500,  max: 999,  colour: "#CD7F32",               benefit: "Early access to new venues" },
-  { name: "Silver",   min: 1000, max: 1999, colour: "#C0C0C0",               benefit: "Exclusive member-only events" },
-  { name: "Gold",     min: 2000, max: 9999, colour: YELLOW,                  benefit: "Priority booking + VIP perks" },
+  { name: "Standard", min: 0,    max: 199,  colour: "rgba(255,255,255,0.3)", benefit: "Access to all HU NOW offers" },
+  { name: "Bronze",   min: 200,  max: 599,  colour: "#CD7F32",               benefit: "Unlock Bronze venue rewards" },
+  { name: "Silver",   min: 600,  max: 1399, colour: "#C0C0C0",               benefit: "Unlock Silver member rewards" },
+  { name: "Gold",     min: 1400, max: 9999, colour: YELLOW,                  benefit: "Unlock Gold-level city perks" },
 ];
 
 const EARN = [
@@ -38,13 +39,15 @@ export function PointsInfoModal({ visible, onClose, currentPoints }: Props) {
 
           {/* Header */}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, marginBottom: 24 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <View style={{ backgroundColor: YELLOW + "22", borderRadius: 12, width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="star" size={20} color={YELLOW} />
-              </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, paddingRight: 12 }}>
+              <Image
+                source={{ uri: BRAND_LOGO_URL }}
+                style={{ width: 76, height: 36, marginLeft: -10 }}
+                resizeMode="contain"
+              />
               <View>
                 <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>HU NOW Points</Text>
-                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>Earn, climb, unlock</Text>
+                <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>Earn points and unlock tier rewards</Text>
               </View>
             </View>
             <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>

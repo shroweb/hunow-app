@@ -1,10 +1,12 @@
 import { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Image,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from "react-native";
 import { Link } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+
+const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 export default function RegisterScreen() {
   const { register } = useAuth();
@@ -45,12 +47,11 @@ export default function RegisterScreen() {
       >
         {/* Brand */}
         <View className="items-center mb-10">
-          <View className="bg-[#0F0032] rounded-3xl w-20 h-20 items-center justify-center mb-4"
-            style={{ shadowColor: "#0F0032", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16 }}
-          >
-            <Text className="text-brand-yellow text-2xl font-black">HN</Text>
-          </View>
-          <Text className="text-[#0F0032] text-3xl font-black tracking-tight">HU NOW</Text>
+          <Image
+            source={{ uri: BRAND_LOGO_URL }}
+            style={{ width: 124, height: 56, marginLeft: -18, marginBottom: 12, alignSelf: "center" }}
+            resizeMode="contain"
+          />
           <Text className="text-[#0F0032]/40 text-sm mt-1">Get your free city card</Text>
         </View>
 

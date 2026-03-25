@@ -1,10 +1,12 @@
 import { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, TouchableOpacity, Image,
   ActivityIndicator, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { Link } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+
+const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -36,12 +38,11 @@ export default function LoginScreen() {
       <View className="flex-1 justify-center px-8">
         {/* Logo / brand */}
         <View className="items-center mb-10">
-          <View className="bg-[#0F0032] rounded-3xl w-20 h-20 items-center justify-center mb-4"
-            style={{ shadowColor: "#0F0032", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16 }}
-          >
-            <Text className="text-brand-yellow text-2xl font-black">HN</Text>
-          </View>
-          <Text className="text-[#0F0032] text-3xl font-black tracking-tight">HU NOW</Text>
+          <Image
+            source={{ uri: BRAND_LOGO_URL }}
+            style={{ width: 124, height: 56, marginLeft: -18, marginBottom: 12, alignSelf: "center" }}
+            resizeMode="contain"
+          />
           <Text className="text-[#0F0032]/40 text-sm mt-1">Hull's city card app</Text>
         </View>
 
@@ -101,10 +102,6 @@ export default function LoginScreen() {
               : <Text className="text-white font-bold text-base">Sign In</Text>
             }
           </TouchableOpacity>
-
-          <View className="bg-[#F5F5F7] rounded-2xl py-4 items-center mt-3 border border-[#E5E5EA]">
-            <Text className="text-[#0F0032]/45 font-bold text-base">Google sign in coming shortly</Text>
-          </View>
         </View>
 
         <View className="flex-row justify-center">
