@@ -87,6 +87,8 @@ export default function BusinessOffersScreen() {
   const [data, setData] = useState<BusinessOffersResponse | null>(null);
   const [standardOffers, setStandardOffers] = useState<WPOffer[]>([]);
   const [tierOffers, setTierOffers] = useState<WPTierOffer[]>([]);
+  const [editingStandard, setEditingStandard] = useState<Record<number, boolean>>({});
+  const [editingTier, setEditingTier] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -102,6 +104,8 @@ export default function BusinessOffersScreen() {
         setData(response);
         setStandardOffers(response.standard_offers);
         setTierOffers(response.tier_offers);
+        setEditingStandard({});
+        setEditingTier({});
       } catch (err: any) {
         setData(null);
         Alert.alert("Couldn’t load offers", err?.message ?? "Please try again.");
@@ -147,6 +151,8 @@ export default function BusinessOffersScreen() {
       setData(response);
       setStandardOffers(response.standard_offers);
       setTierOffers(response.tier_offers);
+      setEditingStandard({});
+      setEditingTier({});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert("Offers Updated", "Your venue offers have been saved.");
     } catch (err: any) {
@@ -155,6 +161,8 @@ export default function BusinessOffersScreen() {
       setSaving(false);
     }
   }
+
+  const hasEditingOpen = Object.values(editingStandard).some(Boolean) || Object.values(editingTier).some(Boolean);
 
   if (loading) {
     return (
@@ -215,68 +223,89 @@ export default function BusinessOffersScreen() {
         {standardOffers.map((offer) => (
           <View key={offer.id} style={{ backgroundColor: "white", borderRadius: 20, padding: 16, marginBottom: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <Text style={{ color: NAV, fontSize: 18, fontWeight: "900" }}>Offer {offer.id}</Text>
-              <View style={{ backgroundColor: "rgba(251,201,0,0.18)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>{offer.title.trim() ? "Live slot" : "Empty slot"}</Text>
+              <View>
+                <Text style={{ color: NAV, fontSize: 18, fontWeight: "900" }}>Offer {offer.id}</Text>
+                <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 12, marginTop: 4 }}>{offer.title.trim() || "No offer set yet"}</Text>
               </View>
+              <TouchableOpacity
+                onPress={() => setEditingStandard((current) => ({ ...current, [offer.id]: !current[offer.id] }))}
+                style={{ backgroundColor: "rgba(251,201,0,0.18)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+              >
+                <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>{editingStandard[offer.id] ? "Done" : "Edit"}</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={{ marginBottom: 12 }}>
-              <FieldLabel>Offer Title</FieldLabel>
-              <Input value={offer.title} onChangeText={(value) => updateStandard(offer.id, { title: value })} placeholder="e.g. 20% off all mains" />
-            </View>
+            {editingStandard[offer.id] ? (
+              <>
+                <View style={{ marginBottom: 12 }}>
+                  <FieldLabel>Offer Title</FieldLabel>
+                  <Input value={offer.title} onChangeText={(value) => updateStandard(offer.id, { title: value })} placeholder="e.g. 20% off all mains" />
+                </View>
 
-            <View style={{ marginBottom: 12 }}>
-              <FieldLabel>Description</FieldLabel>
-              <Input
-                value={offer.description}
-                onChangeText={(value) => updateStandard(offer.id, { description: value })}
-                placeholder="Offer details shown in the app and scan flow"
-                multiline
-                style={{
-                  backgroundColor: "rgba(15,0,50,0.04)",
-                  borderWidth: 1,
-                  borderColor: "rgba(15,0,50,0.08)",
-                  borderRadius: 14,
-                  paddingHorizontal: 14,
-                  paddingVertical: 12,
-                  color: NAV,
-                  fontSize: 14,
-                  minHeight: 96,
-                  textAlignVertical: "top",
-                }}
-              />
-            </View>
+                <View style={{ marginBottom: 12 }}>
+                  <FieldLabel>Description</FieldLabel>
+                  <Input
+                    value={offer.description}
+                    onChangeText={(value) => updateStandard(offer.id, { description: value })}
+                    placeholder="Offer details shown in the app and scan flow"
+                    multiline
+                    style={{
+                      backgroundColor: "rgba(15,0,50,0.04)",
+                      borderWidth: 1,
+                      borderColor: "rgba(15,0,50,0.08)",
+                      borderRadius: 14,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      color: NAV,
+                      fontSize: 14,
+                      minHeight: 96,
+                      textAlignVertical: "top",
+                    }}
+                  />
+                </View>
 
-            <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
-              <View style={{ flex: 1 }}>
-                <FieldLabel>Limit Count</FieldLabel>
-                <Input
-                  value={String(offer.limit_count ?? 1)}
-                  onChangeText={(value) => updateStandard(offer.id, { limit_count: Math.max(1, Number(value || 1)) })}
-                  keyboardType="number-pad"
-                />
-              </View>
-              <View style={{ flex: 1.35 }}>
-                <FieldLabel>Redemption Period</FieldLabel>
-                <PeriodSelector value={offer.limit_period} onChange={(value) => updateStandard(offer.id, { limit_period: value })} />
-              </View>
-            </View>
+                <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <FieldLabel>Limit Count</FieldLabel>
+                    <Input
+                      value={String(offer.limit_count ?? 1)}
+                      onChangeText={(value) => updateStandard(offer.id, { limit_count: Math.max(1, Number(value || 1)) })}
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                  <View style={{ flex: 1.35 }}>
+                    <FieldLabel>Redemption Period</FieldLabel>
+                    <PeriodSelector value={offer.limit_period} onChange={(value) => updateStandard(offer.id, { limit_period: value })} />
+                  </View>
+                </View>
 
-            <View style={{ flexDirection: "row", gap: 12, marginBottom: 10 }}>
-              <View style={{ flex: 1 }}>
-                <FieldLabel>Starts At</FieldLabel>
-                <Input value={offer.starts_at ?? ""} onChangeText={(value) => updateStandard(offer.id, { starts_at: value })} placeholder="2026-03-25T18:00" autoCapitalize="none" />
+                <View style={{ flexDirection: "row", gap: 12, marginBottom: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <FieldLabel>Starts At</FieldLabel>
+                    <Input value={offer.starts_at ?? ""} onChangeText={(value) => updateStandard(offer.id, { starts_at: value })} placeholder="2026-03-25T18:00" autoCapitalize="none" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <FieldLabel>Ends At</FieldLabel>
+                    <Input value={offer.ends_at ?? ""} onChangeText={(value) => updateStandard(offer.id, { ends_at: value })} placeholder="2026-03-31T23:59" autoCapitalize="none" />
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={{ gap: 8 }}>
+                <Text style={{ color: "rgba(15,0,50,0.68)", fontSize: 14, lineHeight: 20 }}>
+                  {offer.description.trim() || "No description set yet."}
+                </Text>
+                <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, fontWeight: "700" }}>
+                  {formatOfferRule(offer.limit_count, offer.limit_period)}
+                </Text>
+                {(offer.starts_at || offer.ends_at) ? (
+                  <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12 }}>
+                    {offer.starts_at ? `Starts ${offer.starts_at}` : "Always on"}
+                    {offer.ends_at ? ` • Ends ${offer.ends_at}` : ""}
+                  </Text>
+                ) : null}
               </View>
-              <View style={{ flex: 1 }}>
-                <FieldLabel>Ends At</FieldLabel>
-                <Input value={offer.ends_at ?? ""} onChangeText={(value) => updateStandard(offer.id, { ends_at: value })} placeholder="2026-03-31T23:59" autoCapitalize="none" />
-              </View>
-            </View>
-
-            <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, fontWeight: "700" }}>
-              {formatOfferRule(offer.limit_count, offer.limit_period)}
-            </Text>
+            )}
           </View>
         ))}
 
@@ -284,91 +313,112 @@ export default function BusinessOffersScreen() {
         {tierOffers.map((offer) => {
           const meta = TIER_META[offer.tier];
           return (
-            <View key={offer.tier} style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: meta.colour + "55" }}>
+            <View key={offer.tier} style={{ backgroundColor: "#20113F", borderRadius: 20, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: meta.colour + "66" }}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                 <View>
                   <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>{meta.label}</Text>
                   <Text style={{ color: meta.colour, fontSize: 12, fontWeight: "700", marginTop: 2 }}>Unlocks at {meta.unlock}</Text>
                 </View>
-                <View style={{ backgroundColor: meta.colour + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                  <Text style={{ color: meta.colour, fontSize: 11, fontWeight: "800" }}>{offer.title.trim() ? "Enabled" : "Optional"}</Text>
-                </View>
+                <TouchableOpacity
+                  onPress={() => setEditingTier((current) => ({ ...current, [offer.tier]: !current[offer.tier] }))}
+                  style={{ backgroundColor: meta.colour + "22", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: meta.colour, fontSize: 11, fontWeight: "800" }}>{editingTier[offer.tier] ? "Done" : "Edit"}</Text>
+                </TouchableOpacity>
               </View>
 
-              <View style={{ marginBottom: 12 }}>
-                <FieldLabel>Offer Title</FieldLabel>
-                <Input value={offer.title} onChangeText={(value) => updateTier(offer.tier, { title: value })} placeholder={`e.g. ${meta.label} member reward`} />
-              </View>
+              {editingTier[offer.tier] ? (
+                <>
+                  <View style={{ marginBottom: 12 }}>
+                    <FieldLabel>Offer Title</FieldLabel>
+                    <Input value={offer.title} onChangeText={(value) => updateTier(offer.tier, { title: value })} placeholder={`e.g. ${meta.label} member reward`} />
+                  </View>
 
-              <View style={{ marginBottom: 12 }}>
-                <FieldLabel>Description</FieldLabel>
-                <Input
-                  value={offer.description}
-                  onChangeText={(value) => updateTier(offer.tier, { description: value })}
-                  placeholder="Reward details shown to members and staff"
-                  multiline
-                  style={{
-                    backgroundColor: "rgba(255,255,255,0.05)",
-                    borderWidth: 1,
-                    borderColor: "rgba(255,255,255,0.08)",
-                    borderRadius: 14,
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                    color: "white",
-                    fontSize: 14,
-                    minHeight: 96,
-                    textAlignVertical: "top",
-                  }}
-                />
-              </View>
+                  <View style={{ marginBottom: 12 }}>
+                    <FieldLabel>Description</FieldLabel>
+                    <Input
+                      value={offer.description}
+                      onChangeText={(value) => updateTier(offer.tier, { description: value })}
+                      placeholder="Reward details shown to members and staff"
+                      multiline
+                      style={{
+                        backgroundColor: "rgba(255,255,255,0.12)",
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.12)",
+                        borderRadius: 14,
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                        color: "white",
+                        fontSize: 14,
+                        minHeight: 96,
+                        textAlignVertical: "top",
+                      }}
+                    />
+                  </View>
 
-              <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
-                <View style={{ flex: 1 }}>
-                  <FieldLabel>Limit Count</FieldLabel>
-                  <Input
-                    value={String(offer.limit_count ?? 1)}
-                    onChangeText={(value) => updateTier(offer.tier, { limit_count: Math.max(1, Number(value || 1)) })}
-                    keyboardType="number-pad"
-                  />
-                </View>
-                <View style={{ flex: 1.35 }}>
-                  <FieldLabel>Redemption Period</FieldLabel>
-                  <PeriodSelector value={offer.limit_period} onChange={(value) => updateTier(offer.tier, { limit_period: value })} accent={meta.colour} />
-                </View>
-              </View>
+                  <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <FieldLabel>Limit Count</FieldLabel>
+                      <Input
+                        value={String(offer.limit_count ?? 1)}
+                        onChangeText={(value) => updateTier(offer.tier, { limit_count: Math.max(1, Number(value || 1)) })}
+                        keyboardType="number-pad"
+                      />
+                    </View>
+                    <View style={{ flex: 1.35 }}>
+                      <FieldLabel>Redemption Period</FieldLabel>
+                      <PeriodSelector value={offer.limit_period} onChange={(value) => updateTier(offer.tier, { limit_period: value })} accent={meta.colour} />
+                    </View>
+                  </View>
 
-              <View style={{ flexDirection: "row", gap: 12, marginBottom: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <FieldLabel>Starts At</FieldLabel>
-                  <Input value={offer.starts_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { starts_at: value })} placeholder="2026-03-25T18:00" autoCapitalize="none" />
+                  <View style={{ flexDirection: "row", gap: 12, marginBottom: 10 }}>
+                    <View style={{ flex: 1 }}>
+                      <FieldLabel>Starts At</FieldLabel>
+                      <Input value={offer.starts_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { starts_at: value })} placeholder="2026-03-25T18:00" autoCapitalize="none" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <FieldLabel>Ends At</FieldLabel>
+                      <Input value={offer.ends_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { ends_at: value })} placeholder="2026-03-31T23:59" autoCapitalize="none" />
+                    </View>
+                  </View>
+                </>
+              ) : (
+                <View style={{ gap: 8 }}>
+                  <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 15, fontWeight: "800" }}>{offer.title.trim() || "No tier reward set yet"}</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.74)", fontSize: 14, lineHeight: 20 }}>
+                    {offer.description.trim() || "Add a reward for this tier if you want to offer one."}
+                  </Text>
+                  <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 12, fontWeight: "700" }}>
+                    {formatOfferRule(offer.limit_count, offer.limit_period)}
+                  </Text>
+                  {(offer.starts_at || offer.ends_at) ? (
+                    <Text style={{ color: "rgba(255,255,255,0.68)", fontSize: 12 }}>
+                      {offer.starts_at ? `Starts ${offer.starts_at}` : "Always on"}
+                      {offer.ends_at ? ` • Ends ${offer.ends_at}` : ""}
+                    </Text>
+                  ) : null}
                 </View>
-                <View style={{ flex: 1 }}>
-                  <FieldLabel>Ends At</FieldLabel>
-                  <Input value={offer.ends_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { ends_at: value })} placeholder="2026-03-31T23:59" autoCapitalize="none" />
-                </View>
-              </View>
-
-              <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: "700" }}>
-                {formatOfferRule(offer.limit_count, offer.limit_period)}
-              </Text>
+              )}
             </View>
           );
         })}
 
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={saving}
-          style={{
-            backgroundColor: saving ? "rgba(251,201,0,0.5)" : YELLOW,
-            borderRadius: 18,
-            paddingVertical: 17,
-            alignItems: "center",
-            marginTop: 4,
-            marginBottom: 18,
-          }}
-        >
-          {saving ? <ActivityIndicator color={NAV} /> : <Text style={{ color: NAV, fontSize: 16, fontWeight: "900" }}>Save Offers</Text>}
-        </TouchableOpacity>
+        {hasEditingOpen && (
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving}
+            style={{
+              backgroundColor: saving ? "rgba(251,201,0,0.5)" : YELLOW,
+              borderRadius: 18,
+              paddingVertical: 17,
+              alignItems: "center",
+              marginTop: 4,
+              marginBottom: 18,
+            }}
+          >
+            {saving ? <ActivityIndicator color={NAV} /> : <Text style={{ color: NAV, fontSize: 16, fontWeight: "900" }}>Save Offers</Text>}
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
