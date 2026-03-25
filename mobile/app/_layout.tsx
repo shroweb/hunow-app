@@ -1,3 +1,4 @@
+import "@/lib/polyfills";
 import "../global.css";
 import { useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";

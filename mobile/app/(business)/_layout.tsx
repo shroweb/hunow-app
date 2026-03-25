@@ -1,7 +1,16 @@
+import { useEffect } from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/context/AuthContext";
 
 export default function BusinessLayout() {
+  const { token, refreshUser } = useAuth();
+
+  useEffect(() => {
+    if (!token) return;
+    refreshUser();
+  }, [token]);
+
   return (
     <Tabs
       screenOptions={{
