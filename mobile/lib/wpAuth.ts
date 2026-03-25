@@ -73,6 +73,12 @@ export interface BusinessDashboardResponse {
     weekly_scans: number;
     monthly_scans: number;
     most_active_day: string;
+    unique_members: number;
+    repeat_members: number;
+    standard_redemptions: number;
+    tier_redemptions: number;
+    top_offers: { offer_title: string; count: number }[];
+    tier_breakdown: { bronze: number; silver: number; gold: number };
     recent_scans: { offer_title: string; timestamp: string; member_email: string }[];
   };
 }

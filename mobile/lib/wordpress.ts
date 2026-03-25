@@ -11,6 +11,7 @@ export interface WPOffer {
   id: number;
   title: string;
   description: string;
+  paused?: boolean;
   limit_count?: number;
   limit_period?: "week" | "month" | "year" | "ever";
   starts_at?: string | null;
@@ -21,6 +22,7 @@ export interface WPTierOffer {
   tier: "bronze" | "silver" | "gold";
   title: string;
   description: string;
+  paused?: boolean;
   limit_count?: number;
   limit_period?: "week" | "month" | "year" | "ever";
   starts_at?: string | null;
@@ -125,6 +127,7 @@ export function extractOffers(venue: WPEat): WPOffer[] {
         id: o.id,
         title: o.title.trim(),
         description: (o.description ?? "").trim(),
+        paused: Boolean(o.paused),
         limit_count: o.limit_count ?? 1,
         limit_period: o.limit_period ?? "month",
         starts_at: o.starts_at ?? null,
@@ -134,7 +137,7 @@ export function extractOffers(venue: WPEat): WPOffer[] {
   // Fallback: single ACF offer_title field
   const title = venue.acf?.offer_title?.trim();
   if (title) {
-    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim(), limit_count: 1, limit_period: "month", starts_at: null, ends_at: null }];
+    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim(), paused: false, limit_count: 1, limit_period: "month", starts_at: null, ends_at: null }];
   }
   return [];
 }

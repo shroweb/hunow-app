@@ -35,6 +35,8 @@ export default function BusinessDashboard() {
 
   const stats = dashboard?.stats;
   const recent = stats?.recent_scans ?? [];
+  const topOffers = stats?.top_offers ?? [];
+  const tierBreakdown = stats?.tier_breakdown ?? { bronze: 0, silver: 0, gold: 0 };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -72,6 +74,49 @@ export default function BusinessDashboard() {
           <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Most Active Day</Text>
           <Text style={{ color: "white", fontSize: 20, fontWeight: "800", marginBottom: 4 }}>{stats?.most_active_day ?? "N/A"}</Text>
           <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13 }}>Your busiest redemption day right now.</Text>
+        </View>
+
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Members</Text>
+            <Text style={{ color: "white", fontSize: 24, fontWeight: "900" }}>{stats?.unique_members ?? 0}</Text>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 }}>{stats?.repeat_members ?? 0} repeat customers</Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>Reward Mix</Text>
+            <Text style={{ color: "white", fontSize: 20, fontWeight: "900" }}>{stats?.standard_redemptions ?? 0} / {stats?.tier_redemptions ?? 0}</Text>
+            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 }}>Standard vs tier</Text>
+          </View>
+        </View>
+
+        <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 20 }}>
+          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Tier Breakdown</Text>
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            {[
+              { label: "Bronze", value: tierBreakdown.bronze, colour: "#CD7F32" },
+              { label: "Silver", value: tierBreakdown.silver, colour: "#C0C0C0" },
+              { label: "Gold", value: tierBreakdown.gold, colour: YELLOW },
+            ].map((item) => (
+              <View key={item.label} style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+                <Text style={{ color: item.colour, fontSize: 11, fontWeight: "800", textTransform: "uppercase", marginBottom: 6 }}>{item.label}</Text>
+                <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 20 }}>
+          <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Top Offers</Text>
+          {topOffers.length === 0 ? (
+            <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13 }}>No offer data yet.</Text>
+          ) : topOffers.map((offer, index) => (
+            <View key={`${offer.offer_title}-${index}`} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: index === topOffers.length - 1 ? 0 : 1, borderBottomColor: "rgba(255,255,255,0.06)" }}>
+              <Text style={{ color: "white", fontSize: 14, fontWeight: "700", flex: 1, paddingRight: 12 }}>{offer.offer_title}</Text>
+              <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>{offer.count}</Text>
+              </View>
+            </View>
+          ))}
         </View>
 
         <TouchableOpacity

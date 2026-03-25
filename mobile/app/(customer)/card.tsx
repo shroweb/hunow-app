@@ -154,6 +154,9 @@ export default function MyCardScreen() {
         : { base: "#0F0032", accent: YELLOW, secondary: "#24105C" };
 
   const redemptionGroups = groupRedemptionsByDate(user.redemptions ?? []);
+  const uniqueVenueCount = new Set((user.redemptions ?? []).map((r) => r.venue_id)).size;
+  const tierRedemptionCount = (user.redemptions ?? []).filter((r) => !!r.tier).length;
+  const latestRedemption = user.redemptions?.[0] ?? null;
 
   async function handleShare() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -375,6 +378,18 @@ export default function MyCardScreen() {
           Activity
         </Text>
         <Text style={{ color: "white", fontWeight: "800", fontSize: 17, marginBottom: 4 }}>Redemptions</Text>
+        <View style={{ flexDirection: "row", gap: 10, marginTop: 10, marginBottom: 18 }}>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.34)", fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 }}>Total</Text>
+            <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>{user.redemptions?.length ?? 0}</Text>
+            <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 4 }}>{uniqueVenueCount} venues visited</Text>
+          </View>
+          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "rgba(255,255,255,0.34)", fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 }}>Tier Rewards</Text>
+            <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>{tierRedemptionCount}</Text>
+            <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 4 }}>{latestRedemption ? `Latest: ${latestRedemption.venue_name}` : "No redemptions yet"}</Text>
+          </View>
+        </View>
 
         {redemptionGroups.length === 0 ? (
           <View style={{
@@ -428,6 +443,11 @@ export default function MyCardScreen() {
                     <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 }}>
                       {r.venue_name} · {new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                     </Text>
+                    {r.tier ? (
+                      <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(251,201,0,0.15)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, marginTop: 6 }}>
+                        <Text style={{ color: YELLOW, fontSize: 10, fontWeight: "800", textTransform: "uppercase" }}>{r.tier} tier reward</Text>
+                      </View>
+                    ) : null}
                     {(r.limit_count || r.limit_period) && (
                       <Text style={{ color: "rgba(255,255,255,0.32)", fontSize: 11, marginTop: 4 }}>
                         Rule: {formatOfferRule(r.limit_count, r.limit_period)}

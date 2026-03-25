@@ -141,6 +141,31 @@ export default function BusinessOffersScreen() {
     setTierOffers((current) => current.map((offer) => (offer.tier === tier ? { ...offer, ...patch } : offer)));
   }
 
+  function duplicateStandard(id: number) {
+    setStandardOffers((current) => {
+      const source = current.find((offer) => offer.id === id);
+      const target = current.find((offer) => offer.id !== id && !offer.title.trim() && !offer.description.trim());
+      if (!source || !target) {
+        Alert.alert("No empty slot", "You need an empty standard offer slot before duplicating.");
+        return current;
+      }
+      return current.map((offer) =>
+        offer.id === target.id
+          ? {
+              ...offer,
+              title: source.title,
+              description: source.description,
+              paused: source.paused,
+              limit_count: source.limit_count,
+              limit_period: source.limit_period,
+              starts_at: source.starts_at,
+              ends_at: source.ends_at,
+            }
+          : offer
+      );
+    });
+  }
+
   async function handleSave() {
     if (!token || !data) return;
     setSaving(true);
@@ -243,12 +268,26 @@ export default function BusinessOffersScreen() {
                 <Text style={{ color: NAV, fontSize: 18, fontWeight: "900" }}>Offer {offer.id}</Text>
                 <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 12, marginTop: 4 }}>{offer.title.trim() || "No offer set yet"}</Text>
               </View>
-              <TouchableOpacity
-                onPress={() => setEditingStandard((current) => ({ ...current, [offer.id]: !current[offer.id] }))}
-                style={{ backgroundColor: "rgba(251,201,0,0.18)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-              >
-                <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>{editingStandard[offer.id] ? "Done" : "Edit"}</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => updateStandard(offer.id, { paused: !offer.paused })}
+                  style={{ backgroundColor: offer.paused ? "rgba(239,68,68,0.12)" : "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: offer.paused ? "#B91C1C" : "rgba(15,0,50,0.72)", fontSize: 11, fontWeight: "800" }}>{offer.paused ? "Paused" : "Pause"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => duplicateStandard(offer.id)}
+                  style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: "rgba(15,0,50,0.72)", fontSize: 11, fontWeight: "800" }}>Duplicate</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setEditingStandard((current) => ({ ...current, [offer.id]: !current[offer.id] }))}
+                  style={{ backgroundColor: "rgba(251,201,0,0.18)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>{editingStandard[offer.id] ? "Done" : "Edit"}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {editingStandard[offer.id] ? (
@@ -314,6 +353,7 @@ export default function BusinessOffersScreen() {
                 <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, fontWeight: "700" }}>
                   {formatOfferRule(offer.limit_count, offer.limit_period)}
                 </Text>
+                {offer.paused ? <Text style={{ color: "#B91C1C", fontSize: 12, fontWeight: "800" }}>Currently paused</Text> : null}
                 {(offer.starts_at || offer.ends_at) ? (
                   <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12 }}>
                     {offer.starts_at ? `Starts ${offer.starts_at}` : "Always on"}
@@ -335,12 +375,20 @@ export default function BusinessOffersScreen() {
                   <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>{meta.label}</Text>
                   <Text style={{ color: meta.colour, fontSize: 12, fontWeight: "700", marginTop: 2 }}>Unlocks at {meta.unlock}</Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => setEditingTier((current) => ({ ...current, [offer.tier]: !current[offer.tier] }))}
-                  style={{ backgroundColor: meta.colour + "22", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                >
-                  <Text style={{ color: meta.colour, fontSize: 11, fontWeight: "800" }}>{editingTier[offer.tier] ? "Done" : "Edit"}</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => updateTier(offer.tier, { paused: !offer.paused })}
+                    style={{ backgroundColor: offer.paused ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                  >
+                    <Text style={{ color: offer.paused ? "#FCA5A5" : "rgba(255,255,255,0.86)", fontSize: 11, fontWeight: "800" }}>{offer.paused ? "Paused" : "Pause"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setEditingTier((current) => ({ ...current, [offer.tier]: !current[offer.tier] }))}
+                    style={{ backgroundColor: meta.colour + "22", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                  >
+                    <Text style={{ color: meta.colour, fontSize: 11, fontWeight: "800" }}>{editingTier[offer.tier] ? "Done" : "Edit"}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {editingTier[offer.tier] ? (
@@ -401,6 +449,7 @@ export default function BusinessOffersScreen() {
                   <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 12, fontWeight: "700" }}>
                     {formatOfferRule(offer.limit_count, offer.limit_period)}
                   </Text>
+                  {offer.paused ? <Text style={{ color: "#FCA5A5", fontSize: 12, fontWeight: "800" }}>Currently paused</Text> : null}
                   {(offer.starts_at || offer.ends_at) ? (
                     <Text style={{ color: "rgba(255,255,255,0.68)", fontSize: 12 }}>
                       {offer.starts_at ? `Starts ${offer.starts_at}` : "Always on"}
