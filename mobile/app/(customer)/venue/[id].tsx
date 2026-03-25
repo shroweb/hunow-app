@@ -9,7 +9,7 @@ import * as Brightness from "expo-brightness";
 import Animated, {
   useSharedValue, withSpring, withSequence, withTiming, useAnimatedStyle,
 } from "react-native-reanimated";
-import { wordpress, getFeaturedImage, extractOffers, type WPEat, type WPOffer } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, extractOffers, type WPEat, type WPOffer, type WPTierOffer } from "@/lib/wordpress";
 import { decodeHtml, stripHtml } from "@/lib/utils";
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
 import { useAuth } from "@/context/AuthContext";
@@ -233,6 +233,102 @@ export default function VenueDetailScreen() {
                   <Text style={{ color: "white", fontSize: 13, fontWeight: "600" }}>{h.hours}</Text>
                 </View>
               ))}
+            </View>
+          )}
+
+          {/* ── Tier Offers ── */}
+          {venue.tier_offers && venue.tier_offers.length > 0 && (
+            <View style={{ marginBottom: 24 }}>
+              <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 4 }}>Member Tier Offers</Text>
+              <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, marginBottom: 14 }}>
+                Exclusive rewards for loyalty members
+              </Text>
+              {venue.tier_offers.map((to) => {
+                const TIER_CONFIG: Record<string, { min: number; label: string; colour: string; emoji: string }> = {
+                  bronze: { min: 500,  label: "Bronze", colour: "#CD7F32", emoji: "🥉" },
+                  silver: { min: 1000, label: "Silver", colour: "#C0C0C0", emoji: "🥈" },
+                  gold:   { min: 2000, label: "Gold",   colour: "#FBC900", emoji: "🥇" },
+                };
+                const cfg = TIER_CONFIG[to.tier];
+                if (!cfg) return null;
+                const userPoints = user?.points ?? 0;
+                const unlocked = userPoints >= cfg.min;
+                const ptsNeeded = cfg.min - userPoints;
+
+                return (
+                  <View
+                    key={to.tier}
+                    style={{
+                      backgroundColor: unlocked ? "white" : "rgba(255,255,255,0.04)",
+                      borderRadius: 18, overflow: "hidden", marginBottom: 10,
+                      borderWidth: 1.5,
+                      borderColor: unlocked ? cfg.colour + "88" : "rgba(255,255,255,0.08)",
+                      opacity: unlocked ? 1 : 0.75,
+                    }}
+                  >
+                    {/* Tier colour bar */}
+                    <View style={{ height: 4, backgroundColor: cfg.colour, opacity: unlocked ? 1 : 0.4 }} />
+                    <View style={{ padding: 16 }}>
+                      {/* Header row */}
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Text style={{ fontSize: 14 }}>{cfg.emoji}</Text>
+                          <View style={{ backgroundColor: cfg.colour + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                            <Text style={{ color: cfg.colour, fontSize: 11, fontWeight: "800" }}>{cfg.label.toUpperCase()}</Text>
+                          </View>
+                        </View>
+                        {unlocked ? (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(34,197,94,0.1)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                            <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
+                            <Text style={{ color: "#22C55E", fontSize: 11, fontWeight: "700" }}>UNLOCKED</Text>
+                          </View>
+                        ) : (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                            <Ionicons name="lock-closed" size={11} color="rgba(255,255,255,0.4)" />
+                            <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "600" }}>{ptsNeeded} pts to unlock</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Offer content */}
+                      <Text style={{ color: unlocked ? NAV : "white", fontWeight: "800", fontSize: 15, marginBottom: to.description ? 4 : 0 }}>
+                        {decodeHtml(to.title)}
+                      </Text>
+                      {to.description ? (
+                        <Text style={{ color: unlocked ? "rgba(15,0,50,0.5)" : "rgba(255,255,255,0.4)", fontSize: 13, lineHeight: 18 }}>
+                          {decodeHtml(to.description)}
+                        </Text>
+                      ) : null}
+
+                      {/* Redeemable monthly badge + CTA */}
+                      {unlocked && (
+                        <>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: YELLOW + "22", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
+                              <Ionicons name="star" size={11} color={NAV} />
+                              <Text style={{ color: NAV, fontSize: 12, fontWeight: "700" }}>+35 pts</Text>
+                            </View>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(15,0,50,0.08)", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
+                              <Ionicons name="refresh-outline" size={11} color="rgba(15,0,50,0.5)" />
+                              <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 12 }}>Once per month</Text>
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            style={{ marginTop: 12, backgroundColor: cfg.colour, borderRadius: 12, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                              setQrModalOffer({ id: -1, title: to.title, description: to.description, tier: to.tier } as any);
+                            }}
+                          >
+                            <Ionicons name="qr-code-outline" size={16} color={unlocked && to.tier === "silver" ? "white" : NAV} />
+                            <Text style={{ color: unlocked && to.tier === "silver" ? "white" : NAV, fontSize: 14, fontWeight: "800" }}>Show QR to Redeem</Text>
+                          </TouchableOpacity>
+                        </>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
 

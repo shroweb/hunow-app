@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { wordpress, extractOffers, type WPOffer } from "@/lib/wordpress";
+import { wordpress, extractOffers, type WPOffer, type WPTierOffer } from "@/lib/wordpress";
 import { lookupCard, wpRedeem } from "@/lib/wpAuth";
 import { decodeHtml } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
@@ -16,9 +16,10 @@ export default function ScanScreen() {
   const [scanning, setScanning] = useState(false);
   const [wpPostId, setWpPostId] = useState<number | null>(null);
   const [offers, setOffers] = useState<WPOffer[]>([]);
+  const [tierOffers, setTierOffers] = useState<WPTierOffer[]>([]);
   const [offersLoading, setOffersLoading] = useState(true);
   const [cardToken, setCardToken] = useState<string | null>(null);
-  const [cardInfo, setCardInfo] = useState<{ name: string; points: number } | null>(null);
+  const [cardInfo, setCardInfo] = useState<{ name: string; points: number; tier: string } | null>(null);
   const [selectedOffer, setSelectedOffer] = useState<WPOffer | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -37,7 +38,10 @@ export default function ScanScreen() {
       if (venueId) {
         try {
           const venue = await wordpress.getEatById(venueId);
-          if (venue) setOffers(extractOffers(venue));
+          if (venue) {
+            setOffers(extractOffers(venue));
+            setTierOffers(venue.tier_offers ?? []);
+          }
         } catch {
           // venue might not be found — show empty list
         }
@@ -55,7 +59,7 @@ export default function ScanScreen() {
     try {
       const member = await lookupCard(data, token);
       setCardToken(data);
-      setCardInfo({ name: member.name, points: member.points });
+      setCardInfo({ name: member.name, points: member.points, tier: member.tier ?? "standard" });
       setRedeemSuccess(false);
       setModalVisible(true);
     } catch (err: any) {
@@ -70,7 +74,8 @@ export default function ScanScreen() {
     setRedeeming(true);
 
     try {
-      const result = await wpRedeem(cardToken, selectedOffer.title, wpPostId, token);
+      const tier = (selectedOffer as any)._tier as string | undefined;
+      const result = await wpRedeem(cardToken, selectedOffer.title, wpPostId, token, tier);
       setPointsAwarded(result.points_awarded ?? 35);
       setRedeemSuccess(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -212,9 +217,16 @@ export default function ScanScreen() {
                       </View>
                     </View>
                     {cardInfo?.points !== undefined && (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 3 }}>
                         <Ionicons name="star" size={11} color="#FBC900" />
                         <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12 }}>{cardInfo.points} pts</Text>
+                        {cardInfo.tier && cardInfo.tier !== "standard" && (
+                          <View style={{ backgroundColor: cardInfo.tier === "gold" ? "rgba(251,201,0,0.15)" : cardInfo.tier === "silver" ? "rgba(192,192,192,0.15)" : "rgba(205,127,50,0.15)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                            <Text style={{ fontSize: 10, fontWeight: "700", color: cardInfo.tier === "gold" ? "#FBC900" : cardInfo.tier === "silver" ? "#C0C0C0" : "#CD7F32", textTransform: "uppercase" }}>
+                              {cardInfo.tier}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     )}
                   </View>
@@ -260,7 +272,69 @@ export default function ScanScreen() {
                       </View>
                     </TouchableOpacity>
                   ))}
+                  {/* Tier offers the member qualifies for */}
+                  {(() => {
+                    const TIER_MIN: Record<string, number> = { bronze: 500, silver: 1000, gold: 2000 };
+                    const TIER_COLOUR: Record<string, string> = { bronze: "#CD7F32", silver: "#C0C0C0", gold: "#FBC900" };
+                    const memberPoints = cardInfo?.points ?? 0;
+                    const qualifying = (offers as any[])
+                      .filter((o: any) => o._tier && memberPoints >= (TIER_MIN[o._tier] ?? 99999));
+                    // Also get tier offers from venue tier_offers loaded separately
+                    return null; // tier offers shown via separate section below
+                  })()}
                 </ScrollView>
+
+                {/* Tier offers section */}
+                {wpPostId && cardInfo && (() => {
+                  const TIER_MIN: Record<string, number> = { bronze: 500, silver: 1000, gold: 2000 };
+                  const TIER_COLOUR: Record<string, string> = { bronze: "#CD7F32", silver: "#C0C0C0", gold: "#FBC900" };
+                  const TIER_EMOJI: Record<string, string> = { bronze: "🥉", silver: "🥈", gold: "🥇" };
+                  const memberPoints = cardInfo.points;
+                  const qualifyingTierOffers = tierOffers.filter(to => memberPoints >= (TIER_MIN[to.tier] ?? 99999));
+                  if (qualifyingTierOffers.length === 0) return null;
+                  return (
+                    <View style={{ marginBottom: 12 }}>
+                      <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
+                        Tier Offers Available
+                      </Text>
+                      {qualifyingTierOffers.map((to) => {
+                        const colour = TIER_COLOUR[to.tier] ?? "#FBC900";
+                        const isSelected = selectedOffer?.id === -1 && (selectedOffer as any)._tier === to.tier;
+                        return (
+                          <TouchableOpacity
+                            key={to.tier}
+                            style={{
+                              borderRadius: 14, padding: 14, marginBottom: 8,
+                              backgroundColor: isSelected ? "rgba(251,201,0,0.08)" : "#F5F5F7",
+                              borderWidth: 1.5,
+                              borderColor: isSelected ? colour : "transparent",
+                            }}
+                            onPress={() => {
+                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                              setSelectedOffer({ id: -1, title: to.title, description: to.description, _tier: to.tier } as any);
+                            }}
+                          >
+                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                              <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                                  <Text style={{ fontSize: 12 }}>{TIER_EMOJI[to.tier]}</Text>
+                                  <View style={{ backgroundColor: colour + "22", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                                    <Text style={{ color: colour, fontSize: 10, fontWeight: "800" }}>{to.tier.toUpperCase()} OFFER</Text>
+                                  </View>
+                                </View>
+                                <Text style={{ color: "#0F0032", fontWeight: "700", fontSize: 14 }}>{to.title}</Text>
+                                {to.description ? (
+                                  <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, marginTop: 2 }} numberOfLines={1}>{to.description}</Text>
+                                ) : null}
+                              </View>
+                              {isSelected && <Ionicons name="checkmark-circle" size={22} color="#0F0032" style={{ marginLeft: 10 }} />}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
 
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <TouchableOpacity

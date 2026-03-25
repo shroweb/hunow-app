@@ -121,7 +121,7 @@ export async function fetchMe(token: string): Promise<WPUser> {
 export async function lookupCard(
   cardToken: string,
   jwt: string,
-): Promise<{ valid: boolean; name: string; user_id: number; points: number }> {
+): Promise<{ valid: boolean; name: string; user_id: number; points: number; tier: string }> {
   const res = await fetch(LOOKUP_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
@@ -140,11 +140,12 @@ export async function wpRedeem(
   offerTitle: string,
   wpPostId: number,
   jwt: string,
+  tier?: string,
 ): Promise<{ success: boolean; member_name: string; offer: string; venue: string; points_awarded: number }> {
   const res = await fetch(REDEEM_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
-    body: JSON.stringify({ card_token: cardToken, offer_title: offerTitle, wp_post_id: wpPostId }),
+    body: JSON.stringify({ card_token: cardToken, offer_title: offerTitle, wp_post_id: wpPostId, ...(tier ? { tier } : {}) }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { message?: string };

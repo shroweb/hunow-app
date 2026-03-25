@@ -13,6 +13,12 @@ export interface WPOffer {
   description: string;
 }
 
+export interface WPTierOffer {
+  tier: "bronze" | "silver" | "gold";
+  title: string;
+  description: string;
+}
+
 export interface WPEat {
   id: number;
   slug: string;
@@ -25,6 +31,7 @@ export interface WPEat {
     count: number;
     cta?: { text?: string; url?: string } | null;
   };
+  tier_offers?: WPTierOffer[];
   acf?: {
     is_featured?: string;
     opening_hours?: { day: string; hours: string }[];
