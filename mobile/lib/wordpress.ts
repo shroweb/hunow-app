@@ -8,9 +8,9 @@ interface EmbeddedMedia {
 }
 
 export interface WPOffer {
+  id: number;
   title: string;
   description: string;
-  index: number; // 1-20
 }
 
 export interface WPEat {
@@ -20,15 +20,22 @@ export interface WPEat {
   excerpt?: { rendered: string };
   featured_media?: number;
   _embedded?: { "wp:featuredmedia"?: EmbeddedMedia[] };
+  offers?: {
+    items: WPOffer[];
+    count: number;
+    cta?: { text?: string; url?: string } | null;
+  };
   acf?: {
     is_featured?: string;
     opening_hours?: { day: string; hours: string }[];
-    address?: string;
+    address?: unknown;
     phone?: string;
     website?: string;
+    offer_title?: string;
+    offer_description?: string;
     offer_cta_text?: string;
     offer_cta_url?: string;
-    [key: string]: unknown; // offer_title_1..20, offer_description_1..20
+    [key: string]: unknown;
   };
 }
 
@@ -37,12 +44,18 @@ export interface WPEvent {
   slug: string;
   title: { rendered: string };
   excerpt?: { rendered: string };
+  content?: { rendered: string };
   featured_media?: number;
   _embedded?: { "wp:featuredmedia"?: EmbeddedMedia[] };
   acf?: {
     event_date?: string;
     event_end?: string;
     is_featured?: string;
+    venue?: string;
+    location?: string;
+    ticket_url?: string;
+    price?: string;
+    [key: string]: unknown;
   };
 }
 
@@ -52,6 +65,7 @@ export interface WPPost {
   date: string;
   title: { rendered: string };
   excerpt?: { rendered: string };
+  content?: { rendered: string };
   featured_media?: number;
   _embedded?: { "wp:featuredmedia"?: EmbeddedMedia[] };
 }
@@ -77,32 +91,66 @@ interface ListParams {
   embed?: boolean;
 }
 
-/** Extract offers from a WP listing's ACF fields */
-export function extractOffers(acf: Record<string, unknown>): WPOffer[] {
-  const offers: WPOffer[] = [];
-  for (let i = 1; i <= 20; i++) {
-    const title = acf[`offer_title_${i}`] as string | undefined;
-    if (title?.trim()) {
-      offers.push({
-        index: i,
-        title: title.trim(),
-        description: ((acf[`offer_description_${i}`] as string) ?? "").trim(),
-      });
-    }
+/** Extract offers from a WP listing — reads from `offers.items` (venue portal system) */
+export function extractOffers(venue: WPEat): WPOffer[] {
+  // Primary: venue portal offers array
+  if (venue.offers?.items?.length) {
+    return venue.offers.items
+      .filter((o) => o.title?.trim())
+      .map((o) => ({ id: o.id, title: o.title.trim(), description: (o.description ?? "").trim() }));
   }
-  return offers;
+  // Fallback: single ACF offer_title field
+  const title = venue.acf?.offer_title?.trim();
+  if (title) {
+    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim() }];
+  }
+  return [];
 }
 
-/** Get the best available image URL from an embedded WP post */
+/** Get the best available image URL from an embedded WP post, with ACF fallbacks */
 export function getFeaturedImage(item: WPEat | WPEvent | WPActivity): string | null {
+  // 1. WP featured media via _embed
   const media = item._embedded?.["wp:featuredmedia"]?.[0];
-  if (!media) return null;
-  return (
-    media.media_details?.sizes?.medium_large?.source_url ??
-    media.media_details?.sizes?.medium?.source_url ??
-    media.source_url ??
-    null
-  );
+  if (media) {
+    const sizes = media.media_details?.sizes ?? {};
+    const url =
+      sizes.large?.source_url ??
+      sizes.medium_large?.source_url ??
+      sizes.medium?.source_url ??
+      media.source_url ??
+      null;
+    if (url) return url;
+  }
+
+  // 2. ACF image fields (listing_thumbnail → featured_image → gallery[0])
+  const acf = (item as WPEat).acf as Record<string, unknown> | undefined;
+  if (acf) {
+    const acfImg = (field: unknown): string | null => {
+      if (!field) return null;
+      if (typeof field === "string" && field.startsWith("http")) return field;
+      if (typeof field === "object") {
+        const f = field as Record<string, unknown>;
+        if (typeof f.url === "string") return f.url;
+        if (typeof f.source_url === "string") return f.source_url;
+      }
+      return null;
+    };
+
+    const candidates = ["listing_thumbnail", "featured_image", "image", "photo"];
+    for (const key of candidates) {
+      const url = acfImg(acf[key]);
+      if (url) return url;
+    }
+
+    // gallery array
+    const gallery = acf.gallery;
+    if (Array.isArray(gallery) && gallery.length > 0) {
+      const url = acfImg(gallery[0]);
+      if (url) return url;
+    }
+  }
+
+  return null;
 }
 
 async function get<T>(url: string, token?: string): Promise<T> {
@@ -157,6 +205,10 @@ export const wordpress = {
     return get<WPEat>(`${BASE}/eat/${id}?_embed=1`);
   },
 
+  getEventById(id: number): Promise<WPEvent> {
+    return get<WPEvent>(`${BASE}/event/${id}?_embed=1`);
+  },
+
   getEvents(params: ListParams = {}): Promise<WPEvent[]> {
     const q = buildQuery({
       per_page: params.perPage ?? 10,
@@ -175,6 +227,10 @@ export const wordpress = {
       _embed: 1,
     });
     return get<WPActivity[]>(`${BASE}/activity${q}`);
+  },
+
+  getPostById(id: number): Promise<WPPost> {
+    return get<WPPost>(`${BASE}/posts/${id}?_embed=1`);
   },
 
   getPosts(params: ListParams = {}): Promise<WPPost[]> {

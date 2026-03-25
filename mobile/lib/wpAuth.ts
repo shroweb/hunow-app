@@ -5,6 +5,9 @@ const JWT_URL = `${WP_BASE}/jwt-auth/v1/token`;
 const REGISTER_URL = `${WP_BASE}/hunow/v1/register`;
 const ME_URL = `${WP_BASE}/hunow/v1/me`;
 
+const LOOKUP_URL = `${WP_BASE}/hunow/v1/lookup-card`;
+const REDEEM_URL = `${WP_BASE}/hunow/v1/redeem`;
+
 const TOKEN_KEY = "wp_jwt_token";
 const USER_KEY = "wp_user";
 
@@ -112,6 +115,42 @@ export async function fetchMe(token: string): Promise<WPUser> {
   }
 
   return res.json() as Promise<WPUser>;
+}
+
+/** POST /hunow/v1/lookup-card — validate a scanned QR token, return member name + points */
+export async function lookupCard(
+  cardToken: string,
+  jwt: string,
+): Promise<{ valid: boolean; name: string; user_id: number; points: number }> {
+  const res = await fetch(LOOKUP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ card_token: cardToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Invalid card");
+  }
+  return res.json();
+}
+
+/** POST /hunow/v1/redeem — redeem an offer for a scanned member */
+export async function wpRedeem(
+  cardToken: string,
+  offerTitle: string,
+  wpPostId: number,
+  jwt: string,
+): Promise<{ success: boolean; member_name: string; offer: string; venue: string; points_awarded: number }> {
+  const res = await fetch(REDEEM_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ card_token: cardToken, offer_title: offerTitle, wp_post_id: wpPostId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Redemption failed");
+  }
+  return res.json();
 }
 
 /** Try to restore session from storage, returns null if not valid */

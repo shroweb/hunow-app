@@ -33,6 +33,15 @@ register_rest_route( 'hunow/v1', '/redeem', [
     'permission_callback' => [ $this, 'verify_jwt_token' ],
 ] );
 
+register_rest_route( 'hunow/v1', '/lookup-card', [
+    'methods'             => WP_REST_Server::CREATABLE,
+    'callback'            => [ $this, 'handle_lookup_card' ],
+    'permission_callback' => [ $this, 'verify_jwt_token' ],
+    'args'                => [
+        'card_token' => [ 'required' => true, 'sanitize_callback' => 'sanitize_text_field' ],
+    ],
+] );
+
 
 /**
  * HANDLER METHODS — Add these to the plugin class body
@@ -194,15 +203,40 @@ public function handle_redeem( WP_REST_Request $request ) {
         return new WP_Error( 'invalid_venue', 'Venue not found.', [ 'status' => 404 ] );
     }
 
-    // Verify offer exists on this venue's ACF fields
+    // Verify offer exists on this venue — check both ACF repeater and legacy offer_title_1-20 fields
     $offer_valid = false;
-    for ( $i = 1; $i <= 20; $i++ ) {
-        $title = get_field( "offer_title_{$i}", $wp_post_id );
-        if ( $title && trim( $title ) === trim( $offer_title ) ) {
-            $offer_valid = true;
-            break;
+
+    // Check offers repeater (venue portal system)
+    $offers_repeater = get_field( 'offers', $wp_post_id );
+    if ( is_array( $offers_repeater ) ) {
+        foreach ( $offers_repeater as $row ) {
+            $row_title = isset( $row['offer_title'] ) ? trim( $row['offer_title'] ) : '';
+            if ( $row_title && $row_title === trim( $offer_title ) ) {
+                $offer_valid = true;
+                break;
+            }
         }
     }
+
+    // Fallback: legacy offer_title_1 … offer_title_20 ACF fields
+    if ( ! $offer_valid ) {
+        for ( $i = 1; $i <= 20; $i++ ) {
+            $title = get_field( "offer_title_{$i}", $wp_post_id );
+            if ( $title && trim( $title ) === trim( $offer_title ) ) {
+                $offer_valid = true;
+                break;
+            }
+        }
+    }
+
+    // Final fallback: single offer_title ACF field
+    if ( ! $offer_valid ) {
+        $single = get_field( 'offer_title', $wp_post_id );
+        if ( $single && trim( $single ) === trim( $offer_title ) ) {
+            $offer_valid = true;
+        }
+    }
+
     if ( ! $offer_valid ) {
         return new WP_Error( 'invalid_offer', 'Offer not found on this venue.', [ 'status' => 404 ] );
     }
@@ -229,6 +263,44 @@ public function handle_redeem( WP_REST_Request $request ) {
         'offer'          => $offer_title,
         'venue'          => get_the_title( $wp_post_id ),
         'points_awarded' => 35,
+    ] );
+}
+
+/**
+ * POST /hunow/v1/lookup-card
+ * Business staff validate a QR code before showing the redeem modal.
+ * Returns the member's name and points — does NOT record any redemption.
+ *
+ * Body: { card_token }
+ */
+public function handle_lookup_card( WP_REST_Request $request ) {
+    $staff_user = wp_get_current_user();
+    $staff_role = get_user_meta( $staff_user->ID, 'hunow_role', true );
+    if ( $staff_role !== 'business' ) {
+        return new WP_Error( 'forbidden', 'Only business accounts can look up cards.', [ 'status' => 403 ] );
+    }
+
+    $card_token = sanitize_text_field( $request->get_param( 'card_token' ) );
+
+    $query   = new WP_User_Query( [
+        'meta_key'   => 'hunow_card_token',
+        'meta_value' => $card_token,
+        'number'     => 1,
+    ] );
+    $members = $query->get_results();
+
+    if ( empty( $members ) ) {
+        return new WP_Error( 'invalid_card', 'Invalid HU NOW card.', [ 'status' => 404 ] );
+    }
+
+    $member = $members[0];
+    $points = (int) get_user_meta( $member->ID, 'hunow_points', true );
+
+    return rest_ensure_response( [
+        'valid'   => true,
+        'name'    => $member->display_name,
+        'user_id' => $member->ID,
+        'points'  => $points,
     ] );
 }
 

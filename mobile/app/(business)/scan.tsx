@@ -3,52 +3,43 @@ import { View, Text, TouchableOpacity, ActivityIndicator, Modal, ScrollView, Ale
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "@/lib/supabase";
+import * as Haptics from "expo-haptics";
 import { wordpress, extractOffers, type WPOffer } from "@/lib/wordpress";
+import { lookupCard, wpRedeem } from "@/lib/wpAuth";
 import { decodeHtml } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { ConfettiCannon } from "@/components/ConfettiCannon";
 
 export default function ScanScreen() {
   const { user, token } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
-  const [businessId, setBusinessId] = useState<string | null>(null);
   const [wpPostId, setWpPostId] = useState<number | null>(null);
   const [offers, setOffers] = useState<WPOffer[]>([]);
   const [offersLoading, setOffersLoading] = useState(true);
-  const [scannedToken, setScannedToken] = useState<string | null>(null);
-  const [cardInfo, setCardInfo] = useState<{ cardId: string; userName: string } | null>(null);
+  const [cardToken, setCardToken] = useState<string | null>(null);
+  const [cardInfo, setCardInfo] = useState<{ name: string; points: number } | null>(null);
   const [selectedOffer, setSelectedOffer] = useState<WPOffer | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [apiUrl] = useState(process.env.EXPO_PUBLIC_API_URL ?? "");
+  const [redeemSuccess, setRedeemSuccess] = useState(false);
+  const [pointsAwarded, setPointsAwarded] = useState(35);
   const lastScan = useRef<string>("");
 
+  // Load this venue's offers from WordPress
   useEffect(() => {
     async function load() {
       if (!user) { setOffersLoading(false); return; }
 
-      // Get Supabase business record via wp_post_id stored in WP user meta
       const venueId = user.venue_id;
       setWpPostId(venueId || null);
 
       if (venueId) {
-        // Load Supabase business ID (still needed for redemption recording)
-        const { data: biz } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("wp_post_id", venueId)
-          .single();
-        if (biz) setBusinessId(biz.id);
-
-        // Load offers from WordPress ACF
         try {
           const venue = await wordpress.getEatById(venueId);
-          if (venue?.acf) {
-            setOffers(extractOffers(venue.acf as Record<string, unknown>));
-          }
+          if (venue) setOffers(extractOffers(venue));
         } catch {
-          // venue might be in a different CPT
+          // venue might not be found — show empty list
         }
       }
       setOffersLoading(false);
@@ -57,61 +48,34 @@ export default function ScanScreen() {
   }, [user]);
 
   async function handleScan({ data }: { data: string }) {
-    if (data === lastScan.current || !businessId) return;
+    if (data === lastScan.current || !token || !wpPostId) return;
     lastScan.current = data;
     setScanning(false);
 
-    const { data: card, error } = await supabase
-      .from("cards")
-      .select("id, user_id, profiles!inner(name)")
-      .eq("qr_token", data)
-      .single();
-
-    if (error || !card) {
-      Alert.alert("Invalid Card", "This QR code is not a valid HU NOW card.");
+    try {
+      const member = await lookupCard(data, token);
+      setCardToken(data);
+      setCardInfo({ name: member.name, points: member.points });
+      setRedeemSuccess(false);
+      setModalVisible(true);
+    } catch (err: any) {
+      Alert.alert("Invalid Card", err?.message ?? "This QR code is not a valid HU NOW card.");
       lastScan.current = "";
       setScanning(true);
-      return;
     }
-
-    setScannedToken(data);
-    setCardInfo({ cardId: card.id, userName: (card as any).profiles?.name ?? "Member" });
-    setModalVisible(true);
   }
 
   async function handleRedeem() {
-    if (!selectedOffer || !cardInfo || !businessId) return;
+    if (!selectedOffer || !cardToken || !wpPostId || !token) return;
     setRedeeming(true);
 
     try {
-      const response = await fetch(`${apiUrl}/redeem`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          card_id: cardInfo.cardId,
-          offer_title: selectedOffer.title,
-          offer_index: selectedOffer.index,
-          business_id: businessId,
-          wp_post_id: wpPostId,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        Alert.alert("Redemption Failed", result.message ?? "Could not redeem offer.");
-      } else {
-        Alert.alert(
-          "Redeemed! 🎉",
-          `${selectedOffer.title} redeemed for ${cardInfo.userName}.`,
-          [{ text: "Done", onPress: resetScan }]
-        );
-      }
-    } catch {
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      const result = await wpRedeem(cardToken, selectedOffer.title, wpPostId, token);
+      setPointsAwarded(result.points_awarded ?? 35);
+      setRedeemSuccess(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert("Redemption Failed", err?.message ?? "Could not redeem offer. Please try again.");
     }
 
     setRedeeming(false);
@@ -120,153 +84,205 @@ export default function ScanScreen() {
   function resetScan() {
     setModalVisible(false);
     setSelectedOffer(null);
-    setScannedToken(null);
+    setCardToken(null);
     setCardInfo(null);
+    setRedeemSuccess(false);
     lastScan.current = "";
     setScanning(true);
   }
 
-  if (!permission) return <View className="flex-1 bg-[#F5F5F7]" />;
+  if (!permission) return <View style={{ flex: 1, backgroundColor: "#F5F5F7" }} />;
 
   if (!permission.granted) {
     return (
-      <SafeAreaView className="flex-1 bg-[#F5F5F7] items-center justify-center px-8">
-        <View className="bg-[#0F0032]/5 rounded-full w-20 h-20 items-center justify-center mb-6">
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F7", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
+        <View style={{ backgroundColor: "rgba(15,0,50,0.05)", borderRadius: 50, width: 80, height: 80, alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
           <Ionicons name="camera-outline" size={36} color="#0F0032" />
         </View>
-        <Text className="text-[#0F0032] text-xl font-bold mb-3 text-center">Camera Access Required</Text>
-        <Text className="text-[#0F0032]/50 text-sm text-center mb-8">
+        <Text style={{ color: "#0F0032", fontSize: 20, fontWeight: "800", marginBottom: 10, textAlign: "center" }}>Camera Access Required</Text>
+        <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 14, textAlign: "center", marginBottom: 32, lineHeight: 20 }}>
           Camera permission is needed to scan HU NOW member cards.
         </Text>
-        <TouchableOpacity className="bg-brand-yellow rounded-2xl px-8 py-4" onPress={requestPermission}>
-          <Text className="text-[#0F0032] font-bold">Grant Permission</Text>
+        <TouchableOpacity
+          style={{ backgroundColor: "#FBC900", borderRadius: 16, paddingHorizontal: 32, paddingVertical: 14 }}
+          onPress={requestPermission}
+        >
+          <Text style={{ color: "#0F0032", fontWeight: "800", fontSize: 15 }}>Grant Permission</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
-  const hasNoWpId = !wpPostId;
-
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F5F7]">
-      <View className="px-5 pt-6 pb-4">
-        <Text className="text-[#0F0032] text-2xl font-bold mb-1">Scan Card</Text>
-        <Text className="text-[#0F0032]/40 text-sm">Point camera at a customer's HU NOW QR code</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F5F5F7" }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 16 }}>
+        <Text style={{ color: "#0F0032", fontSize: 24, fontWeight: "800", marginBottom: 4 }}>Scan Card</Text>
+        <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 14 }}>Point camera at a customer's HU NOW QR code</Text>
       </View>
 
-      {hasNoWpId && (
-        <View className="mx-5 bg-brand-yellow/20 border border-brand-yellow/40 rounded-2xl p-4 mb-4">
-          <Text className="text-[#0F0032] text-sm font-semibold mb-1">Venue not linked</Text>
-          <Text className="text-[#0F0032]/60 text-xs">Set your WordPress Post ID in Profile to load your offers.</Text>
+      {!wpPostId && (
+        <View style={{ marginHorizontal: 20, backgroundColor: "rgba(251,201,0,0.15)", borderWidth: 1, borderColor: "rgba(251,201,0,0.4)", borderRadius: 16, padding: 14, marginBottom: 12 }}>
+          <Text style={{ color: "#0F0032", fontSize: 13, fontWeight: "700", marginBottom: 2 }}>Venue not linked</Text>
+          <Text style={{ color: "rgba(15,0,50,0.6)", fontSize: 12 }}>Set your WordPress Post ID in Profile to load your offers.</Text>
         </View>
       )}
 
-      {/* Camera */}
-      <View className="mx-5 rounded-3xl overflow-hidden flex-1 max-h-72 mb-5"
-        style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16 }}
-      >
+      {/* Camera viewfinder */}
+      <View style={{
+        marginHorizontal: 20, borderRadius: 24, overflow: "hidden", flex: 1, maxHeight: 280, marginBottom: 20,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16,
+      }}>
         <CameraView
-          className="flex-1"
+          style={{ flex: 1 }}
           facing="back"
           onBarcodeScanned={scanning ? handleScan : undefined}
           barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         />
-        <View className="absolute inset-0 items-center justify-center">
-          <View className="w-52 h-52 border-2 border-brand-yellow rounded-3xl opacity-80" />
-          <View className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-brand-yellow rounded-tl-3xl" />
-          <View className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-brand-yellow rounded-tr-3xl" />
-          <View className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-brand-yellow rounded-bl-3xl" />
-          <View className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-brand-yellow rounded-br-3xl" />
+        {/* Corner guides */}
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 200, height: 200, borderWidth: 2, borderColor: "#FBC900", borderRadius: 24, opacity: 0.8 }} />
+          <View style={{ position: "absolute", top: "50%", left: "50%", marginTop: -100, marginLeft: -100, width: 28, height: 28, borderTopWidth: 4, borderLeftWidth: 4, borderColor: "#FBC900", borderTopLeftRadius: 20 }} />
+          <View style={{ position: "absolute", top: "50%", right: "50%", marginTop: -100, marginRight: -100, width: 28, height: 28, borderTopWidth: 4, borderRightWidth: 4, borderColor: "#FBC900", borderTopRightRadius: 20 }} />
+          <View style={{ position: "absolute", bottom: "50%", left: "50%", marginBottom: -100, marginLeft: -100, width: 28, height: 28, borderBottomWidth: 4, borderLeftWidth: 4, borderColor: "#FBC900", borderBottomLeftRadius: 20 }} />
+          <View style={{ position: "absolute", bottom: "50%", right: "50%", marginBottom: -100, marginRight: -100, width: 28, height: 28, borderBottomWidth: 4, borderRightWidth: 4, borderColor: "#FBC900", borderBottomRightRadius: 20 }} />
         </View>
       </View>
 
-      <View className="px-5">
+      {/* Start/Stop button */}
+      <View style={{ paddingHorizontal: 20 }}>
         <TouchableOpacity
-          className={`rounded-2xl py-4 items-center flex-row justify-center gap-2 ${scanning ? "bg-[#0F0032]" : "bg-brand-yellow"}`}
+          style={{
+            borderRadius: 16, paddingVertical: 16, alignItems: "center", flexDirection: "row",
+            justifyContent: "center", gap: 8,
+            backgroundColor: scanning ? "#0F0032" : "#FBC900",
+          }}
           onPress={() => setScanning((s) => !s)}
         >
           <Ionicons name={scanning ? "stop-circle-outline" : "qr-code-outline"} size={20} color={scanning ? "#FBC900" : "#0F0032"} />
-          <Text className={`font-bold ${scanning ? "text-brand-yellow" : "text-[#0F0032]"}`}>
+          <Text style={{ fontWeight: "800", fontSize: 16, color: scanning ? "#FBC900" : "#0F0032" }}>
             {scanning ? "Stop Scanning" : "Start Scanning"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Offer Selection Modal */}
+      {/* Offer Selection / Redemption Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white rounded-t-3xl p-6 max-h-[80%]">
-            {/* Member info */}
-            <View className="flex-row items-center mb-5">
-              <View className="bg-brand-yellow rounded-full w-12 h-12 items-center justify-center mr-3">
-                <Ionicons name="person" size={22} color="#0F0032" />
-              </View>
-              <View>
-                <Text className="text-[#0F0032]/50 text-xs">Card Scanned</Text>
-                <Text className="text-[#0F0032] font-bold text-lg">{cardInfo?.userName}</Text>
-              </View>
-            </View>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <View style={{ backgroundColor: "white", borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, maxHeight: "82%" }}>
 
-            <Text className="text-[#0F0032]/50 text-xs font-semibold uppercase tracking-wide mb-3">
-              Select offer to redeem
-            </Text>
-
-            <ScrollView className="mb-4" showsVerticalScrollIndicator={false}>
-              {offersLoading && (
-                <ActivityIndicator color="#0F0032" className="my-4" />
-              )}
-              {!offersLoading && offers.length === 0 && (
-                <View className="items-center py-6">
-                  <Text className="text-[#0F0032]/30 text-sm">No offers available for your venue.</Text>
-                  <Text className="text-[#0F0032]/20 text-xs mt-1">Set your WP Post ID in Profile settings.</Text>
+            {redeemSuccess ? (
+              /* ── Success ── */
+              <View style={{ alignItems: "center", paddingVertical: 16 }}>
+                <ConfettiCannon visible={redeemSuccess} />
+                <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(34,197,94,0.12)", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                  <Ionicons name="checkmark-circle" size={52} color="#22C55E" />
                 </View>
-              )}
-              {offers.map((offer) => (
+                <Text style={{ color: "#0F0032", fontSize: 26, fontWeight: "900", marginBottom: 6 }}>Redeemed!</Text>
+                <Text style={{ color: "#0F0032", fontWeight: "700", fontSize: 15, textAlign: "center", marginBottom: 4 }}>
+                  {selectedOffer ? decodeHtml(selectedOffer.title) : ""}
+                </Text>
+                <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 13, textAlign: "center", marginBottom: 20 }}>
+                  for {cardInfo?.name ?? "member"}
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(251,201,0,0.12)", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 28 }}>
+                  <Ionicons name="star" size={14} color="#FBC900" />
+                  <Text style={{ color: "#0F0032", fontWeight: "800", fontSize: 14 }}>{pointsAwarded} points awarded</Text>
+                </View>
                 <TouchableOpacity
-                  key={offer.index}
-                  className={`rounded-2xl p-4 mb-2 border ${selectedOffer?.index === offer.index
-                    ? "bg-brand-yellow/10 border-brand-yellow"
-                    : "bg-[#F5F5F7] border-transparent"
-                    }`}
-                  onPress={() => setSelectedOffer(offer)}
+                  style={{ width: "100%", backgroundColor: "#0F0032", borderRadius: 16, paddingVertical: 16, alignItems: "center" }}
+                  onPress={resetScan}
                 >
-                  <View className="flex-row items-center justify-between">
-                    <View className="flex-1">
-                      <Text className={`font-semibold text-sm ${selectedOffer?.index === offer.index ? "text-[#0F0032]" : "text-[#0F0032]"}`}>
-                        {decodeHtml(offer.title)}
-                      </Text>
-                      {offer.description ? (
-                        <Text className="text-[#0F0032]/50 text-xs mt-0.5" numberOfLines={1}>
-                          {decodeHtml(offer.description)}
-                        </Text>
-                      ) : null}
+                  <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* ── Offer Selection ── */
+              <>
+                {/* Member info */}
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+                  <View style={{ backgroundColor: "#FBC900", borderRadius: 24, width: 48, height: 48, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                    <Ionicons name="person" size={22} color="#0F0032" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, marginBottom: 2 }}>Card Scanned</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <Text style={{ color: "#0F0032", fontWeight: "800", fontSize: 17 }}>{cardInfo?.name}</Text>
+                      <View style={{ backgroundColor: "rgba(34,197,94,0.1)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: "rgba(34,197,94,0.35)" }}>
+                        <Text style={{ color: "#16A34A", fontSize: 10, fontWeight: "700" }}>VALID MEMBER</Text>
+                      </View>
                     </View>
-                    {selectedOffer?.index === offer.index && (
-                      <Ionicons name="checkmark-circle" size={22} color="#0F0032" />
+                    {cardInfo?.points !== undefined && (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+                        <Ionicons name="star" size={11} color="#FBC900" />
+                        <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12 }}>{cardInfo.points} pts</Text>
+                      </View>
                     )}
                   </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                </View>
 
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                className="flex-1 bg-[#F5F5F7] rounded-2xl py-4 items-center"
-                onPress={resetScan}
-              >
-                <Text className="text-[#0F0032]/60 font-semibold">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className={`flex-1 rounded-2xl py-4 items-center ${selectedOffer ? "bg-brand-yellow" : "bg-brand-yellow/30"}`}
-                onPress={handleRedeem}
-                disabled={!selectedOffer || redeeming}
-              >
-                {redeeming
-                  ? <ActivityIndicator color="#0F0032" />
-                  : <Text className={`font-bold ${selectedOffer ? "text-[#0F0032]" : "text-[#0F0032]/40"}`}>Redeem</Text>
-                }
-              </TouchableOpacity>
-            </View>
+                <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
+                  Select offer to redeem
+                </Text>
+
+                <ScrollView style={{ marginBottom: 16 }} showsVerticalScrollIndicator={false}>
+                  {offersLoading && <ActivityIndicator color="#0F0032" style={{ marginVertical: 16 }} />}
+                  {!offersLoading && offers.length === 0 && (
+                    <View style={{ alignItems: "center", paddingVertical: 24 }}>
+                      <Text style={{ color: "rgba(15,0,50,0.3)", fontSize: 14 }}>No offers available for your venue.</Text>
+                      <Text style={{ color: "rgba(15,0,50,0.2)", fontSize: 12, marginTop: 4 }}>Set your WP Post ID in Profile settings.</Text>
+                    </View>
+                  )}
+                  {offers.map((offer) => (
+                    <TouchableOpacity
+                      key={offer.id}
+                      style={{
+                        borderRadius: 14, padding: 14, marginBottom: 8,
+                        backgroundColor: selectedOffer?.id === offer.id ? "rgba(251,201,0,0.08)" : "#F5F5F7",
+                        borderWidth: 1.5,
+                        borderColor: selectedOffer?.id === offer.id ? "#FBC900" : "transparent",
+                      }}
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedOffer(offer); }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: "#0F0032", fontWeight: "700", fontSize: 14 }}>
+                            {decodeHtml(offer.title)}
+                          </Text>
+                          {offer.description ? (
+                            <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, marginTop: 3 }} numberOfLines={1}>
+                              {decodeHtml(offer.description)}
+                            </Text>
+                          ) : null}
+                        </View>
+                        {selectedOffer?.id === offer.id && (
+                          <Ionicons name="checkmark-circle" size={22} color="#0F0032" style={{ marginLeft: 10 }} />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: "#F5F5F7", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                    onPress={resetScan}
+                  >
+                    <Text style={{ color: "rgba(15,0,50,0.55)", fontWeight: "700" }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, borderRadius: 14, paddingVertical: 15, alignItems: "center", backgroundColor: selectedOffer ? "#FBC900" : "rgba(251,201,0,0.3)" }}
+                    onPress={handleRedeem}
+                    disabled={!selectedOffer || redeeming}
+                  >
+                    {redeeming
+                      ? <ActivityIndicator color="#0F0032" />
+                      : <Text style={{ fontWeight: "800", color: selectedOffer ? "#0F0032" : "rgba(15,0,50,0.35)" }}>Redeem</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
           </View>
         </View>
       </Modal>

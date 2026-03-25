@@ -1,5 +1,6 @@
 import "../global.css";
 import { useEffect } from "react";
+import { View, ActivityIndicator } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
@@ -23,6 +24,14 @@ function RootNavigator() {
       }
     }
   }, [user, loading, segments]);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0F0032", alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator color="#FBC900" size="large" />
+      </View>
+    );
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

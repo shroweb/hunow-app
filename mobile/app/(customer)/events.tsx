@@ -1,88 +1,109 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, ActivityIndicator, Image, TouchableOpacity } from "react-native";
+import { View, Text, FlatList, Image, TouchableOpacity, Dimensions, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, type WPEvent } from "@/lib/wordpress";
-import { decodeHtml, stripHtml, parseEventDate } from "@/lib/utils";
+import { decodeHtml, parseEventDate } from "@/lib/utils";
+import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const CARD_GAP = 10;
+const SIDE_PAD = 16;
+const CARD_W = (Dimensions.get("window").width - SIDE_PAD * 2 - CARD_GAP) / 2;
 
 export default function EventsScreen() {
+  const router = useRouter();
   const [events, setEvents] = useState<WPEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    wordpress.getEvents({ perPage: 20 }).then((data) => {
-      setEvents(data);
-      setLoading(false);
-    });
-  }, []);
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    const data = await wordpress.getEvents({ perPage: 20 });
+    setEvents(data);
+    setLoading(false);
+    setRefreshing(false);
+  }
+
+  function onRefresh() { setRefreshing(true); load(); }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
-      {/* Yellow header */}
       <View style={{ backgroundColor: YELLOW, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14 }}>
         <Text style={{ color: NAV, fontSize: 28, fontWeight: "900", letterSpacing: -0.5 }}>EVENTS</Text>
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color={YELLOW} />
-        </View>
+        <VenueCardSkeleton count={6} />
       ) : (
         <FlatList
           data={events}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16, gap: 12 }}
+          numColumns={2}
+          columnWrapperStyle={{ gap: CARD_GAP, paddingHorizontal: SIDE_PAD }}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 110, gap: CARD_GAP }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={YELLOW} title="Loading..." titleColor="rgba(255,255,255,0.4)" />
+          }
           renderItem={({ item }) => {
             const img = getFeaturedImage(item);
             const date = item.acf?.event_date ? parseEventDate(item.acf.event_date) : null;
             return (
-              <View style={{
-                backgroundColor: "white", borderRadius: 18, overflow: "hidden",
-                shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
-              }}>
-                {img && (
-                  <Image source={{ uri: img }} style={{ width: "100%", height: 160 }} resizeMode="cover" />
+              <TouchableOpacity
+                activeOpacity={0.88}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(`/(customer)/event/${item.id}` as any); }}
+                style={{
+                  width: CARD_W,
+                  backgroundColor: "white",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.18,
+                  shadowRadius: 10,
+                  elevation: 5,
+                }}
+              >
+                {/* Image — placeholder gradient if none */}
+                {img ? (
+                  <Image source={{ uri: img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
+                ) : (
+                  <View style={{ width: "100%", height: 110, backgroundColor: "#1a0052", alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="calendar" size={32} color={YELLOW} />
+                  </View>
                 )}
-                <View style={{ padding: 14, flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-                  {/* Date badge */}
+
+                {/* Date badge overlay */}
+                {date && (
                   <View style={{
-                    backgroundColor: YELLOW, borderRadius: 12,
-                    paddingHorizontal: 12, paddingVertical: 8,
-                    alignItems: "center", minWidth: 52,
+                    position: "absolute", top: 8, left: 8,
+                    backgroundColor: YELLOW, borderRadius: 8,
+                    paddingHorizontal: 8, paddingVertical: 4,
+                    alignItems: "center",
                   }}>
-                    {date ? (
-                      <>
-                        <Text style={{ color: NAV, fontWeight: "900", fontSize: 22, lineHeight: 24 }}>{date.getDate()}</Text>
-                        <Text style={{ color: NAV, fontSize: 10, fontWeight: "700", textTransform: "uppercase" }}>
-                          {date.toLocaleDateString("en-GB", { month: "short" })}
-                        </Text>
-                      </>
-                    ) : (
-                      <Ionicons name="calendar-outline" size={20} color={NAV} />
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: NAV, fontWeight: "700", fontSize: 15, marginBottom: 4 }} numberOfLines={2}>
-                      {decodeHtml(item.title.rendered)}
+                    <Text style={{ color: NAV, fontWeight: "900", fontSize: 16, lineHeight: 18 }}>{date.getDate()}</Text>
+                    <Text style={{ color: NAV, fontSize: 9, fontWeight: "700", textTransform: "uppercase" }}>
+                      {date.toLocaleDateString("en-GB", { month: "short" })}
                     </Text>
-                    {date && (
-                      <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 12 }}>
-                        {date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
-                      </Text>
-                    )}
-                    {item.excerpt?.rendered ? (
-                      <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 12, marginTop: 4 }} numberOfLines={2}>
-                        {stripHtml(item.excerpt.rendered)}
-                      </Text>
-                    ) : null}
                   </View>
+                )}
+
+                <View style={{ padding: 10 }}>
+                  <Text style={{ color: NAV, fontWeight: "700", fontSize: 13, lineHeight: 17 }} numberOfLines={2}>
+                    {decodeHtml(item.title.rendered)}
+                  </Text>
+                  {date && (
+                    <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 11, marginTop: 4 }} numberOfLines={1}>
+                      {date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                    </Text>
+                  )}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           }}
           ListEmptyComponent={
