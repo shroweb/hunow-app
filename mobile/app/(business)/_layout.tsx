@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function BusinessLayout() {
   return (
@@ -8,18 +9,52 @@ export default function BusinessLayout() {
         tabBarStyle: {
           backgroundColor: "#0F0032",
           borderTopColor: "rgba(255,255,255,0.1)",
-          height: 60,
-          paddingBottom: 8,
+          height: 74,
+          paddingBottom: 10,
+          paddingTop: 8,
         },
         tabBarActiveTintColor: "#FBC900",
         tabBarInactiveTintColor: "rgba(255,255,255,0.4)",
-        tabBarLabelStyle: { fontSize: 11 },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "700", marginTop: 2 },
+        tabBarItemStyle: { justifyContent: "center" },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: "Dashboard" }} />
-      <Tabs.Screen name="offers" options={{ title: "Offers" }} />
-      <Tabs.Screen name="scan" options={{ title: "Scan Card" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Dashboard",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "grid" : "grid-outline"} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="offers"
+        options={{
+          title: "Offers",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "pricetags" : "pricetags-outline"} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="scan"
+        options={{
+          title: "Scan Card",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "scan-circle" : "scan-circle-outline"} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

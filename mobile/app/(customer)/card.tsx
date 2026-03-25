@@ -180,8 +180,8 @@ export default function MyCardScreen() {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
           <View>
             <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>My Card</Text>
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "900", letterSpacing: -0.5 }}>
-              {user.display_name}
+            <Text style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, fontWeight: "600" }}>
+              Your HU NOW membership
             </Text>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
