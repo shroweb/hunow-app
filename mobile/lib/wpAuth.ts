@@ -7,6 +7,7 @@ const ME_URL = `${WP_BASE}/hunow/v1/me`;
 
 const LOOKUP_URL = `${WP_BASE}/hunow/v1/lookup-card`;
 const REDEEM_URL = `${WP_BASE}/hunow/v1/redeem`;
+const OFFER_STATUSES_URL = `${WP_BASE}/hunow/v1/offer-statuses`;
 
 const TOKEN_KEY = "wp_jwt_token";
 const USER_KEY = "wp_user";
@@ -19,6 +20,7 @@ export interface WPUser {
   card_token: string;
   card_created: string;
   points: number;
+  tier?: string;
   venue_id: number;
   redemptions: WPRedemption[];
 }
@@ -30,6 +32,35 @@ export interface WPRedemption {
   redeemed_by: number;
   timestamp: number;
   date: string;
+  tier?: string;
+  offer_index?: number;
+  limit_count?: number;
+  limit_period?: "week" | "month" | "year" | "ever";
+}
+
+export interface OfferStatus {
+  available: boolean;
+  used_count: number;
+  remaining_count: number;
+  status_label: string;
+  message: string;
+  next_available_at?: string | null;
+  next_available_text?: string | null;
+  limit_count: number;
+  limit_period: "week" | "month" | "year" | "ever";
+  rule_label: string;
+  offer_index?: number;
+  tier?: "bronze" | "silver" | "gold";
+  unlocked?: boolean;
+  required_points?: number;
+  points_needed?: number;
+}
+
+export interface OfferStatusesResponse {
+  member_points: number;
+  member_tier: string;
+  standard: OfferStatus[];
+  tier: OfferStatus[];
 }
 
 /** Persist token to AsyncStorage */
@@ -121,15 +152,33 @@ export async function fetchMe(token: string): Promise<WPUser> {
 export async function lookupCard(
   cardToken: string,
   jwt: string,
-): Promise<{ valid: boolean; name: string; user_id: number; points: number; tier: string }> {
+  wpPostId?: number,
+): Promise<{ valid: boolean; name: string; user_id: number; points: number; tier: string; offer_statuses?: OfferStatusesResponse | null }> {
   const res = await fetch(LOOKUP_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
-    body: JSON.stringify({ card_token: cardToken }),
+    body: JSON.stringify({ card_token: cardToken, ...(wpPostId ? { wp_post_id: wpPostId } : {}) }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { message?: string };
     throw new Error(err.message ?? "Invalid card");
+  }
+  return res.json();
+}
+
+export async function fetchOfferStatuses(
+  wpPostId: number,
+  jwt: string,
+  cardToken?: string,
+): Promise<OfferStatusesResponse> {
+  const res = await fetch(OFFER_STATUSES_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ wp_post_id: wpPostId, ...(cardToken ? { card_token: cardToken } : {}) }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not load offer statuses");
   }
   return res.json();
 }

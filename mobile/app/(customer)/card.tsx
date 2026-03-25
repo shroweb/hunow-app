@@ -3,15 +3,18 @@ import { View, Text, ScrollView, Share, TouchableOpacity, useWindowDimensions, R
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import QRCode from "react-native-qrcode-svg";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { useSharedValue, withSpring, withTiming, useAnimatedStyle } from "react-native-reanimated";
 import { useAuth } from "@/context/AuthContext";
 import { PointsInfoModal } from "@/components/PointsInfoModal";
 import type { WPRedemption } from "@/lib/wpAuth";
+import { formatOfferRule } from "@/lib/wordpress";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const SEEN_TIER_KEY = "hunow_seen_member_tier";
 
 const TIERS = [
   { name: "Standard", min: 0,    max: 499,  colour: "rgba(255,255,255,0.5)" },
@@ -96,6 +99,7 @@ export default function MyCardScreen() {
   const qrSize = Math.floor(cardWidth * 0.42);
   const [showPointsInfo, setShowPointsInfo] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [celebrationTier, setCelebrationTier] = useState<string | null>(null);
 
   // QR reveal animation
   const qrScale = useSharedValue(0);
@@ -116,6 +120,21 @@ export default function MyCardScreen() {
     await refreshUser();
     setRefreshing(false);
   }
+
+  useEffect(() => {
+    if (!user) return;
+    const currentTierName = getTier(user.points ?? 0).name;
+    async function maybeCelebrateTier() {
+      const seenTier = await AsyncStorage.getItem(SEEN_TIER_KEY);
+      if (seenTier !== currentTierName) {
+        if (currentTierName !== "Standard") {
+          setCelebrationTier(currentTierName);
+        }
+        await AsyncStorage.setItem(SEEN_TIER_KEY, currentTierName);
+      }
+    }
+    maybeCelebrateTier();
+  }, [user]);
 
   if (!user) return null;
 
@@ -292,6 +311,27 @@ export default function MyCardScreen() {
           <Text style={{ color: "white", fontWeight: "700" }}>Share My Card</Text>
         </TouchableOpacity>
 
+        {celebrationTier && (
+          <TouchableOpacity
+            onPress={() => setCelebrationTier(null)}
+            style={{
+              backgroundColor: YELLOW, borderRadius: 18, padding: 16, marginBottom: 24,
+              borderWidth: 1, borderColor: YELLOW, shadowColor: YELLOW,
+              shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 16,
+            }}
+          >
+            <Text style={{ color: NAV, fontSize: 12, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>
+              New Tier Unlocked
+            </Text>
+            <Text style={{ color: NAV, fontSize: 18, fontWeight: "900", marginBottom: 4 }}>
+              Welcome to {celebrationTier}
+            </Text>
+            <Text style={{ color: "rgba(15,0,50,0.7)", fontSize: 13, lineHeight: 18 }}>
+              You can now unlock more venue rewards across HU NOW. Check venue pages to see what&apos;s newly available.
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* ── Redemption Timeline ── */}
         <Text style={{ color: "white", fontWeight: "800", fontSize: 17, marginBottom: 4 }}>Redemptions</Text>
 
@@ -347,6 +387,11 @@ export default function MyCardScreen() {
                     <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 }}>
                       {r.venue_name} · {new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                     </Text>
+                    {(r.limit_count || r.limit_period) && (
+                      <Text style={{ color: "rgba(255,255,255,0.32)", fontSize: 11, marginTop: 4 }}>
+                        Rule: {formatOfferRule(r.limit_count, r.limit_period)}
+                      </Text>
+                    )}
                   </View>
                   {/* Points pill */}
                   <View style={{ backgroundColor: YELLOW + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 3 }}>

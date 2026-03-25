@@ -10,6 +10,7 @@ import Animated, {
   useSharedValue, withSpring, withSequence, withTiming, useAnimatedStyle,
 } from "react-native-reanimated";
 import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, type WPEat, type WPOffer } from "@/lib/wordpress";
+import { fetchOfferStatuses, type OfferStatus } from "@/lib/wpAuth";
 import { decodeHtml, stripHtml } from "@/lib/utils";
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
 import { useAuth } from "@/context/AuthContext";
@@ -33,6 +34,7 @@ export default function VenueDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [isFavourite, setIsFavourite] = useState(false);
   const [qrModalOffer, setQrModalOffer] = useState<WPOffer | null>(null);
+  const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
   const savedBrightness = useRef<number | null>(null);
 
   // Favourite heart animation
@@ -51,6 +53,19 @@ export default function VenueDetailScreen() {
     }
     load();
   }, [id]);
+
+  useEffect(() => {
+    async function loadStatuses() {
+      if (!token || !id) return;
+      const data = await fetchOfferStatuses(Number(id), token).catch(() => null);
+      if (!data) return;
+      setOfferStatuses({
+        standard: Object.fromEntries((data.standard ?? []).map((s) => [s.offer_index ?? 0, s])),
+        tier: Object.fromEntries((data.tier ?? []).map((s) => [s.tier ?? "", s])),
+      });
+    }
+    loadStatuses();
+  }, [id, token]);
 
   // Load real favourite state from WP
   useEffect(() => {
@@ -261,7 +276,9 @@ export default function VenueDetailScreen() {
                 const cfg = TIER_CONFIG[to.tier];
                 if (!cfg) return null;
                 const userPoints = user?.points ?? 0;
-                const unlocked = userPoints >= cfg.min;
+                const status = offerStatuses.tier[to.tier];
+                const unlocked = status?.unlocked ?? (userPoints >= cfg.min);
+                const availableNow = status ? status.available : true;
                 const ptsNeeded = Math.max(cfg.min - userPoints, 0);
                 const progress = Math.min(userPoints / cfg.min, 1);
 
@@ -296,14 +313,21 @@ export default function VenueDetailScreen() {
                               </View>
                             </View>
                             <Text style={{ color: unlocked ? "rgba(15,0,50,0.55)" : "rgba(255,255,255,0.42)", fontSize: 12, marginTop: 3 }}>
-                              {unlocked ? `${formatOfferRule(to.limit_count, to.limit_period)} available` : `${ptsNeeded} more points to unlock`}
+                              {unlocked
+                                ? (status?.available ? `${formatOfferRule(to.limit_count, to.limit_period)} available` : status?.status_label ?? "Currently unavailable")
+                                : `${ptsNeeded} more points to unlock`}
                             </Text>
                           </View>
                         </View>
-                        {unlocked ? (
+                        {unlocked && availableNow ? (
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(34,197,94,0.11)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
                             <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
                             <Text style={{ color: "#22C55E", fontSize: 11, fontWeight: "800" }}>UNLOCKED</Text>
+                          </View>
+                        ) : unlocked ? (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(245,158,11,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
+                            <Ionicons name="time-outline" size={12} color="#F59E0B" />
+                            <Text style={{ color: "#F59E0B", fontSize: 11, fontWeight: "800" }}>USED</Text>
                           </View>
                         ) : (
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
@@ -348,17 +372,26 @@ export default function VenueDetailScreen() {
                         </View>
                       </View>
 
-                      {unlocked ? (
-                          <TouchableOpacity
-                            style={{ marginTop: 14, backgroundColor: cfg.colour, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
-                            onPress={() => {
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                              setQrModalOffer({ id: -1, title: to.title, description: to.description, tier: to.tier } as any);
+                      {unlocked && availableNow ? (
+                        <TouchableOpacity
+                          style={{ marginTop: 14, backgroundColor: cfg.colour, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            setQrModalOffer({ id: -1, title: to.title, description: to.description, tier: to.tier } as any);
                             }}
                           >
-                            <Ionicons name="qr-code-outline" size={16} color={NAV} />
-                            <Text style={{ color: NAV, fontSize: 14, fontWeight: "900" }}>Show QR to Redeem</Text>
-                          </TouchableOpacity>
+                          <Ionicons name="qr-code-outline" size={16} color={NAV} />
+                          <Text style={{ color: NAV, fontSize: 14, fontWeight: "900" }}>Show QR to Redeem</Text>
+                        </TouchableOpacity>
+                      ) : unlocked ? (
+                        <View style={{ marginTop: 14, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, backgroundColor: "rgba(245,158,11,0.10)", borderWidth: 1, borderColor: "rgba(245,158,11,0.24)" }}>
+                          <Text style={{ color: unlocked ? NAV : "white", fontSize: 12, fontWeight: "800" }}>
+                            {status?.status_label ?? "Currently unavailable"}
+                          </Text>
+                          <Text style={{ color: unlocked ? "rgba(15,0,50,0.58)" : "rgba(255,255,255,0.55)", fontSize: 12, marginTop: 4, lineHeight: 17 }}>
+                            {status?.next_available_text ?? status?.message ?? "This reward has already been used for the current period."}
+                          </Text>
+                        </View>
                       ) : (
                         <View style={{ marginTop: 14, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, paddingRight: 10 }}>
@@ -411,6 +444,8 @@ export default function VenueDetailScreen() {
               offers.map((offer) => {
                 const expiryRaw = venue.acf?.offer_expiry as string | undefined;
                 const expiryLabel = expiryRaw ? getExpiryBadgeLabel(expiryRaw) : null;
+                const status = offerStatuses.standard[offer.id];
+                const availableNow = status ? status.available : true;
 
                 return (
                   <View
@@ -419,9 +454,10 @@ export default function VenueDetailScreen() {
                       backgroundColor: "rgba(255,255,255,0.98)", borderRadius: 22, overflow: "hidden",
                       marginBottom: 12,
                       borderWidth: 1.5,
-                      borderColor: YELLOW + "66",
+                      borderColor: availableNow ? YELLOW + "66" : "rgba(245,158,11,0.35)",
                       shadowColor: YELLOW, shadowOffset: { width: 0, height: 8 },
-                      shadowOpacity: 0.18, shadowRadius: 14, elevation: 4,
+                      shadowOpacity: availableNow ? 0.18 : 0.08, shadowRadius: 14, elevation: 4,
+                      opacity: availableNow ? 1 : 0.88,
                     }}
                   >
                     <View style={{ backgroundColor: YELLOW + "18", borderBottomWidth: 1, borderBottomColor: YELLOW + "33", paddingHorizontal: 16, paddingVertical: 14 }}>
@@ -459,6 +495,12 @@ export default function VenueDetailScreen() {
                           <Ionicons name="people-outline" size={11} color={NAV} />
                           <Text style={{ color: NAV, fontSize: 11, fontWeight: "700" }}>{formatOfferRule(offer.limit_count, offer.limit_period)}</Text>
                         </View>
+                        {status ? (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: availableNow ? "rgba(34,197,94,0.10)" : "rgba(245,158,11,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                            <Ionicons name={availableNow ? "checkmark-circle-outline" : "time-outline"} size={11} color={availableNow ? "#16A34A" : "#B45309"} />
+                            <Text style={{ color: availableNow ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "700" }}>{status.status_label}</Text>
+                          </View>
+                        ) : null}
                         {expiryLabel && (
                           <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: AMBER + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                             <Ionicons name="time-outline" size={11} color={AMBER} />
@@ -477,20 +519,29 @@ export default function VenueDetailScreen() {
                         </TouchableOpacity>
                       )}
 
-                      <TouchableOpacity
-                        style={{
-                          marginTop: 12, backgroundColor: YELLOW, borderRadius: 14,
-                          paddingVertical: 13, alignItems: "center", flexDirection: "row",
-                          justifyContent: "center", gap: 8,
-                        }}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                          setQrModalOffer(offer);
-                        }}
-                      >
-                        <Ionicons name="qr-code-outline" size={16} color={NAV} />
-                        <Text style={{ color: NAV, fontSize: 14, fontWeight: "900" }}>Show QR to Redeem</Text>
-                      </TouchableOpacity>
+                      {availableNow ? (
+                        <TouchableOpacity
+                          style={{
+                            marginTop: 12, backgroundColor: YELLOW, borderRadius: 14,
+                            paddingVertical: 13, alignItems: "center", flexDirection: "row",
+                            justifyContent: "center", gap: 8,
+                          }}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            setQrModalOffer(offer);
+                          }}
+                        >
+                          <Ionicons name="qr-code-outline" size={16} color={NAV} />
+                          <Text style={{ color: NAV, fontSize: 14, fontWeight: "900" }}>Show QR to Redeem</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={{ marginTop: 12, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 14, backgroundColor: "rgba(245,158,11,0.10)", borderWidth: 1, borderColor: "rgba(245,158,11,0.24)" }}>
+                          <Text style={{ color: NAV, fontSize: 12, fontWeight: "800" }}>{status?.status_label ?? "Currently unavailable"}</Text>
+                          <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 12, marginTop: 4, lineHeight: 17 }}>
+                            {status?.next_available_text ?? status?.message ?? "This offer has already been used for the current period."}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                 );

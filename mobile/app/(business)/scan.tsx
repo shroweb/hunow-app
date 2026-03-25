@@ -5,7 +5,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, extractOffers, formatOfferRule, type WPOffer, type WPTierOffer } from "@/lib/wordpress";
-import { lookupCard, wpRedeem } from "@/lib/wpAuth";
+import { lookupCard, wpRedeem, type OfferStatus } from "@/lib/wpAuth";
 import { decodeHtml } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { ConfettiCannon } from "@/components/ConfettiCannon";
@@ -20,6 +20,7 @@ export default function ScanScreen() {
   const [offersLoading, setOffersLoading] = useState(true);
   const [cardToken, setCardToken] = useState<string | null>(null);
   const [cardInfo, setCardInfo] = useState<{ name: string; points: number; tier: string } | null>(null);
+  const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
   const [selectedOffer, setSelectedOffer] = useState<WPOffer | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -57,9 +58,13 @@ export default function ScanScreen() {
     setScanning(false);
 
     try {
-      const member = await lookupCard(data, token);
+      const member = await lookupCard(data, token, wpPostId);
       setCardToken(data);
       setCardInfo({ name: member.name, points: member.points, tier: member.tier ?? "standard" });
+      setOfferStatuses({
+        standard: Object.fromEntries((member.offer_statuses?.standard ?? []).map((s) => [s.offer_index ?? 0, s])),
+        tier: Object.fromEntries((member.offer_statuses?.tier ?? []).map((s) => [s.tier ?? "", s])),
+      });
       setRedeemSuccess(false);
       setModalVisible(true);
     } catch (err: any) {
@@ -81,7 +86,8 @@ export default function ScanScreen() {
       setRedeemSuccess(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
-      Alert.alert("Redemption Failed", err?.message ?? "Could not redeem offer. Please try again.");
+      const ui = getStaffFailureMessage(err?.message ?? "");
+      Alert.alert(ui.title, ui.body);
     }
 
     setRedeeming(false);
@@ -92,9 +98,29 @@ export default function ScanScreen() {
     setSelectedOffer(null);
     setCardToken(null);
     setCardInfo(null);
+    setOfferStatuses({ standard: {}, tier: {} });
     setRedeemSuccess(false);
     lastScan.current = "";
     setScanning(true);
+  }
+
+  function getStaffFailureMessage(errorMessage: string) {
+    if (errorMessage.includes("already used this offer") || errorMessage.includes("already used this bronze") || errorMessage.includes("already used this silver") || errorMessage.includes("already used this gold")) {
+      return {
+        title: "Offer Already Used",
+        body: errorMessage,
+      };
+    }
+    if (errorMessage.includes("required tier")) {
+      return {
+        title: "Tier Not Reached",
+        body: "This member hasn’t unlocked this tier yet.",
+      };
+    }
+    return {
+      title: "Redemption Failed",
+      body: errorMessage || "Could not redeem offer. Please try again.",
+    };
   }
 
   if (!permission) return <View style={{ flex: 1, backgroundColor: "#F5F5F7" }} />;
@@ -246,35 +272,50 @@ export default function ScanScreen() {
                     </View>
                   )}
                   {offers.map((offer) => (
-                    <TouchableOpacity
-                      key={offer.id}
-                      style={{
-                        borderRadius: 14, padding: 14, marginBottom: 8,
-                        backgroundColor: selectedOffer?.id === offer.id ? "rgba(251,201,0,0.08)" : "#F5F5F7",
-                        borderWidth: 1.5,
-                        borderColor: selectedOffer?.id === offer.id ? "#FBC900" : "transparent",
-                      }}
-                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedOffer(offer); }}
-                    >
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: "#0F0032", fontWeight: "700", fontSize: 14 }}>
-                            {decodeHtml(offer.title)}
-                          </Text>
-                          {offer.description ? (
-                            <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, marginTop: 3 }} numberOfLines={1}>
-                              {decodeHtml(offer.description)}
-                            </Text>
-                          ) : null}
-                          <Text style={{ color: "rgba(15,0,50,0.38)", fontSize: 11, marginTop: 5 }}>
-                            {formatOfferRule(offer.limit_count, offer.limit_period)}
-                          </Text>
-                        </View>
-                        {selectedOffer?.id === offer.id && (
-                          <Ionicons name="checkmark-circle" size={22} color="#0F0032" style={{ marginLeft: 10 }} />
-                        )}
-                      </View>
-                    </TouchableOpacity>
+                    (() => {
+                      const status = offerStatuses.standard[offer.id];
+                      const unavailable = status ? !status.available : false;
+                      return (
+                        <TouchableOpacity
+                          key={offer.id}
+                          disabled={unavailable}
+                          style={{
+                            borderRadius: 14, padding: 14, marginBottom: 8,
+                            backgroundColor: selectedOffer?.id === offer.id ? "rgba(251,201,0,0.08)" : "#F5F5F7",
+                            borderWidth: 1.5,
+                            borderColor: selectedOffer?.id === offer.id ? "#FBC900" : unavailable ? "rgba(15,0,50,0.08)" : "transparent",
+                            opacity: unavailable ? 0.6 : 1,
+                          }}
+                          onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedOffer(offer); }}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ color: "#0F0032", fontWeight: "700", fontSize: 14 }}>
+                                {decodeHtml(offer.title)}
+                              </Text>
+                              {offer.description ? (
+                                <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, marginTop: 3 }} numberOfLines={1}>
+                                  {decodeHtml(offer.description)}
+                                </Text>
+                              ) : null}
+                              <Text style={{ color: "rgba(15,0,50,0.38)", fontSize: 11, marginTop: 5 }}>
+                                {formatOfferRule(offer.limit_count, offer.limit_period)}
+                              </Text>
+                              {status ? (
+                                <Text style={{ color: unavailable ? "#B45309" : "rgba(15,0,50,0.45)", fontSize: 11, marginTop: 4, fontWeight: "700" }}>
+                                  {status.status_label}{status.next_available_text ? ` • ${status.next_available_text}` : ""}
+                                </Text>
+                              ) : null}
+                            </View>
+                            {selectedOffer?.id === offer.id ? (
+                              <Ionicons name="checkmark-circle" size={22} color="#0F0032" style={{ marginLeft: 10 }} />
+                            ) : unavailable ? (
+                              <Ionicons name="lock-closed" size={18} color="#B45309" style={{ marginLeft: 10 }} />
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })()
                   ))}
                 </ScrollView>
 
@@ -294,14 +335,18 @@ export default function ScanScreen() {
                       {qualifyingTierOffers.map((to) => {
                         const colour = TIER_COLOUR[to.tier] ?? "#FBC900";
                         const isSelected = selectedOffer?.id === -1 && (selectedOffer as any)._tier === to.tier;
+                        const status = offerStatuses.tier[to.tier];
+                        const unavailable = status ? !status.available : false;
                         return (
                           <TouchableOpacity
                             key={to.tier}
+                            disabled={unavailable}
                             style={{
                               borderRadius: 14, padding: 14, marginBottom: 8,
                               backgroundColor: isSelected ? "rgba(251,201,0,0.08)" : "#F5F5F7",
                               borderWidth: 1.5,
-                              borderColor: isSelected ? colour : "transparent",
+                              borderColor: isSelected ? colour : unavailable ? colour + "55" : "transparent",
+                              opacity: unavailable ? 0.6 : 1,
                             }}
                             onPress={() => {
                               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -323,8 +368,13 @@ export default function ScanScreen() {
                                 <Text style={{ color: "rgba(15,0,50,0.38)", fontSize: 11, marginTop: 5 }}>
                                   {formatOfferRule(to.limit_count, to.limit_period)}
                                 </Text>
+                                {status ? (
+                                  <Text style={{ color: unavailable ? "#B45309" : "rgba(15,0,50,0.45)", fontSize: 11, marginTop: 4, fontWeight: "700" }}>
+                                    {status.status_label}{status.next_available_text ? ` • ${status.next_available_text}` : ""}
+                                  </Text>
+                                ) : null}
                               </View>
-                              {isSelected && <Ionicons name="checkmark-circle" size={22} color="#0F0032" style={{ marginLeft: 10 }} />}
+                              {isSelected ? <Ionicons name="checkmark-circle" size={22} color="#0F0032" style={{ marginLeft: 10 }} /> : unavailable ? <Ionicons name="lock-closed" size={18} color="#B45309" style={{ marginLeft: 10 }} /> : null}
                             </View>
                           </TouchableOpacity>
                         );
