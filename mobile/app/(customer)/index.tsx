@@ -338,7 +338,7 @@ export default function HomeScreen() {
                           </View>
                         ) : (
                           <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
-                            <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>AVAILABLE NOW</Text>
+                            <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>NEAR YOU</Text>
                           </View>
                         )}
                       <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
