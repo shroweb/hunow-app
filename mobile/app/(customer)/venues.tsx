@@ -20,6 +20,20 @@ const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1
 
 interface Cuisine { id: number | string | null; name: string }
 
+function collectNumericIds(value: unknown): number[] {
+  if (typeof value === "number" && Number.isFinite(value)) return [value];
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) return [Number(value.trim())];
+  if (Array.isArray(value)) return Array.from(new Set(value.flatMap((item) => collectNumericIds(item))));
+  if (value && typeof value === "object") {
+    return Array.from(
+      new Set(
+        Object.values(value as Record<string, unknown>).flatMap((item) => collectNumericIds(item))
+      )
+    );
+  }
+  return [];
+}
+
 export default function VenuesScreen() {
   const [allVenues, setAllVenues] = useState<WPEat[]>([]);
   const [cuisines, setCuisines] = useState<Cuisine[]>([{ id: null, name: "All" }]);
@@ -50,10 +64,18 @@ export default function VenuesScreen() {
     });
     const derivedCats = Array.from(
       new Set(
-        venuesWithOffers.flatMap((venue) => [
-          ...getFilterLabels(venue.acf?.cuisine_type),
-          ...getFilterLabels(venue.acf?.category),
-        ])
+        venuesWithOffers.flatMap((venue) => {
+          const rawValues = [venue.acf?.cuisine_type, venue.acf?.category];
+          const idLabels = rawValues.flatMap((raw) =>
+            collectNumericIds(raw)
+              .map((id) => cats.find((cat) => Number(cat.id) === id)?.name)
+              .filter((name): name is string => Boolean(name))
+          );
+          const directLabels = rawValues.flatMap((raw) =>
+            getFilterLabels(raw).filter((label) => !/^\d+$/.test(label))
+          );
+          return [...idLabels, ...directLabels];
+        })
       )
     )
       .filter(Boolean)
