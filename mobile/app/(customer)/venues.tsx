@@ -203,7 +203,7 @@ export default function VenuesScreen() {
                     </Text>
                   ) : null}
                   <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
-                    {offerCount > 1 ? `${offerCount} offers • Earn 35pts each` : "Earn 35pts"}
+                    {offerCount > 1 ? `${offerCount} offers • Earn 35pts` : "Earn 35pts"}
                   </Text>
                   {(location || todayHours) ? (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>

@@ -334,20 +334,23 @@ export default function HomeScreen() {
                       <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(0,0,0,0.64)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
                         <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{dist}</Text>
                       </View>
-                      <View style={{ padding: 14 }}>
-                        <View style={{ alignSelf: "flex-start", backgroundColor: offer.featured ? YELLOW : YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
-                          <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>{offer.featured ? "FEATURED" : "AVAILABLE NOW"}</Text>
-                        </View>
-                        <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
-                          {offer.venueName}
-                        </Text>
-                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
-                          {decodeHtml(offer.offerTitle)}
-                        </Text>
+                    <View style={{ padding: 14 }}>
+                      <View style={{ alignSelf: "flex-start", backgroundColor: offer.featured ? YELLOW : YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
+                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>{offer.featured ? "FEATURED" : "AVAILABLE NOW"}</Text>
                       </View>
-                    </TouchableOpacity>
-                  );
-                })}
+                      <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
+                        {offer.venueName}
+                      </Text>
+                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
+                        {decodeHtml(offer.offerTitle)}
+                      </Text>
+                      <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginTop: 6 }} numberOfLines={1}>
+                        Earn 35pts
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
               </ScrollView>
             ) : (
               <View style={{ paddingHorizontal: 20 }}>
@@ -428,6 +431,9 @@ export default function HomeScreen() {
                     </Text>
                     <Text style={{ color: NAV, fontWeight: "800", fontSize: 14, lineHeight: 18 }} numberOfLines={2}>
                       {offer.offerTitle}
+                    </Text>
+                    <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginTop: 6 }} numberOfLines={1}>
+                      Earn 35pts
                     </Text>
                   </View>
                 </TouchableOpacity>
