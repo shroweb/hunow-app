@@ -9,8 +9,6 @@ import * as Haptics from "expo-haptics";
 import Animated, { useSharedValue, withSpring, withTiming, useAnimatedStyle } from "react-native-reanimated";
 import { useAuth } from "@/context/AuthContext";
 import { PointsInfoModal } from "@/components/PointsInfoModal";
-import type { WPRedemption } from "@/lib/wpAuth";
-import { formatOfferRule } from "@/lib/wordpress";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -39,57 +37,6 @@ function memberNumber(token: string): string {
 
 function memberSince(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-}
-
-function groupRedemptionsByDate(redemptions: WPRedemption[]) {
-  const groups: { label: string; items: WPRedemption[] }[] = [];
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-
-  const buckets: Record<string, WPRedemption[]> = {};
-
-  for (const r of redemptions) {
-    const d = new Date(r.date);
-    d.setHours(0, 0, 0, 0);
-    let label: string;
-    if (d.getTime() === today.getTime()) {
-      label = "Today";
-    } else if (d.getTime() === yesterday.getTime()) {
-      label = "Yesterday";
-    } else {
-      const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400000);
-      if (diffDays < 7) {
-        label = d.toLocaleDateString("en-GB", { weekday: "long" });
-      } else {
-        label = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-      }
-    }
-    if (!buckets[label]) buckets[label] = [];
-    buckets[label].push(r);
-  }
-
-  // Maintain insertion order (most recent first)
-  const seen = new Set<string>();
-  for (const r of redemptions) {
-    const d = new Date(r.date);
-    d.setHours(0, 0, 0, 0);
-    let label: string;
-    if (d.getTime() === today.getTime()) label = "Today";
-    else if (d.getTime() === yesterday.getTime()) label = "Yesterday";
-    else {
-      const diffDays = Math.floor((today.getTime() - d.getTime()) / 86400000);
-      label = diffDays < 7
-        ? d.toLocaleDateString("en-GB", { weekday: "long" })
-        : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-    }
-    if (!seen.has(label)) {
-      seen.add(label);
-      groups.push({ label, items: buckets[label] });
-    }
-  }
-  return groups;
 }
 
 export default function MyCardScreen() {
@@ -153,11 +100,6 @@ export default function MyCardScreen() {
       : currentTier.name === "Bronze"
         ? { base: "#1A0A08", accent: "#CD7F32", secondary: "#5A2D12" }
         : { base: "#0F0032", accent: YELLOW, secondary: "#24105C" };
-
-  const redemptionGroups = groupRedemptionsByDate(user.redemptions ?? []);
-  const uniqueVenueCount = new Set((user.redemptions ?? []).map((r) => r.venue_id)).size;
-  const tierRedemptionCount = (user.redemptions ?? []).filter((r) => !!r.tier).length;
-  const latestRedemption = user.redemptions?.[0] ?? null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#080018" }}>
@@ -363,100 +305,7 @@ export default function MyCardScreen() {
             </Text>
           </TouchableOpacity>
         )}
-
-        <View style={{ marginBottom: 32 }} />
-
-        {/* ── Redemption Timeline ── */}
-        <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 11, fontWeight: "700", letterSpacing: 1.8, textTransform: "uppercase", marginBottom: 4 }}>
-          Activity
-        </Text>
-        <Text style={{ color: "white", fontWeight: "800", fontSize: 17, marginBottom: 4 }}>Redemptions</Text>
-        <View style={{ flexDirection: "row", gap: 10, marginTop: 10, marginBottom: 18 }}>
-          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
-            <Text style={{ color: "rgba(255,255,255,0.34)", fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 }}>Total</Text>
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>{user.redemptions?.length ?? 0}</Text>
-            <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 4 }}>{uniqueVenueCount} venues visited</Text>
-          </View>
-          <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
-            <Text style={{ color: "rgba(255,255,255,0.34)", fontSize: 10, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 }}>Tier Rewards</Text>
-            <Text style={{ color: "white", fontSize: 22, fontWeight: "900" }}>{tierRedemptionCount}</Text>
-            <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 4 }}>{latestRedemption ? `Latest: ${latestRedemption.venue_name}` : "No redemptions yet"}</Text>
-          </View>
-        </View>
-
-        {redemptionGroups.length === 0 ? (
-          <View style={{
-            backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 18, padding: 32,
-            alignItems: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-          }}>
-            <Ionicons name="ticket-outline" size={40} color="rgba(255,255,255,0.15)" />
-            <Text style={{ color: "white", fontSize: 15, fontWeight: "700", marginTop: 14, marginBottom: 6 }}>
-              No redemptions yet
-            </Text>
-            <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, textAlign: "center", lineHeight: 19 }}>
-              Visit a HU NOW venue and scan your QR code to earn points.
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push("/(customer)/venues")}
-              style={{
-                backgroundColor: YELLOW, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 10, marginTop: 18,
-              }}
-            >
-              <Text style={{ color: NAV, fontWeight: "800", fontSize: 14 }}>Browse Offers</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          redemptionGroups.map((group) => (
-            <View key={group.label}>
-              {/* Date section header */}
-              <Text style={{
-                color: "rgba(255,255,255,0.3)", fontSize: 11, fontWeight: "700",
-                letterSpacing: 1.5, textTransform: "uppercase",
-                marginTop: 16, marginBottom: 8,
-              }}>
-                {group.label}
-              </Text>
-              {group.items.map((r, i) => (
-                <View key={i} style={{
-                  backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 16, padding: 14,
-                  marginBottom: 8, flexDirection: "row", alignItems: "center",
-                  borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
-                  borderLeftWidth: 3, borderLeftColor: YELLOW,
-                }}>
-                  <View style={{
-                    backgroundColor: YELLOW + "22", borderRadius: 12,
-                    width: 40, height: 40, alignItems: "center", justifyContent: "center", marginRight: 12,
-                  }}>
-                    <Ionicons name="ticket-outline" size={18} color={YELLOW} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: "white", fontWeight: "600", fontSize: 13 }} numberOfLines={1}>
-                      {r.offer_title}
-                    </Text>
-                    <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 }}>
-                      {r.venue_name} · {new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                    </Text>
-                    {r.tier ? (
-                      <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(251,201,0,0.15)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4, marginTop: 6 }}>
-                        <Text style={{ color: YELLOW, fontSize: 10, fontWeight: "800", textTransform: "uppercase" }}>{r.tier} tier reward</Text>
-                      </View>
-                    ) : null}
-                    {(r.limit_count || r.limit_period) && (
-                      <Text style={{ color: "rgba(255,255,255,0.32)", fontSize: 11, marginTop: 4 }}>
-                        Rule: {formatOfferRule(r.limit_count, r.limit_period)}
-                      </Text>
-                    )}
-                  </View>
-                  {/* Points pill */}
-                  <View style={{ backgroundColor: YELLOW + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 3 }}>
-                    <Ionicons name="star" size={10} color={YELLOW} />
-                    <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>+35 pts</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          ))
-        )}
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       <PointsInfoModal

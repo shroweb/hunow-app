@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
   Image, ScrollView, RefreshControl,
@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { wordpress, getFeaturedImage, extractOffers, type WPEat } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, extractOffers, type WPEat, type WPEvent } from "@/lib/wordpress";
 import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus } from "@/lib/utils";
 import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 import { HUNowPickBadge } from "@/components/HUNowPickBadge";
@@ -18,11 +18,26 @@ const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.1)";
 const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
-interface Cuisine { id: number | null; name: string; venueIds?: number[] }
+interface OfferFilter { id: number | string | null; name: string; itemKeys?: string[] }
+
+interface OfferBrowseItem {
+  key: string;
+  kind: "venue" | "event";
+  id: number;
+  title: string;
+  offerTitle: string | null;
+  offerCount: number;
+  img: string | null;
+  featured: boolean;
+  location: string | null;
+  todayHours: string | null;
+  todayStatus: ReturnType<typeof getTodayOpeningStatus>;
+  filters: string[];
+}
 
 export default function VenuesScreen() {
-  const [allVenues, setAllVenues] = useState<WPEat[]>([]);
-  const [cuisines, setCuisines] = useState<Cuisine[]>([{ id: null, name: "All" }]);
+  const [items, setItems] = useState<OfferBrowseItem[]>([]);
+  const [filters, setFilters] = useState<OfferFilter[]>([{ id: null, name: "All" }]);
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<number | string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,67 +48,124 @@ export default function VenuesScreen() {
 
   async function load() {
     setLoading(true);
-    const results = await wordpress.getEat({ page: 1, perPage: 100 });
-    const venuesWithOffers = results.filter(hasOffers);
-    const filterMap = new Map<number, Cuisine>();
+    const [results, eventResults] = await Promise.all([
+      wordpress.getEat({ page: 1, perPage: 100 }),
+      wordpress.getEvents({ page: 1, perPage: 100, order: "desc" }).catch(() => [] as WPEvent[]),
+    ]);
+
+    const venuesWithOffers = results.filter(hasVenueOffers);
+    const venueItems: OfferBrowseItem[] = venuesWithOffers.map((venue) => {
+      const offers = extractOffers(venue);
+      const firstOfferTitle = offers[0]?.title ?? venue.acf?.offer_title ?? null;
+      const offerImg = offers[0]?.image_url ?? getFeaturedImage(venue);
+      const offerCount = offers.length;
+      const location = getDisplayAddress(venue.acf?.address);
+      const todayHours = getTodayOpeningHours(venue.acf?.opening_hours);
+      const todayStatus = getTodayOpeningStatus(venue.acf?.opening_hours);
+      return {
+        key: `venue:${venue.id}`,
+        kind: "venue",
+        id: venue.id,
+        title: decodeHtml(venue.title.rendered),
+        offerTitle: firstOfferTitle ? decodeHtml(String(firstOfferTitle)) : null,
+        offerCount,
+        img: offerImg,
+        featured: Boolean(offers[0]?.featured),
+        location,
+        todayHours,
+        todayStatus,
+        filters: (venue.filters ?? []).map((filter) => filter.name),
+      };
+    });
+
+    const eventItems: OfferBrowseItem[] = eventResults
+      .filter((event) => typeof event.acf?.offer_title === "string" && event.acf.offer_title.trim().length > 0)
+      .map((event) => ({
+        key: `event:${event.id}`,
+        kind: "event",
+        id: event.id,
+        title: decodeHtml(event.title.rendered),
+        offerTitle: decodeHtml(String(event.acf?.offer_title ?? "")),
+        offerCount: 1,
+        img: getFeaturedImage(event),
+        featured: false,
+        location: typeof event.acf?.location === "string"
+          ? event.acf.location
+          : typeof event.acf?.venue === "string"
+            ? event.acf.venue
+            : null,
+        todayHours: null,
+        todayStatus: null,
+        filters: ["Events"],
+      }));
+
+    const allItems = [...venueItems, ...eventItems];
+    const filterMap = new Map<number | string, OfferFilter>();
 
     venuesWithOffers.forEach((venue) => {
+      const itemKey = `venue:${venue.id}`;
       (venue.filters ?? []).forEach((filter) => {
         const existing = filterMap.get(filter.id);
         if (existing) {
-          existing.venueIds = Array.from(new Set([...(existing.venueIds ?? []), venue.id]));
+          existing.itemKeys = Array.from(new Set([...(existing.itemKeys ?? []), itemKey]));
         } else {
           filterMap.set(filter.id, {
             id: filter.id,
             name: filter.name,
-            venueIds: [venue.id],
+            itemKeys: [itemKey],
           });
         }
       });
     });
 
+    if (eventItems.length > 0) {
+      filterMap.set("events", {
+        id: "events",
+        name: "Events",
+        itemKeys: eventItems.map((item) => item.key),
+      });
+    }
+
     const availableCats = Array.from(filterMap.values())
-      .filter((cat) => (cat.venueIds?.length ?? 0) > 0)
+      .filter((cat) => (cat.itemKeys?.length ?? 0) > 0)
       .sort((a, b) => a.name.localeCompare(b.name));
-    setAllVenues(venuesWithOffers);
-    setCuisines([{ id: null, name: "All", venueIds: venuesWithOffers.map((venue) => venue.id) }, ...availableCats]);
+    setItems(allItems);
+    setFilters([{ id: null, name: "All", itemKeys: allItems.map((item) => item.key) }, ...availableCats]);
     setLoading(false);
     setRefreshing(false);
   }
 
   useEffect(() => {
-    if (activeFilter !== null && !cuisines.some((c) => c.id === activeFilter)) {
+    if (activeFilter !== null && !filters.some((c) => c.id === activeFilter)) {
       setActiveFilter(null);
     }
-  }, [activeFilter, cuisines]);
+  }, [activeFilter, filters]);
 
   function onRefresh() { setRefreshing(true); load(); }
 
-  function hasOffers(item: WPEat): boolean {
+  function hasVenueOffers(item: WPEat): boolean {
     if (item.offers?.items?.some((o) => o.title?.trim())) return true;
     return !!(item.acf?.offer_title?.trim());
   }
 
-  function getFilteredVenues(): WPEat[] {
-    let venues = allVenues;
+  const filtered = useMemo(() => {
+    let nextItems = items;
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      venues = venues.filter((v) => decodeHtml(v.title.rendered).toLowerCase().includes(q));
+      nextItems = nextItems.filter((item) =>
+        item.title.toLowerCase().includes(q) || item.offerTitle?.toLowerCase().includes(q)
+      );
     }
 
     if (activeFilter !== null) {
-      const selectedCuisine = cuisines.find((c) => c.id === activeFilter);
-      const allowedVenueIds = new Set(selectedCuisine?.venueIds ?? []);
-      venues = venues.filter((v) => {
-        return allowedVenueIds.has(v.id);
-      });
+      const selectedFilter = filters.find((c) => c.id === activeFilter);
+      const allowedKeys = new Set(selectedFilter?.itemKeys ?? []);
+      nextItems = nextItems.filter((item) => allowedKeys.has(item.key));
     }
 
-    return venues;
-  }
-
-  const filtered = getFilteredVenues();
+    return nextItems;
+  }, [activeFilter, filters, items, search]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -137,7 +209,7 @@ export default function VenuesScreen() {
         style={{ flexGrow: 0 }}
         contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 10, alignItems: "center" }}
       >
-        {cuisines.map((c) => {
+        {filters.map((c) => {
           const active = activeFilter === c.id;
           const label = c.name?.trim() || "All";
           return (
@@ -190,21 +262,11 @@ export default function VenuesScreen() {
             />
           }
           renderItem={({ item }) => {
-            const img = getFeaturedImage(item);
-            const offers = extractOffers(item);
-            const firstOfferTitle = offers[0]?.title ?? item.acf?.offer_title ?? null;
-            const offerImg = offers[0]?.image_url ?? img;
-            const offerCount = offers.length;
-            const featured = Boolean(offers[0]?.featured);
-            const location = getDisplayAddress(item.acf?.address);
-            const todayHours = getTodayOpeningHours(item.acf?.opening_hours);
-            const todayStatus = getTodayOpeningStatus(item.acf?.opening_hours);
-
             return (
               <TouchableOpacity
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push(`/(customer)/venue/${item.id}`);
+                  router.push(item.kind === "event" ? `/(customer)/event/${item.id}` : `/(customer)/venue/${item.id}`);
                 }}
                 style={{
                   backgroundColor: "white", borderRadius: 26, overflow: "hidden",
@@ -213,31 +275,33 @@ export default function VenuesScreen() {
                 }}
               >
                 <View style={{ position: "relative" }}>
-                  {offerImg ? (
-                    <Image source={{ uri: offerImg }} style={{ width: "100%", height: 176 }} resizeMode="cover" />
+                  {item.img ? (
+                    <Image source={{ uri: item.img }} style={{ width: "100%", height: 176 }} resizeMode="cover" />
                   ) : (
                     <View style={{ width: "100%", height: 176, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
-                      <Ionicons name="storefront-outline" size={32} color="rgba(15,0,50,0.2)" />
+                      <Ionicons name={item.kind === "event" ? "calendar-outline" : "storefront-outline"} size={32} color="rgba(15,0,50,0.2)" />
                     </View>
                   )}
                   <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 78, backgroundColor: "rgba(15,0,50,0.32)" }} />
                   <View style={{ position: "absolute", top: 10, left: 10 }}>
-                    {featured ? <HUNowPickBadge /> : (
-                      <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                        <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
+                    {item.featured ? <HUNowPickBadge /> : (
+                      <View style={{ backgroundColor: item.kind === "event" ? "rgba(15,0,50,0.78)" : YELLOW, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                        <Text style={{ color: item.kind === "event" ? "white" : NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>
+                          {item.kind === "event" ? "EVENT" : "STANDARD"}
+                        </Text>
                       </View>
                     )}
                   </View>
                   <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(15,0,50,0.72)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                    <Text style={{ color: "white", fontSize: 10, fontWeight: "800" }}>{offerCount} {offerCount === 1 ? "offer" : "offers"}</Text>
+                    <Text style={{ color: "white", fontSize: 10, fontWeight: "800" }}>{item.offerCount} {item.offerCount === 1 ? "offer" : "offers"}</Text>
                   </View>
                   <View style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
                     <Text style={{ color: "rgba(255,255,255,0.78)", fontWeight: "700", fontSize: 12, marginBottom: 4 }} numberOfLines={1}>
-                      {decodeHtml(item.title.rendered)}
+                      {item.title}
                     </Text>
-                    {firstOfferTitle ? (
+                    {item.offerTitle ? (
                       <Text style={{ color: "white", fontSize: 24, fontWeight: "900", lineHeight: 28 }} numberOfLines={2}>
-                        {decodeHtml(String(firstOfferTitle))}
+                        {item.offerTitle}
                       </Text>
                     ) : null}
                   </View>
@@ -250,33 +314,37 @@ export default function VenuesScreen() {
                     </View>
                     <View style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
                       <Text style={{ color: "rgba(15,0,50,0.6)", fontSize: 11, fontWeight: "700" }}>
-                        {offerCount > 1 ? `${offerCount} live rewards` : "1 live reward"}
+                        {item.offerCount > 1 ? `${item.offerCount} live rewards` : "1 live reward"}
                       </Text>
                     </View>
-                    {todayStatus ? (
-                      <View style={{ backgroundColor: todayStatus.isOpen ? "rgba(21,128,61,0.12)" : "rgba(180,83,9,0.12)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                        <Text style={{ color: todayStatus.isOpen ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "800" }}>
-                          {todayStatus.label}
+                    {item.todayStatus ? (
+                      <View style={{ backgroundColor: item.todayStatus.isOpen ? "rgba(21,128,61,0.12)" : "rgba(180,83,9,0.12)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                        <Text style={{ color: item.todayStatus.isOpen ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "800" }}>
+                          {item.todayStatus.label}
                         </Text>
+                      </View>
+                    ) : item.kind === "event" ? (
+                      <View style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                        <Text style={{ color: "rgba(15,0,50,0.6)", fontSize: 11, fontWeight: "700" }}>Event reward</Text>
                       </View>
                     ) : null}
                   </View>
 
-                  {(location || todayHours) ? (
+                  {(item.location || item.todayHours) ? (
                     <View style={{ gap: 8, marginBottom: 12 }}>
-                      {location ? (
+                      {item.location ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                           <Ionicons name="location-outline" size={13} color="rgba(15,0,50,0.42)" />
                           <Text style={{ color: "rgba(15,0,50,0.54)", fontSize: 12, flex: 1 }} numberOfLines={1}>
-                            {location}
+                            {item.location}
                           </Text>
                         </View>
                       ) : null}
-                      {todayHours ? (
+                      {item.todayHours ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                           <Ionicons name="time-outline" size={13} color="rgba(15,0,50,0.42)" />
                           <Text style={{ color: "rgba(15,0,50,0.54)", fontSize: 12, flex: 1 }} numberOfLines={1}>
-                            Today: {todayHours}
+                            Today: {item.todayHours}
                           </Text>
                         </View>
                       ) : null}
@@ -309,10 +377,10 @@ export default function VenuesScreen() {
                   Live Rewards
                 </Text>
                 <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 6 }}>
-                  {filtered.length} {filtered.length === 1 ? "venue" : "venues"} with active offers
+                  {filtered.length} {filtered.length === 1 ? "reward listing" : "reward listings"} available
                 </Text>
                 <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 13, lineHeight: 19 }}>
-                  Browse the latest venue rewards, opening status, and live redemption opportunities in one place.
+                  Browse venue rewards and event-based rewards in one place.
                 </Text>
               </View>
             </View>

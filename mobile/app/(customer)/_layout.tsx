@@ -99,9 +99,9 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="events"
         options={{
-          title: "Events",
+          title: "History",
           tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon name="calendar" color={color} size={size} focused={focused} />
+            <AnimatedTabIcon name="time" color={color} size={size} focused={focused} />
           ),
         }}
       />
