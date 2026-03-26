@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  Image, useWindowDimensions, ScrollView, RefreshControl,
+  Image, ScrollView, RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -28,8 +28,6 @@ export default function VenuesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const CARD_W = (width - 20 * 2 - 14) / 2;
 
   useEffect(() => { load(); }, []);
 
@@ -116,7 +114,7 @@ export default function VenuesScreen() {
         <View style={{
           flexDirection: "row", alignItems: "center",
           backgroundColor: SURFACE,
-          borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, gap: 8,
+          borderRadius: 20, paddingHorizontal: 16, paddingVertical: 14, gap: 8,
           borderWidth: 1, borderColor: BORDER,
         }}>
           <Ionicons name="search" size={16} color="rgba(255,255,255,0.4)" />
@@ -168,9 +166,7 @@ export default function VenuesScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => String(item.id)}
-          numColumns={2}
-          columnWrapperStyle={{ gap: 14, paddingHorizontal: 20 }}
-          contentContainerStyle={{ paddingBottom: 110, gap: 14, paddingTop: 8 }}
+          contentContainerStyle={{ paddingBottom: 110, gap: 16, paddingTop: 8, paddingHorizontal: 20 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -195,66 +191,91 @@ export default function VenuesScreen() {
               <TouchableOpacity
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  router.push(`/(customer)/venue/${item.id}`);
+                router.push(`/(customer)/venue/${item.id}`);
                 }}
                 style={{
-                  width: CARD_W, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
+                  backgroundColor: "white", borderRadius: 26, overflow: "hidden",
                   shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
+                  shadowOpacity: 0.18, shadowRadius: 14, elevation: 6,
                 }}
               >
                 <View style={{ position: "relative" }}>
                   {img ? (
-                    <Image source={{ uri: img }} style={{ width: "100%", height: 122 }} resizeMode="cover" />
+                    <Image source={{ uri: img }} style={{ width: "100%", height: 176 }} resizeMode="cover" />
                   ) : (
-                    <View style={{ width: "100%", height: 122, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
+                    <View style={{ width: "100%", height: 176, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
                       <Ionicons name="storefront-outline" size={32} color="rgba(15,0,50,0.2)" />
                     </View>
                   )}
+                  <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 78, backgroundColor: "rgba(15,0,50,0.32)" }} />
                   <View style={{ position: "absolute", top: 10, left: 10 }}>
                     {featured ? <HUNowPickBadge /> : (
-                      <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+                      <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
                         <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
                       </View>
                     )}
                   </View>
-                  <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(15,0,50,0.72)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 }}>
+                  <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(15,0,50,0.72)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
                     <Text style={{ color: "white", fontSize: 10, fontWeight: "800" }}>{offerCount} {offerCount === 1 ? "offer" : "offers"}</Text>
+                  </View>
+                  <View style={{ position: "absolute", left: 14, right: 14, bottom: 14 }}>
+                    <Text style={{ color: "rgba(255,255,255,0.78)", fontWeight: "700", fontSize: 12, marginBottom: 4 }} numberOfLines={1}>
+                      {decodeHtml(item.title.rendered)}
+                    </Text>
+                    {firstOfferTitle ? (
+                      <Text style={{ color: "white", fontSize: 24, fontWeight: "900", lineHeight: 28 }} numberOfLines={2}>
+                        {decodeHtml(String(firstOfferTitle))}
+                      </Text>
+                    ) : null}
                   </View>
                 </View>
 
-                <View style={{ padding: 13 }}>
-                  <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
-                    {decodeHtml(item.title.rendered)}
-                  </Text>
-                  {firstOfferTitle ? (
-                    <Text style={{ color: NAV, fontSize: 15, fontWeight: "800", lineHeight: 19, marginBottom: 6 }} numberOfLines={2}>
-                      {decodeHtml(String(firstOfferTitle))}
-                    </Text>
-                  ) : null}
-                  <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
-                    {offerCount > 1 ? `${offerCount} offers • Earn 35pts` : "Earn 35pts"}
-                  </Text>
-                  {(location || todayHours || todayStatus) ? (
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                <View style={{ padding: 16 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                    <View style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>+35 pts</Text>
+                    </View>
+                    <View style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: "rgba(15,0,50,0.6)", fontSize: 11, fontWeight: "700" }}>
+                        {offerCount > 1 ? `${offerCount} live rewards` : "1 live reward"}
+                      </Text>
+                    </View>
+                    {todayStatus ? (
+                      <View style={{ backgroundColor: todayStatus.isOpen ? "rgba(21,128,61,0.12)" : "rgba(180,83,9,0.12)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                        <Text style={{ color: todayStatus.isOpen ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "800" }}>
+                          {todayStatus.label}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  {(location || todayHours) ? (
+                    <View style={{ gap: 8, marginBottom: 12 }}>
                       {location ? (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "58%" }}>
-                          <Ionicons name="location-outline" size={11} color="rgba(15,0,50,0.4)" />
-                          <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 11, flexShrink: 1 }} numberOfLines={1}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Ionicons name="location-outline" size={13} color="rgba(15,0,50,0.42)" />
+                          <Text style={{ color: "rgba(15,0,50,0.54)", fontSize: 12, flex: 1 }} numberOfLines={1}>
                             {location}
                           </Text>
                         </View>
                       ) : null}
-                      {todayStatus ? (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "42%" }}>
-                          <Ionicons name={todayStatus.isOpen ? "checkmark-circle-outline" : "time-outline"} size={11} color={todayStatus.isOpen ? "#15803D" : "#B45309"} />
-                          <Text style={{ color: todayStatus.isOpen ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "700", flexShrink: 1 }} numberOfLines={1}>
-                            {todayStatus.label}
+                      {todayHours ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                          <Ionicons name="time-outline" size={13} color="rgba(15,0,50,0.42)" />
+                          <Text style={{ color: "rgba(15,0,50,0.54)", fontSize: 12, flex: 1 }} numberOfLines={1}>
+                            Today: {todayHours}
                           </Text>
                         </View>
                       ) : null}
                     </View>
                   ) : null}
+
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTopWidth: 1, borderTopColor: "rgba(15,0,50,0.08)" }}>
+                    <Text style={{ color: NAV, fontSize: 12, fontWeight: "800" }}>View reward details</Text>
+                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: YELLOW + "22", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="arrow-forward" size={15} color={NAV} />
+                    </View>
+                  </View>
                 </View>
               </TouchableOpacity>
             );
@@ -269,10 +290,18 @@ export default function VenuesScreen() {
             </View>
           }
           ListHeaderComponent={
-            <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
-              <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12 }}>
-                {filtered.length} {filtered.length === 1 ? "venue" : "venues"} with active offers
-              </Text>
+            <View style={{ paddingBottom: 12 }}>
+              <View style={{ backgroundColor: SURFACE, borderRadius: 22, padding: 16, borderWidth: 1, borderColor: BORDER }}>
+                <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 6 }}>
+                  Live Rewards
+                </Text>
+                <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 6 }}>
+                  {filtered.length} {filtered.length === 1 ? "venue" : "venues"} with active offers
+                </Text>
+                <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 13, lineHeight: 19 }}>
+                  Browse the latest venue rewards, opening status, and live redemption opportunities in one place.
+                </Text>
+              </View>
             </View>
           }
         />
