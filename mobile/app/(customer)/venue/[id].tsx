@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/Skeleton";
 import { HUNowPickBadge } from "@/components/HUNowPickBadge";
 import { buildMemberQrPayload } from "@/lib/qrPayload";
+import { haversineKm } from "@/lib/haversine";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -47,6 +48,7 @@ export default function VenueDetailScreen() {
   const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
   const [expandedOfferKeys, setExpandedOfferKeys] = useState<string[]>([]);
   const [checkinLoading, setCheckinLoading] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<{ tone: "success" | "warn"; title: string; body: string } | null>(null);
   const savedBrightness = useRef<number | null>(null);
 
   // QR modal reveal animation
@@ -122,11 +124,14 @@ export default function VenueDetailScreen() {
     try {
       if (isSaved) {
         await wordpress.removeFavourite(favourite, token);
+        setFeedbackMessage({ tone: "warn", title: "Removed from favourites", body: "This reward has been taken out of your saved offers." });
       } else {
         await wordpress.addFavourite(favourite, token);
+        setFeedbackMessage({ tone: "success", title: "Saved to favourites", body: "This reward is now waiting in your favourites section." });
       }
     } catch {
       setFavouriteKeys((current) => (isSaved ? [...current, key] : current.filter((item) => item !== key)));
+      setFeedbackMessage({ tone: "warn", title: "Couldn’t update favourite", body: "Please try again in a moment." });
     }
   }
 
@@ -159,6 +164,7 @@ export default function VenueDetailScreen() {
       }
 
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const distanceKm = haversineKm(current.coords.latitude, current.coords.longitude, venueCoords.lat, venueCoords.lng);
       const result = await wordpress.dailyCheckin(token, {
         venue_id: Number(id),
         lat: current.coords.latitude,
@@ -166,9 +172,19 @@ export default function VenueDetailScreen() {
       });
       await refreshUser();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(result.already_checked_in ? "Already checked in" : "Check-in complete", result.message);
+      setFeedbackMessage({
+        tone: result.already_checked_in ? "warn" : "success",
+        title: result.already_checked_in ? "Already checked in today" : "Check-in complete",
+        body: result.already_checked_in
+          ? result.message
+          : `${result.message} You were ${distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(1)}km`} from the venue.`,
+      });
     } catch (error: any) {
-      Alert.alert("Couldn’t check in", error?.message ?? "Please try again.");
+      const message = error?.message ?? "Please try again.";
+      const friendly = /within|close|distance|near/i.test(message)
+        ? "You need to be a little closer to this venue before check-in will work."
+        : message;
+      setFeedbackMessage({ tone: "warn", title: "Couldn’t check in", body: friendly });
     } finally {
       setCheckinLoading(false);
     }
@@ -267,6 +283,33 @@ export default function VenueDetailScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          {feedbackMessage ? (
+            <View
+              style={{
+                marginBottom: 14,
+                backgroundColor: feedbackMessage.tone === "success" ? "rgba(34,197,94,0.12)" : "rgba(245,158,11,0.12)",
+                borderRadius: 16,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: feedbackMessage.tone === "success" ? "rgba(34,197,94,0.24)" : "rgba(245,158,11,0.24)",
+              }}
+            >
+              <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: feedbackMessage.tone === "success" ? "#22C55E" : "#F59E0B", fontSize: 13, fontWeight: "900", marginBottom: 4 }}>
+                    {feedbackMessage.title}
+                  </Text>
+                  <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 12, lineHeight: 18 }}>
+                    {feedbackMessage.body}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setFeedbackMessage(null)}>
+                  <Ionicons name="close" size={16} color="rgba(255,255,255,0.56)" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+
           {(todayStatus || todayHours) ? (
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
               {todayStatus ? (

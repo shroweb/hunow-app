@@ -162,6 +162,7 @@ export default function BusinessOffersScreen() {
   const [saving, setSaving] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const [menuTarget, setMenuTarget] = useState<{ type: "standard"; id: number } | { type: "tier"; tier: WPTierOffer["tier"] } | null>(null);
+  const [saveMessage, setSaveMessage] = useState<{ title: string; body: string } | null>(null);
   const businessReady = user?.role === "business" && user?.setup_status === "ready" && Boolean(user?.venue_id);
   const editingEnabled = appConfig?.feature_flags?.business_offers_editing !== false;
 
@@ -372,7 +373,7 @@ export default function BusinessOffersScreen() {
       setEditingStandard({});
       setEditingTier({});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Offers Updated", "Your venue offers have been saved.");
+      setSaveMessage({ title: "Offers saved", body: "Your venue offers, schedules, and reward settings are now live." });
     } catch (err: any) {
       Alert.alert("Couldn’t save offers", err?.message ?? "Please try again.");
     } finally {
@@ -541,6 +542,20 @@ export default function BusinessOffersScreen() {
         </Pressable>
       </Modal>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+        {saveMessage ? (
+          <View style={{ backgroundColor: "rgba(34,197,94,0.12)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(34,197,94,0.24)", marginBottom: 14 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#22C55E", fontSize: 13, fontWeight: "900", marginBottom: 4 }}>{saveMessage.title}</Text>
+                <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 12, lineHeight: 18 }}>{saveMessage.body}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSaveMessage(null)}>
+                <Ionicons name="close" size={16} color="rgba(255,255,255,0.56)" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
         <View style={{ marginBottom: 18 }}>
           <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>
             Manage Rewards

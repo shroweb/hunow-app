@@ -53,6 +53,7 @@ export default function BusinessVouchersScreen() {
   const [voucherDraft, setVoucherDraft] = useState({ title: "", code: "", description: "", expires_at: "" });
   const [voucherSaving, setVoucherSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const businessReady = user?.role === "business" && user?.setup_status === "ready" && Boolean(user?.venue_id);
   const vouchersEnabled = appConfig?.feature_flags?.vouchers !== false;
 
@@ -92,7 +93,7 @@ export default function BusinessVouchersScreen() {
       setVouchers((current) => [voucher, ...current]);
       setVoucherDraft({ title: "", code: "", description: "", expires_at: "" });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("Voucher Created", "Your venue voucher is now ready for members to claim.");
+      setSaveMessage("Voucher created. Members can now claim it with the code you set.");
     } catch (err: any) {
       Alert.alert("Couldn’t create voucher", err?.message ?? "Please try again.");
     } finally {
@@ -136,6 +137,20 @@ export default function BusinessVouchersScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+        {saveMessage ? (
+          <View style={{ backgroundColor: "rgba(34,197,94,0.12)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(34,197,94,0.24)", marginBottom: 14 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: "#22C55E", fontSize: 13, fontWeight: "900", marginBottom: 4 }}>Voucher ready</Text>
+                <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 12, lineHeight: 18 }}>{saveMessage}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSaveMessage(null)}>
+                <Ionicons name="close" size={16} color="rgba(255,255,255,0.56)" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
         <View style={{ marginBottom: 18 }}>
           <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>
             Manage Vouchers
@@ -192,7 +207,14 @@ export default function BusinessVouchersScreen() {
         </View>
 
         <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 10 }}>Venue Vouchers</Text>
-        {vouchers.map((voucher) => (
+        {vouchers.length === 0 ? (
+          <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            <Text style={{ color: "white", fontSize: 15, fontWeight: "800", marginBottom: 6 }}>No vouchers yet</Text>
+            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 19 }}>
+              Create a giveaway, competition prize, or one-off guest reward above and it’ll appear here straight away.
+            </Text>
+          </View>
+        ) : vouchers.map((voucher) => (
           <View key={voucher.id} style={{ backgroundColor: voucher.status === "active" ? "white" : "rgba(255,255,255,0.08)", borderRadius: 20, padding: 16, marginBottom: 12 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <View style={{ flex: 1, paddingRight: 12 }}>

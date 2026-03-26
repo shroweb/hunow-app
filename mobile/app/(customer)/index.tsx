@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import { wordpress, getFeaturedImage, extractOffers, type FavouriteOfferRef, type WPEat } from "@/lib/wordpress";
-import { decodeHtml, getLatLng } from "@/lib/utils";
+import { decodeHtml, getLatLng, getTodayOpeningStatus } from "@/lib/utils";
 import { haversineKm } from "@/lib/haversine";
 import { useAuth } from "@/context/AuthContext";
 import { OfferCardSkeleton } from "@/components/OfferCardSkeleton";
@@ -58,6 +58,7 @@ interface ActiveOffer {
   featured?: boolean;
   distanceKm?: number;
   tier?: "bronze" | "silver" | "gold";
+  todayStatus?: { isOpen: boolean; label: string } | null;
 }
 
 function SectionHeader({
@@ -114,6 +115,7 @@ async function loadOffers(): Promise<ActiveOffer[]> {
         offerTitle: o.title,
         img: o.image_url ?? getFeaturedImage(v),
         featured: Boolean(o.featured),
+        todayStatus: getTodayOpeningStatus(v.acf?.opening_hours),
       });
     }
     for (const tierOffer of v.tier_offers ?? []) {
@@ -125,6 +127,7 @@ async function loadOffers(): Promise<ActiveOffer[]> {
         img: tierOffer.image_url ?? getFeaturedImage(v),
         featured: Boolean(tierOffer.featured),
         tier: tierOffer.tier,
+        todayStatus: getTodayOpeningStatus(v.acf?.opening_hours),
       });
     }
   }
@@ -183,6 +186,7 @@ export default function HomeScreen() {
               img: offer.image_url ?? getFeaturedImage(v),
               featured: Boolean(offer.featured),
               distanceKm,
+              todayStatus: getTodayOpeningStatus(v.acf?.opening_hours),
             }));
           })
           .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
@@ -326,6 +330,11 @@ export default function HomeScreen() {
                       <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginTop: 6 }} numberOfLines={1}>
                         Earn 35pts
                       </Text>
+                      {offer.todayStatus ? (
+                        <Text style={{ color: offer.todayStatus.isOpen ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "700", marginTop: 4 }} numberOfLines={1}>
+                          {offer.todayStatus.label}
+                        </Text>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                 );
@@ -404,6 +413,11 @@ export default function HomeScreen() {
                     <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginTop: 6 }} numberOfLines={1}>
                       Earn 35pts
                     </Text>
+                    {offer.todayStatus ? (
+                      <Text style={{ color: offer.todayStatus.isOpen ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "700", marginTop: 4 }} numberOfLines={1}>
+                        {offer.todayStatus.label}
+                      </Text>
+                    ) : null}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -411,7 +425,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {favouriteOffers.length > 0 && (
+        {favouriteOffers.length > 0 ? (
           <View style={{ marginTop: 28 }}>
             <SectionHeader
               icon="heart"
@@ -458,10 +472,43 @@ export default function HomeScreen() {
                     <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
                       {decodeHtml(offer.offerTitle)}
                     </Text>
+                    {offer.todayStatus ? (
+                      <Text style={{ color: offer.todayStatus.isOpen ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "700", marginTop: 6 }} numberOfLines={1}>
+                        {offer.todayStatus.label}
+                      </Text>
+                    ) : null}
                   </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        ) : (
+          <View style={{ marginTop: 28 }}>
+            <SectionHeader
+              icon="heart"
+              title="Favourites"
+              actionLabel="Browse"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(customer)/venues");
+              }}
+            />
+            <View style={{ paddingHorizontal: 20 }}>
+              <View style={{ backgroundColor: SURFACE, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: BORDER }}>
+                <Text style={{ color: "white", fontSize: 15, fontWeight: "800", marginBottom: 4 }}>
+                  Save offers you want to come back to
+                </Text>
+                <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
+                  Tap the heart on an offer to build your own shortlist of go-to rewards.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/(customer)/venues")}
+                  style={{ alignSelf: "flex-start", backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9 }}
+                >
+                  <Text style={{ color: NAV, fontSize: 12, fontWeight: "800" }}>Find offers to save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         )}
 
