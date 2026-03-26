@@ -222,38 +222,6 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {user.redemptions.length > 0 && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 10 }}>Recent Redemptions</Text>
-            {user.redemptions.slice(0, 5).map((r, i) => (
-              <View
-                key={i}
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.07)",
-                  borderRadius: 16,
-                  padding: 14,
-                  marginBottom: 8,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.08)",
-                }}
-              >
-                <View style={{ backgroundColor: YELLOW + "22", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                  <Ionicons name="ticket-outline" size={16} color={YELLOW} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>{r.offer_title}</Text>
-                  <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12 }}>{r.venue_name}</Text>
-                </View>
-                <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
-                  {new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
         <View
           style={{
             backgroundColor: "rgba(255,255,255,0.07)",
