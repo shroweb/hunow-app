@@ -147,13 +147,18 @@ export default function VenuesScreen() {
               key={c.id ?? "all"}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveFilter(c.id); }}
               style={{
-                paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+                minWidth: 44,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                borderRadius: 999,
                 backgroundColor: active ? YELLOW : SURFACE,
                 borderWidth: 1, borderColor: active ? YELLOW : "rgba(255,255,255,0.15)",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               <Text style={{ fontSize: 13, fontWeight: active ? "800" : "600", color: active ? NAV : "rgba(255,255,255,0.7)" }}>
-                {c.name}
+                {c.name || "All"}
               </Text>
             </TouchableOpacity>
           );
