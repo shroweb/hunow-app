@@ -15,6 +15,7 @@ import { decodeHtml, stripHtml, getDisplayAddress, getTodayOpeningHours, getToda
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/Skeleton";
+import { HUNowPickBadge } from "@/components/HUNowPickBadge";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -162,6 +163,8 @@ export default function VenueDetailScreen() {
   const locationText = getDisplayAddress(venue.acf?.address);
   const todayHours = getTodayOpeningHours(venue.acf?.opening_hours);
   const todayStatus = getTodayOpeningStatus(venue.acf?.opening_hours);
+  const mapsQuery = locationText ? encodeURIComponent(locationText) : null;
+  const mapsUrl = mapsQuery ? `https://www.google.com/maps/search/?api=1&query=${mapsQuery}` : null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -236,6 +239,15 @@ export default function VenueDetailScreen() {
                   <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.6)" />
                   <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: "700" }}>{todayHours}</Text>
                 </View>
+              ) : null}
+              {mapsUrl ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(mapsUrl)}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}
+                >
+                  <Ionicons name="map-outline" size={12} color={YELLOW} />
+                  <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>Open Map</Text>
+                </TouchableOpacity>
               ) : null}
             </View>
           ) : null}
@@ -364,8 +376,11 @@ export default function VenueDetailScreen() {
                                 </Text>
                               </View>
                             </View>
-                            <Text style={{ color: unlocked ? "rgba(15,0,50,0.55)" : "rgba(255,255,255,0.42)", fontSize: 12, marginTop: 3 }}>
+                          <Text style={{ color: unlocked ? "rgba(15,0,50,0.55)" : "rgba(255,255,255,0.42)", fontSize: 12, marginTop: 3 }}>
                               {tierSummaryText}
+                            </Text>
+                            <Text style={{ color: unlocked ? "rgba(15,0,50,0.38)" : "rgba(255,255,255,0.32)", fontSize: 11, fontWeight: "700", marginTop: 5 }}>
+                              {isExpanded ? "Tap to collapse" : "Tap to expand"}
                             </Text>
                           </View>
                         </View>
@@ -408,11 +423,7 @@ export default function VenueDetailScreen() {
 
                     {isExpanded && (
                     <View style={{ padding: 16 }}>
-                      {to.featured ? (
-                        <View style={{ alignSelf: "flex-start", backgroundColor: unlocked ? YELLOW + "22" : "rgba(251,201,0,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 10 }}>
-                          <Text style={{ color: unlocked ? NAV : YELLOW, fontSize: 10, fontWeight: "900", letterSpacing: 0.8 }}>FEATURED BY HU NOW</Text>
-                        </View>
-                      ) : null}
+                      {to.featured ? <View style={{ marginBottom: 10 }}>{unlocked ? <HUNowPickBadge label="FEATURED BY HU NOW" /> : <HUNowPickBadge label="FEATURED BY HU NOW" inverted />}</View> : null}
                       <Text style={{ color: unlocked ? NAV : "white", fontWeight: "800", fontSize: 17, marginBottom: to.description ? 6 : 10 }}>
                         {decodeHtml(to.title)}
                       </Text>
@@ -549,14 +560,15 @@ export default function VenueDetailScreen() {
                             <Text style={{ color: "rgba(15,0,50,0.52)", fontSize: 12, marginTop: 3 }}>
                               {standardSummaryText}
                             </Text>
+                            <Text style={{ color: "rgba(15,0,50,0.38)", fontSize: 11, fontWeight: "700", marginTop: 5 }}>
+                              {isExpanded ? "Tap to collapse" : "Tap to expand"}
+                            </Text>
                           </View>
                         </View>
                         <View style={{ alignItems: "flex-end", gap: 8 }}>
                         <View style={{ flexDirection: "row", gap: 6, alignSelf: "flex-start" }}>
                           {offer.featured ? (
-                            <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-                              <Text style={{ color: NAV, fontSize: 11, fontWeight: "900" }}>HU NOW PICK</Text>
-                            </View>
+                            <HUNowPickBadge />
                           ) : null}
                           <View style={{ backgroundColor: YELLOW + "26", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                             <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>STANDARD</Text>
@@ -569,9 +581,7 @@ export default function VenueDetailScreen() {
 
                     {isExpanded && (
                     <View style={{ padding: 16 }}>
-                      {offer.featured ? (
-                        <Text style={{ color: "#8A6A00", fontSize: 12, fontWeight: "900", marginBottom: 10 }}>Featured by HU NOW</Text>
-                      ) : null}
+                      {offer.featured ? <View style={{ marginBottom: 10 }}><HUNowPickBadge label="FEATURED BY HU NOW" /></View> : null}
                       {offer.description ? (
                         <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
                           {decodeHtml(offer.description)}

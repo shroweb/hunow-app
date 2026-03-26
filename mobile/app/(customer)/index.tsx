@@ -13,6 +13,7 @@ import { decodeHtml, parseEventDate, getLatLng } from "@/lib/utils";
 import { haversineKm } from "@/lib/haversine";
 import { useAuth } from "@/context/AuthContext";
 import { OfferCardSkeleton } from "@/components/OfferCardSkeleton";
+import { HUNowPickBadge } from "@/components/HUNowPickBadge";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -125,7 +126,7 @@ async function loadOffers(): Promise<ActiveOffer[]> {
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { width } = useWindowDimensions();
   const CARD_W = width - 48;
 
@@ -133,6 +134,7 @@ export default function HomeScreen() {
   const [news, setNews]         = useState<WPPost[]>([]);
   const [activeOffers, setActiveOffers] = useState<ActiveOffer[]>([]);
   const [nearbyOffers, setNearbyOffers] = useState<ActiveOffer[]>([]);
+  const [favouriteOffers, setFavouriteOffers] = useState<ActiveOffer[]>([]);
   const [nearbyState, setNearbyState] = useState<"idle" | "ready" | "empty" | "denied" | "unavailable">("idle");
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -151,6 +153,17 @@ export default function HomeScreen() {
     setEvents(upcomingEvents.slice(0, 4));
     setNews([...wpNews].sort((a, b) => Number(Boolean(b.sticky)) - Number(Boolean(a.sticky)) || new Date(b.date).getTime() - new Date(a.date).getTime()));
     setActiveOffers(wpOffers);
+    if (token) {
+      try {
+        const favourites = await wordpress.getFavourites(token);
+        const favouriteVenueIds = new Set(favourites.map((item) => item.post_id));
+        setFavouriteOffers(wpOffers.filter((offer) => favouriteVenueIds.has(offer.venueId)).slice(0, 6));
+      } catch {
+        setFavouriteOffers([]);
+      }
+    } else {
+      setFavouriteOffers([]);
+    }
 
     // Rewards Near You — non-blocking
     try {
@@ -194,7 +207,7 @@ export default function HomeScreen() {
     setRefreshing(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [token]);
   function onRefresh() { setRefreshing(true); load(); }
 
   // Skeleton state — show header and nav instantly, skeleton for content sections
@@ -296,6 +309,60 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
 
+        {favouriteOffers.length > 0 && (
+          <View style={{ marginTop: 28 }}>
+            <SectionHeader
+              icon="heart"
+              title="Favourites"
+              actionLabel="View All"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(customer)/venues");
+              }}
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+              {favouriteOffers.map((offer, index) => (
+                <TouchableOpacity
+                  key={`fav-${offer.venueId}-${index}`}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push(`/(customer)/venue/${offer.venueId}` as any);
+                  }}
+                  style={{
+                    width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
+                    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
+                  }}
+                >
+                  {offer.img ? (
+                    <Image source={{ uri: offer.img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ width: "100%", height: 110, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="heart-outline" size={28} color="rgba(15,0,50,0.2)" />
+                    </View>
+                  )}
+                  <View style={{ padding: 14 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      {offer.featured ? <HUNowPickBadge /> : (
+                        <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+                          <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>SAVED</Text>
+                        </View>
+                      )}
+                      <Ionicons name="heart" size={14} color="#FF4D6D" />
+                    </View>
+                    <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
+                      {offer.venueName}
+                    </Text>
+                    <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
+                      {decodeHtml(offer.offerTitle)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* ── Near You ──────────────────────────────────── */}
         {(nearbyOffers.length > 0 || nearbyState === "denied" || nearbyState === "unavailable") && (
           <View style={{ marginTop: 28 }}>
@@ -335,9 +402,15 @@ export default function HomeScreen() {
                         <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{dist}</Text>
                       </View>
                     <View style={{ padding: 14 }}>
-                        <View style={{ alignSelf: "flex-start", backgroundColor: offer.featured ? YELLOW : YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
-                          <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>{offer.featured ? "HU NOW PICK" : "AVAILABLE NOW"}</Text>
-                        </View>
+                        {offer.featured ? (
+                          <View style={{ marginBottom: 8 }}>
+                            <HUNowPickBadge />
+                          </View>
+                        ) : (
+                          <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
+                            <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>AVAILABLE NOW</Text>
+                          </View>
+                        )}
                       <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
                         {offer.venueName}
                       </Text>
@@ -415,12 +488,12 @@ export default function HomeScreen() {
                       </View>
                     )}
                     {/* Yellow OFFER pill overlay */}
-                    <View style={{
-                      position: "absolute", top: 10, left: 10,
-                      backgroundColor: offer.featured ? "#F59E0B" : YELLOW, borderRadius: 999,
-                      paddingHorizontal: 9, paddingVertical: 5,
-                    }}>
-                      <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{offer.featured ? "HU NOW PICK" : "STANDARD"}</Text>
+                    <View style={{ position: "absolute", top: 10, left: 10 }}>
+                      {offer.featured ? <HUNowPickBadge /> : (
+                        <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+                          <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
+                        </View>
+                      )}
                     </View>
                   </View>
 

@@ -10,6 +10,7 @@ import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, extractOffers, type WPEat } from "@/lib/wordpress";
 import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus } from "@/lib/utils";
 import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
+import { HUNowPickBadge } from "@/components/HUNowPickBadge";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -187,8 +188,12 @@ export default function VenuesScreen() {
                       <Ionicons name="storefront-outline" size={32} color="rgba(15,0,50,0.2)" />
                     </View>
                   )}
-                  <View style={{ position: "absolute", top: 10, left: 10, backgroundColor: featured ? "#F59E0B" : YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
-                    <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{featured ? "HU NOW PICK" : "STANDARD"}</Text>
+                  <View style={{ position: "absolute", top: 10, left: 10 }}>
+                    {featured ? <HUNowPickBadge /> : (
+                      <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+                        <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
+                      </View>
+                    )}
                   </View>
                   <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(15,0,50,0.72)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 }}>
                     <Text style={{ color: "white", fontSize: 10, fontWeight: "800" }}>{offerCount} {offerCount === 1 ? "offer" : "offers"}</Text>
