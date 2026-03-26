@@ -44,6 +44,7 @@ export default function BusinessProfileScreen() {
 
   const standardOffers = venue ? extractOffers(venue) : [];
   const tierOfferCount = venue?.tier_offers?.length ?? 0;
+  const setupReady = user.setup_status === "ready";
 
   return (
     <SafeAreaView className="flex-1 bg-[#F5F5F7]">
@@ -77,7 +78,7 @@ export default function BusinessProfileScreen() {
             <Text className="text-[#0F0032]/40 text-xs mb-0.5">Email</Text>
             <Text className="text-[#0F0032] font-semibold">{user.email}</Text>
           </View>
-          <View className="px-5 py-4">
+          <View className="px-5 py-4 border-b border-[#F5F5F7]">
             <Text className="text-[#0F0032]/40 text-xs mb-0.5">WordPress Venue Post ID</Text>
             <Text className="text-[#0F0032] font-semibold">
               {user.venue_id ? String(user.venue_id) : "Not linked"}
@@ -88,22 +89,32 @@ export default function BusinessProfileScreen() {
                 : "Contact HU NOW admin to link your venue listing."}
             </Text>
           </View>
+          <View className="px-5 py-4 border-b border-[#F5F5F7]">
+            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Linked Venue</Text>
+            <Text className="text-[#0F0032] font-semibold">{user.venue_name || "Not linked"}</Text>
+          </View>
+          <View className="px-5 py-4">
+            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Subscription Tier</Text>
+            <Text className="text-[#0F0032] font-semibold" style={{ textTransform: "capitalize" }}>{user.subscription_tier ?? "basic"}</Text>
+          </View>
         </View>
 
         <View className="bg-white rounded-2xl overflow-hidden mb-4"
           style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 }}
         >
           <View className="px-5 py-4 border-b border-[#F5F5F7]">
-            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Venue Linking Status</Text>
+            <Text className="text-[#0F0032]/40 text-xs mb-0.5">Business Setup Status</Text>
             <Text className="text-[#0F0032] font-semibold">
-              {!user.venue_id ? "Needs linking" : loadingVenue ? "Checking venue…" : venue ? "Linked and ready" : "Linked but not loading"}
+              {!user.venue_id ? "Needs linking" : loadingVenue ? "Checking venue…" : setupReady ? "Linked and ready" : "Needs attention"}
             </Text>
             <Text className="text-[#0F0032]/35 text-xs mt-1">
-              {!user.venue_id
-                ? "This account cannot redeem or manage offers until it is linked to a WordPress venue."
-                : venue
-                  ? `Connected to ${venue.title.rendered}.`
-                  : "The stored venue ID exists on your account, but the listing could not be loaded right now."}
+              {user.setup_message
+                ? user.setup_message
+                : !user.venue_id
+                  ? "This account cannot redeem or manage offers until it is linked to a WordPress venue."
+                  : venue
+                    ? `Connected to ${venue.title.rendered}.`
+                    : "The stored venue ID exists on your account, but the listing could not be loaded right now."}
             </Text>
           </View>
           <View className="px-5 py-4 border-b border-[#F5F5F7]">
@@ -117,13 +128,13 @@ export default function BusinessProfileScreen() {
         </View>
 
         {/* Info banner if no venue linked */}
-        {!user.venue_id && (
+        {!setupReady && (
           <View className="bg-brand-yellow/15 border border-brand-yellow/30 rounded-2xl p-4 mb-4 flex-row items-start gap-3">
             <Ionicons name="information-circle-outline" size={20} color="#0F0032" />
             <View className="flex-1">
-              <Text className="text-[#0F0032] font-semibold text-sm mb-1">Venue not linked</Text>
+              <Text className="text-[#0F0032] font-semibold text-sm mb-1">Setup incomplete</Text>
               <Text className="text-[#0F0032]/60 text-xs">
-                Your account needs to be linked to your WordPress venue post before you can redeem offers. Contact the HU NOW team.
+                {user.setup_message ?? "Your account needs to be linked to your WordPress venue post before you can redeem offers. Contact the HU NOW team."}
               </Text>
             </View>
           </View>
@@ -151,7 +162,7 @@ export default function BusinessProfileScreen() {
         >
           <Text className="text-[#0F0032] font-semibold mb-2">How management works now</Text>
           <Text className="text-[#0F0032]/60 text-xs leading-5">
-            Offers, tier rewards, schedules, and redemption rules are managed from the HU NOW web portal. The mobile business app is now focused on live scanning, redemptions, and checking what is currently live at your venue.
+            The mobile business app now handles live scanning, redemptions, analytics, and in-app offer editing. The HU NOW web portal is still available for account setup and deeper WordPress-side management.
           </Text>
         </View>
 

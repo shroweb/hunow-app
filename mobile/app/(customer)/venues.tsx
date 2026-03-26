@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, extractOffers, type WPEat } from "@/lib/wordpress";
-import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus, getSearchableText, getFilterLabels } from "@/lib/utils";
+import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus } from "@/lib/utils";
 import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 import { HUNowPickBadge } from "@/components/HUNowPickBadge";
 
@@ -18,21 +18,7 @@ const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.1)";
 const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
-interface Cuisine { id: number | string | null; name: string; venueIds?: number[] }
-
-function collectNumericIds(value: unknown): number[] {
-  if (typeof value === "number" && Number.isFinite(value)) return [value];
-  if (typeof value === "string" && /^\d+$/.test(value.trim())) return [Number(value.trim())];
-  if (Array.isArray(value)) return Array.from(new Set(value.flatMap((item) => collectNumericIds(item))));
-  if (value && typeof value === "object") {
-    return Array.from(
-      new Set(
-        Object.values(value as Record<string, unknown>).flatMap((item) => collectNumericIds(item))
-      )
-    );
-  }
-  return [];
-}
+interface Cuisine { id: number | null; name: string; venueIds?: number[] }
 
 export default function VenuesScreen() {
   const [allVenues, setAllVenues] = useState<WPEat[]>([]);
@@ -49,34 +35,19 @@ export default function VenuesScreen() {
 
   async function load() {
     setLoading(true);
-    const [results, cats] = await Promise.all([
-      wordpress.getEat({ page: 1, perPage: 100 }),
-      wordpress.getCuisines().catch(() => [] as { id: number; name: string }[]),
-    ]);
+    const results = await wordpress.getEat({ page: 1, perPage: 100 });
     const venuesWithOffers = results.filter(hasOffers);
-    const filterMap = new Map<string, Cuisine>();
+    const filterMap = new Map<number, Cuisine>();
 
     venuesWithOffers.forEach((venue) => {
-      const rawValues = [venue.acf?.cuisine_type, venue.acf?.category];
-      const resolvedLabels = [
-        ...rawValues.flatMap((raw) =>
-          collectNumericIds(raw)
-            .map((id) => cats.find((cat) => Number(cat.id) === id)?.name)
-            .filter((name): name is string => Boolean(name))
-        ),
-        ...rawValues.flatMap((raw) => getFilterLabels(raw).filter((label) => !/^\d+$/.test(label))),
-      ];
-
-      Array.from(new Set(resolvedLabels)).forEach((label) => {
-        const key = label.toLowerCase();
-        const existing = filterMap.get(key);
+      (venue.filters ?? []).forEach((filter) => {
+        const existing = filterMap.get(filter.id);
         if (existing) {
           existing.venueIds = Array.from(new Set([...(existing.venueIds ?? []), venue.id]));
         } else {
-          const matchedTerm = cats.find((cat) => cat.name.toLowerCase() === key);
-          filterMap.set(key, {
-            id: matchedTerm?.id ?? `derived:${key}`,
-            name: label,
+          filterMap.set(filter.id, {
+            id: filter.id,
+            name: filter.name,
             venueIds: [venue.id],
           });
         }

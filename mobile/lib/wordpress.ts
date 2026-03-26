@@ -40,6 +40,12 @@ export interface BusinessOffersResponse {
   tier_offers: WPTierOffer[];
 }
 
+export interface WPVenueFilter {
+  id: number;
+  slug: string;
+  name: string;
+}
+
 export interface SiteBrand {
   name: string;
   logo_url: string | null;
@@ -59,6 +65,7 @@ export interface WPEat {
     cta?: { text?: string; url?: string } | null;
   };
   tier_offers?: WPTierOffer[];
+  filters?: WPVenueFilter[];
   acf?: {
     is_featured?: string;
     opening_hours?: { day: string; hours: string }[];

@@ -11,6 +11,7 @@ import {
   type WPOffer,
   type WPTierOffer,
 } from "@/lib/wordpress";
+import { BusinessSetupGate } from "@/components/BusinessSetupGate";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -99,7 +100,7 @@ function PeriodSelector({
 }
 
 export default function BusinessOffersScreen() {
-  const { user, token } = useAuth();
+  const { user, token, appConfig } = useAuth();
   const [data, setData] = useState<BusinessOffersResponse | null>(null);
   const [standardOffers, setStandardOffers] = useState<WPOffer[]>([]);
   const [tierOffers, setTierOffers] = useState<WPTierOffer[]>([]);
@@ -107,10 +108,19 @@ export default function BusinessOffersScreen() {
   const [editingTier, setEditingTier] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const businessReady = user?.role === "business" && user?.setup_status === "ready" && Boolean(user?.venue_id);
+  const editingEnabled = appConfig?.feature_flags?.business_offers_editing !== false;
+
+  useEffect(() => {
+    if (!businessReady) {
+      setLoading(false);
+      setData(null);
+    }
+  }, [businessReady]);
 
   useEffect(() => {
     async function load() {
-      if (!token) {
+      if (!token || !businessReady) {
         setLoading(false);
         return;
       }
@@ -131,7 +141,7 @@ export default function BusinessOffersScreen() {
     }
 
     load();
-  }, [token]);
+  }, [token, businessReady]);
 
   function updateStandard(id: number, patch: Partial<WPOffer>) {
     setStandardOffers((current) => current.map((offer) => (offer.id === id ? { ...offer, ...patch } : offer)));
@@ -218,6 +228,22 @@ export default function BusinessOffersScreen() {
       <SafeAreaView style={{ flex: 1, backgroundColor: NAV, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
         <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 8 }}>Sign in required</Text>
         <Text style={{ color: "rgba(255,255,255,0.5)", textAlign: "center" }}>Please log back in to manage your venue offers.</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!businessReady) {
+    return <BusinessSetupGate user={user} title="Business offers unavailable" />;
+  }
+
+  if (!editingEnabled) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: NAV, alignItems: "center", justifyContent: "center", paddingHorizontal: 28 }}>
+        <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: YELLOW + "22", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <Ionicons name="construct-outline" size={24} color={YELLOW} />
+        </View>
+        <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 8 }}>Offer editing unavailable</Text>
+        <Text style={{ color: "rgba(255,255,255,0.5)", textAlign: "center" }}>This app build doesn’t support in-app offer editing with the current server configuration.</Text>
       </SafeAreaView>
     );
   }

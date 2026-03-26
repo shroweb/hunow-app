@@ -11,6 +11,7 @@ import { decodeHtml } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { ConfettiCannon } from "@/components/ConfettiCannon";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BusinessSetupGate } from "@/components/BusinessSetupGate";
 
 const DASHBOARD_REFRESH_KEY = "hunow_business_dashboard_refresh";
 
@@ -32,11 +33,12 @@ export default function ScanScreen() {
   const [redeemSuccess, setRedeemSuccess] = useState(false);
   const [pointsAwarded, setPointsAwarded] = useState(35);
   const lastScan = useRef<string>("");
+  const businessReady = user?.role === "business" && user?.setup_status === "ready" && Boolean(user?.venue_id);
 
   // Load this venue's offers from WordPress
   useEffect(() => {
     async function load() {
-      if (!user) { setOffersLoading(false); return; }
+      if (!user || !businessReady) { setOffersLoading(false); return; }
 
       const venueId = user.venue_id;
       setWpPostId(venueId || null);
@@ -55,7 +57,7 @@ export default function ScanScreen() {
       setOffersLoading(false);
     }
     load();
-  }, [user]);
+  }, [user, businessReady]);
 
   async function handleScan({ data }: { data: string }) {
     if (data === lastScan.current || !token || !wpPostId) return;
@@ -152,6 +154,10 @@ export default function ScanScreen() {
     : null;
 
   if (!permission) return <View style={{ flex: 1, backgroundColor: "#F5F5F7" }} />;
+
+  if (!businessReady) {
+    return <BusinessSetupGate user={user} title="Scanning unavailable" />;
+  }
 
   if (!permission.granted) {
     return (

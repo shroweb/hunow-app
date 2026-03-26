@@ -4,6 +4,7 @@ const WP_BASE = (process.env.EXPO_PUBLIC_WP_API_URL ?? "https://hunow.co.uk/wp-j
 const JWT_URL = `${WP_BASE}/jwt-auth/v1/token`;
 const REGISTER_URL = `${WP_BASE}/hunow/v1/register`;
 const ME_URL = `${WP_BASE}/hunow/v1/me`;
+const APP_CONFIG_URL = `${WP_BASE}/hunow/v1/app-config`;
 const BUSINESS_DASHBOARD_URL = `${WP_BASE}/hunow/v1/business-dashboard`;
 const FORGOT_PASSWORD_URL = `${WP_BASE}/hunow/v1/forgot-password`;
 const UPDATE_EMAIL_URL = `${WP_BASE}/hunow/v1/update-email`;
@@ -26,7 +27,26 @@ export interface WPUser {
   points: number;
   tier?: string;
   venue_id: number;
+  venue_name?: string | null;
+  assigned_venue_ids?: number[];
+  subscription_tier?: string;
+  setup_status?: "ready" | "needs_venue";
+  setup_message?: string | null;
   redemptions: WPRedemption[];
+}
+
+export interface AppConfig {
+  api_version: string;
+  min_supported_app_version: string;
+  recommended_app_version: string;
+  feature_flags: {
+    business_setup_status?: boolean;
+    normalized_offer_filters?: boolean;
+    business_offers_editing?: boolean;
+    tier_offers?: boolean;
+    favourites?: boolean;
+    [key: string]: boolean | undefined;
+  };
 }
 
 export interface WPRedemption {
@@ -188,6 +208,18 @@ export async function fetchMe(token: string): Promise<WPUser> {
   }
 
   return res.json() as Promise<WPUser>;
+}
+
+export async function fetchAppConfig(): Promise<AppConfig | null> {
+  const res = await fetch(APP_CONFIG_URL, {
+    headers: { Accept: "application/json" },
+  }).catch(() => null);
+
+  if (!res || !res.ok) {
+    return null;
+  }
+
+  return res.json() as Promise<AppConfig>;
 }
 
 /** POST /hunow/v1/lookup-card — validate a scanned QR token, return member name + points */

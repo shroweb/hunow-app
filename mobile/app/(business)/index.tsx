@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "@/context/AuthContext";
 import { fetchBusinessDashboard, type BusinessDashboardResponse } from "@/lib/wpAuth";
+import { BusinessSetupGate } from "@/components/BusinessSetupGate";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -19,16 +20,25 @@ export default function BusinessDashboard() {
   const [range, setRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const businessReady = user?.role === "business" && user?.setup_status === "ready" && Boolean(user?.venue_id);
+
+  useEffect(() => {
+    if (!businessReady) {
+      setLoading(false);
+      setRefreshing(false);
+      setDashboard(null);
+    }
+  }, [businessReady]);
 
   const load = useCallback(async (mode: "initial" | "refresh" = "initial") => {
-    if (!token) return;
+    if (!token || !businessReady) return;
     if (mode === "refresh") setRefreshing(true);
     else setLoading(true);
     const data = await fetchBusinessDashboard(token, range).catch(() => null);
     setDashboard(data);
     setLoading(false);
     setRefreshing(false);
-  }, [token, range]);
+  }, [token, range, businessReady]);
 
   useEffect(() => {
     load();
@@ -68,6 +78,10 @@ export default function BusinessDashboard() {
         <ActivityIndicator color={YELLOW} />
       </View>
     );
+  }
+
+  if (!businessReady) {
+    return <BusinessSetupGate user={user} title="Business dashboard unavailable" />;
   }
 
   const stats = dashboard?.stats;
