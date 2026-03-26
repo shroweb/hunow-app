@@ -11,6 +11,7 @@ export interface WPOffer {
   id: number;
   title: string;
   description: string;
+  image_url?: string | null;
   featured?: boolean;
   paused?: boolean;
   limit_count?: number;
@@ -26,6 +27,7 @@ export interface WPTierOffer {
   tier: "bronze" | "silver" | "gold";
   title: string;
   description: string;
+  image_url?: string | null;
   featured?: boolean;
   paused?: boolean;
   limit_count?: number;
@@ -158,6 +160,7 @@ export function extractOffers(venue: WPEat): WPOffer[] {
         id: o.id,
         title: o.title.trim(),
         description: (o.description ?? "").trim(),
+        image_url: o.image_url ?? null,
         featured: Boolean(o.featured),
         paused: Boolean(o.paused),
         limit_count: o.limit_count ?? 1,
@@ -177,6 +180,7 @@ export function extractOffers(venue: WPEat): WPOffer[] {
       id: 1,
       title,
       description: (venue.acf?.offer_description ?? "").trim(),
+      image_url: null,
       featured: false,
       paused: false,
       limit_count: 1,

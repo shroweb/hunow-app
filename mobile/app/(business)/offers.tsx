@@ -417,6 +417,11 @@ export default function BusinessOffersScreen() {
                   />
                 </View>
 
+                <View style={{ marginBottom: 12 }}>
+                  <FieldLabel>Offer Image URL</FieldLabel>
+                  <Input value={offer.image_url ?? ""} onChangeText={(value) => updateStandard(offer.id, { image_url: value.trim() })} placeholder="https://..." autoCapitalize="none" />
+                </View>
+
                 <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
                   <View style={{ flex: 1 }}>
                     <FieldLabel>Limit Count</FieldLabel>
@@ -465,6 +470,11 @@ export default function BusinessOffersScreen() {
                 <Text style={{ color: "rgba(15,0,50,0.68)", fontSize: 14, lineHeight: 20 }}>
                   {offer.description.trim() || "No description set yet."}
                 </Text>
+                {offer.image_url ? (
+                  <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12 }} numberOfLines={1}>
+                    Custom offer image set
+                  </Text>
+                ) : null}
                 <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, fontWeight: "700" }}>
                   {formatOfferRule(offer.limit_count, offer.limit_period)}
                 </Text>
@@ -545,6 +555,11 @@ export default function BusinessOffersScreen() {
                     />
                   </View>
 
+                  <View style={{ marginBottom: 12 }}>
+                    <FieldLabel light>Offer Image URL</FieldLabel>
+                    <Input dark value={offer.image_url ?? ""} onChangeText={(value) => updateTier(offer.tier, { image_url: value.trim() })} placeholder="https://..." autoCapitalize="none" />
+                  </View>
+
                   <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
                       <FieldLabel light>Limit Count</FieldLabel>
@@ -595,6 +610,11 @@ export default function BusinessOffersScreen() {
                   <Text style={{ color: "rgba(255,255,255,0.74)", fontSize: 14, lineHeight: 20 }}>
                     {offer.description.trim() || "Add a reward for this tier if you want to offer one."}
                   </Text>
+                  {offer.image_url ? (
+                    <Text style={{ color: "rgba(255,255,255,0.68)", fontSize: 12 }}>
+                      Custom offer image set
+                    </Text>
+                  ) : null}
                   <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 12, fontWeight: "700" }}>
                     {formatOfferRule(offer.limit_count, offer.limit_period)}
                   </Text>

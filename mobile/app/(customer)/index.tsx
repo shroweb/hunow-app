@@ -126,7 +126,7 @@ async function loadOffers(): Promise<ActiveOffer[]> {
         venueId: v.id,
         venueName: decodeHtml(v.title.rendered),
         offerTitle: o.title,
-        img: getFeaturedImage(v),
+        img: o.image_url ?? getFeaturedImage(v),
         featured: Boolean(o.featured),
       });
     }
@@ -136,7 +136,7 @@ async function loadOffers(): Promise<ActiveOffer[]> {
         venueId: v.id,
         venueName: decodeHtml(v.title.rendered),
         offerTitle: tierOffer.title,
-        img: getFeaturedImage(v),
+        img: tierOffer.image_url ?? getFeaturedImage(v),
         featured: Boolean(tierOffer.featured),
         tier: tierOffer.tier,
       });
@@ -204,7 +204,7 @@ export default function HomeScreen() {
               venueId: v.id,
               venueName: decodeHtml(v.title.rendered),
               offerTitle: offer.title,
-              img: getFeaturedImage(v),
+              img: offer.image_url ?? getFeaturedImage(v),
               featured: Boolean(offer.featured),
               distanceKm,
             }));

@@ -193,6 +193,7 @@ export default function VenuesScreen() {
             const img = getFeaturedImage(item);
             const offers = extractOffers(item);
             const firstOfferTitle = offers[0]?.title ?? item.acf?.offer_title ?? null;
+            const offerImg = offers[0]?.image_url ?? img;
             const offerCount = offers.length;
             const featured = Boolean(offers[0]?.featured);
             const location = getDisplayAddress(item.acf?.address);
@@ -212,8 +213,8 @@ export default function VenuesScreen() {
                 }}
               >
                 <View style={{ position: "relative" }}>
-                  {img ? (
-                    <Image source={{ uri: img }} style={{ width: "100%", height: 176 }} resizeMode="cover" />
+                  {offerImg ? (
+                    <Image source={{ uri: offerImg }} style={{ width: "100%", height: 176 }} resizeMode="cover" />
                   ) : (
                     <View style={{ width: "100%", height: 176, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
                       <Ionicons name="storefront-outline" size={32} color="rgba(15,0,50,0.2)" />
