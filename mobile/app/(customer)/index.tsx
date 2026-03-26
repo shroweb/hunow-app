@@ -420,8 +420,8 @@ export default function HomeScreen() {
                     {/* Yellow OFFER pill overlay */}
                     <View style={{ position: "absolute", top: 10, left: 10 }}>
                       {offer.featured ? <HUNowPickBadge /> : (
-                        <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
-                          <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>STANDARD</Text>
+                        <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+                          <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>AVAILABLE NOW</Text>
                         </View>
                       )}
                     </View>
