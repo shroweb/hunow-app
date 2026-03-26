@@ -396,31 +396,20 @@ export default function HomeScreen() {
                   key={`${offer.venueId}-${index}`}
                   onPress={() => router.push(`/(customer)/venue/${offer.venueId}` as any)}
                   style={{
-                    width: 224,
-                    height: 154,
-                    backgroundColor: "white",
-                    borderRadius: 22,
-                    overflow: "hidden",
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.18,
-                    shadowRadius: 10,
-                    elevation: 5,
+                    width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
+                    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
                   }}
                 >
-                  {/* Image top half */}
-                  <View style={{ position: "relative", height: 82 }}>
-                    {offer.img ? (
-                      <Image source={{ uri: offer.img }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-                    ) : (
-                      <View style={{ width: "100%", height: "100%", backgroundColor: NAV, alignItems: "center", justifyContent: "center" }}>
+                  {offer.img ? (
+                    <Image source={{ uri: offer.img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ width: "100%", height: 110, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
                         <Ionicons name="pricetag-outline" size={22} color={YELLOW} />
-                      </View>
-                    )}
-                  </View>
+                    </View>
+                  )}
 
-                  {/* Text bottom half */}
-                  <View style={{ paddingHorizontal: 12, paddingVertical: 12, flex: 1, justifyContent: "center" }}>
+                  <View style={{ padding: 14 }}>
                     {offer.featured ? (
                       <View style={{ marginBottom: 8 }}>
                         <HUNowPickBadge />
@@ -433,7 +422,7 @@ export default function HomeScreen() {
                     <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 11, fontWeight: "700", marginBottom: 6 }} numberOfLines={1}>
                       {offer.venueName}
                     </Text>
-                    <Text style={{ color: NAV, fontWeight: "800", fontSize: 14, lineHeight: 18 }} numberOfLines={2}>
+                    <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
                       {offer.offerTitle}
                     </Text>
                     <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginTop: 6 }} numberOfLines={1}>
