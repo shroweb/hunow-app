@@ -138,7 +138,7 @@ export default function VenuesScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={{ flexGrow: 0 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, gap: 10, alignItems: "center" }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 10, alignItems: "center" }}
       >
         {cuisines.map((c) => {
           const active = activeFilter === c.id;
@@ -149,8 +149,9 @@ export default function VenuesScreen() {
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveFilter(c.id); }}
               style={{
                 minWidth: 56,
-                height: 38,
+                minHeight: 42,
                 paddingHorizontal: 16,
+                paddingVertical: 9,
                 borderRadius: 999,
                 backgroundColor: active ? YELLOW : SURFACE,
                 borderWidth: 1, borderColor: active ? YELLOW : "rgba(255,255,255,0.15)",
@@ -161,7 +162,7 @@ export default function VenuesScreen() {
               <Text
                 style={{
                   fontSize: 15,
-                  lineHeight: 18,
+                  lineHeight: 16,
                   fontWeight: active ? "800" : "700",
                   color: active ? NAV : "rgba(255,255,255,0.82)",
                   textAlign: "center",
