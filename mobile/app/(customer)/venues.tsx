@@ -138,18 +138,19 @@ export default function VenuesScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={{ flexGrow: 0 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, gap: 8, alignItems: "center" }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 6, gap: 10, alignItems: "center" }}
       >
         {cuisines.map((c) => {
           const active = activeFilter === c.id;
+          const label = c.name?.trim() || "All";
           return (
             <TouchableOpacity
               key={c.id ?? "all"}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setActiveFilter(c.id); }}
               style={{
-                minWidth: 44,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
+                minWidth: 56,
+                height: 38,
+                paddingHorizontal: 16,
                 borderRadius: 999,
                 backgroundColor: active ? YELLOW : SURFACE,
                 borderWidth: 1, borderColor: active ? YELLOW : "rgba(255,255,255,0.15)",
@@ -157,8 +158,16 @@ export default function VenuesScreen() {
                 justifyContent: "center",
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: active ? "800" : "600", color: active ? NAV : "rgba(255,255,255,0.7)" }}>
-                {c.name || "All"}
+              <Text
+                style={{
+                  fontSize: 15,
+                  lineHeight: 18,
+                  fontWeight: active ? "800" : "700",
+                  color: active ? NAV : "rgba(255,255,255,0.82)",
+                  textAlign: "center",
+                }}
+              >
+                {label}
               </Text>
             </TouchableOpacity>
           );
