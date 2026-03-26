@@ -150,6 +150,20 @@ export function getLatLng(address: unknown): { lat: number; lng: number } | null
 export function parseEventDate(raw: string): Date | null {
   if (!raw) return null;
   const value = raw.trim();
+  const monthMap: Record<string, number> = {
+    january: 0,
+    february: 1,
+    march: 2,
+    april: 3,
+    may: 4,
+    june: 5,
+    july: 6,
+    august: 7,
+    september: 8,
+    october: 9,
+    november: 10,
+    december: 11,
+  };
 
   // YYYYMMDD
   if (/^\d{8}$/.test(value)) {
@@ -197,6 +211,26 @@ export function parseEventDate(raw: string): Date | null {
     const [datePart, timePart] = value.split(/\s+/);
     const [day, month, year] = datePart.split("-");
     return new Date(`${year}-${month}-${day}T${timePart}`);
+  }
+
+  // Month DD, YYYY [HH:mm am/pm]
+  {
+    const match = value.match(
+      /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s*(\d{4})(?:\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm))?$/i
+    );
+    if (match) {
+      const [, monthName, dayRaw, yearRaw, hourRaw, minuteRaw, meridiemRaw] = match;
+      const monthIndex = monthMap[monthName.toLowerCase()];
+      const day = Number(dayRaw);
+      const year = Number(yearRaw);
+      let hour = hourRaw ? Number(hourRaw) : 0;
+      const minute = minuteRaw ? Number(minuteRaw) : 0;
+      const meridiem = (meridiemRaw ?? "").toLowerCase();
+      if (meridiem === "pm" && hour < 12) hour += 12;
+      if (meridiem === "am" && hour === 12) hour = 0;
+      const date = new Date(year, monthIndex, day, hour, minute, 0, 0);
+      return isNaN(date.getTime()) ? null : date;
+    }
   }
 
   const d = new Date(value);

@@ -35,10 +35,11 @@ function getEventTiming(event: WPEvent) {
 
 function formatEventMeta(event: WPEvent) {
   const { date } = getEventTiming(event);
+  const timeRaw = typeof event.acf?.event_time === "string" ? event.acf.event_time.trim() : "";
   return {
     date,
     dateLabel: date ? date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) : "Date TBC",
-    timeLabel: date ? date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "Time TBC",
+    timeLabel: timeRaw || (date ? date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "Time TBC"),
   };
 }
 
