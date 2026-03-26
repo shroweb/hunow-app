@@ -8,8 +8,8 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { wordpress, getFeaturedImage, extractOffers, type FavouriteOfferRef, type WPEvent, type WPEat } from "@/lib/wordpress";
-import { decodeHtml, parseEventDate, getLatLng } from "@/lib/utils";
+import { wordpress, getFeaturedImage, extractOffers, type FavouriteOfferRef, type WPEat } from "@/lib/wordpress";
+import { decodeHtml, getLatLng } from "@/lib/utils";
 import { haversineKm } from "@/lib/haversine";
 import { useAuth } from "@/context/AuthContext";
 import { OfferCardSkeleton } from "@/components/OfferCardSkeleton";
@@ -52,26 +52,6 @@ interface ActiveOffer {
   featured?: boolean;
   distanceKm?: number;
   tier?: "bronze" | "silver" | "gold";
-}
-
-function isDateOnlyValue(raw?: string | null): boolean {
-  if (!raw) return false;
-  return /^\d{8}$/.test(raw.trim()) || /^\d{4}-\d{2}-\d{2}$/.test(raw.trim());
-}
-
-function getEventCutoff(event: WPEvent): Date | null {
-  const endRaw = typeof event.acf?.event_end === "string" ? event.acf.event_end : "";
-  const startRaw = typeof event.acf?.event_date === "string" ? event.acf.event_date : "";
-  const endDate = endRaw ? parseEventDate(endRaw) : null;
-  if (endDate) {
-    if (isDateOnlyValue(endRaw)) endDate.setHours(23, 59, 59, 999);
-    return endDate;
-  }
-  const startDate = startRaw ? parseEventDate(startRaw) : null;
-  if (startDate && isDateOnlyValue(startRaw)) {
-    startDate.setHours(23, 59, 59, 999);
-  }
-  return startDate;
 }
 
 function SectionHeader({
@@ -151,7 +131,6 @@ export default function HomeScreen() {
   const { width } = useWindowDimensions();
   const CARD_W = width - 48;
 
-  const [events, setEvents]     = useState<WPEvent[]>([]);
   const [activeOffers, setActiveOffers] = useState<ActiveOffer[]>([]);
   const [nearbyOffers, setNearbyOffers] = useState<ActiveOffer[]>([]);
   const [favouriteOffers, setFavouriteOffers] = useState<ActiveOffer[]>([]);
@@ -160,16 +139,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
-    const [wpEvents, wpOffers] = await Promise.all([
-      wordpress.getEvents({ perPage: 4 }),
-      loadOffers().catch(() => [] as ActiveOffer[]),
-    ]);
-    const now = new Date();
-    const upcomingEvents = wpEvents.filter((event) => {
-      const cutoff = getEventCutoff(event);
-      return cutoff ? cutoff.getTime() >= now.getTime() : false;
-    });
-    setEvents(upcomingEvents.slice(0, 4));
+    const wpOffers = await loadOffers().catch(() => [] as ActiveOffer[]);
     setActiveOffers(wpOffers);
     if (token) {
       try {
@@ -485,57 +455,6 @@ export default function HomeScreen() {
                   </View>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ── Events ────────────────────────────────────── */}
-        {events.length > 0 && (
-          <View style={{ marginTop: 28 }}>
-            <SectionHeader title="Events" actionLabel="View All" onPress={() => router.push("/(customer)/events")} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-              {events.map((event) => {
-                const img  = getFeaturedImage(event);
-                const date = event.acf?.event_date ? parseEventDate(event.acf.event_date) : null;
-                return (
-                  <TouchableOpacity
-                    key={event.id}
-                    onPress={() => router.push(`/(customer)/event/${event.id}` as any)}
-                    style={{
-                      width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
-                      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
-                    }}
-                  >
-                    {img ? (
-                      <Image source={{ uri: img }} style={{ width: "100%", height: 132 }} resizeMode="cover" />
-                    ) : (
-                      <View style={{ width: "100%", height: 132, backgroundColor: YELLOW + "33", alignItems: "center", justifyContent: "center" }}>
-                        {date ? (
-                          <View style={{ alignItems: "center" }}>
-                            <Text style={{ color: NAV, fontWeight: "900", fontSize: 28, lineHeight: 30 }}>{date.getDate()}</Text>
-                            <Text style={{ color: NAV, fontSize: 12, fontWeight: "700", textTransform: "uppercase" }}>
-                              {date.toLocaleDateString("en-GB", { month: "short" })}
-                            </Text>
-                          </View>
-                        ) : (
-                          <Ionicons name="calendar-outline" size={32} color={NAV} />
-                        )}
-                      </View>
-                    )}
-                    <View style={{ padding: 14 }}>
-                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
-                        {decodeHtml(event.title.rendered)}
-                      </Text>
-                      {date && (
-                        <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 12, marginTop: 5, fontWeight: "700" }}>
-                          {date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
             </ScrollView>
           </View>
         )}
