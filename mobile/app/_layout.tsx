@@ -26,7 +26,7 @@ function RootNavigator() {
   const requiresUpgrade = Boolean(appConfig?.min_supported_app_version) && compareVersions(currentVersion, appConfig?.min_supported_app_version ?? "0.0.0") < 0;
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !segments[0]) return;
 
     const inAuthGroup = segments[0] === "(auth)";
 
@@ -39,7 +39,7 @@ function RootNavigator() {
         router.replace("/(customer)");
       }
     }
-  }, [user, loading, segments]);
+  }, [user, loading, segments, router]);
 
   if (loading) {
     return (
@@ -64,6 +64,7 @@ function RootNavigator() {
     <>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(customer)" />
         <Stack.Screen name="(business)" />

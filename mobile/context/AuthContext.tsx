@@ -24,13 +24,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore persisted session on app launch
   useEffect(() => {
-    Promise.all([restoreSession(), fetchAppConfig()]).then(([session, appConfig]) => {
+    let mounted = true;
+    (async () => {
+      const [sessionResult, appConfigResult] = await Promise.allSettled([restoreSession(), fetchAppConfig()]);
+      if (!mounted) return;
+
+      const session = sessionResult.status === "fulfilled" ? sessionResult.value : null;
+      const appConfig = appConfigResult.status === "fulfilled" ? appConfigResult.value : null;
+
       if (session) {
         setState({ user: session.user, token: session.token, appConfig, loading: false });
       } else {
         setState({ user: null, token: null, appConfig, loading: false });
       }
+    })().catch(() => {
+      if (!mounted) return;
+      setState({ user: null, token: null, appConfig: null, loading: false });
     });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   async function login(email: string, password: string) {
