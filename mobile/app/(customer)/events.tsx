@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -58,14 +58,22 @@ function groupRedemptionsByDate(redemptions: WPRedemption[]) {
   return groups;
 }
 
+type HistoryFilter = "all" | "standard" | "tier";
+
 export default function HistoryScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const redemptions = user?.redemptions ?? [];
-  const redemptionGroups = useMemo(() => groupRedemptionsByDate(redemptions), [redemptions]);
-  const uniqueVenueCount = useMemo(() => new Set(redemptions.map((r) => r.venue_id)).size, [redemptions]);
-  const tierRedemptionCount = useMemo(() => redemptions.filter((r) => !!r.tier).length, [redemptions]);
-  const latestRedemption = redemptions[0] ?? null;
+  const [activeFilter, setActiveFilter] = useState<HistoryFilter>("all");
+  const filteredRedemptions = useMemo(() => {
+    if (activeFilter === "standard") return redemptions.filter((r) => !r.tier);
+    if (activeFilter === "tier") return redemptions.filter((r) => !!r.tier);
+    return redemptions;
+  }, [activeFilter, redemptions]);
+  const redemptionGroups = useMemo(() => groupRedemptionsByDate(filteredRedemptions), [filteredRedemptions]);
+  const uniqueVenueCount = useMemo(() => new Set(filteredRedemptions.map((r) => r.venue_id)).size, [filteredRedemptions]);
+  const tierRedemptionCount = useMemo(() => filteredRedemptions.filter((r) => !!r.tier).length, [filteredRedemptions]);
+  const latestRedemption = filteredRedemptions[0] ?? null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -94,6 +102,39 @@ export default function HistoryScreen() {
             <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 4 }}>{latestRedemption ? `Latest: ${latestRedemption.venue_name}` : "No redemptions yet"}</Text>
           </View>
         </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 6, gap: 8 }}
+          style={{ flexGrow: 0, marginBottom: 10 }}
+        >
+          {[
+            { key: "all" as const, label: "All" },
+            { key: "standard" as const, label: "Standard" },
+            { key: "tier" as const, label: "Tier" },
+          ].map((item) => {
+            const active = activeFilter === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                onPress={() => setActiveFilter(item.key)}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 9,
+                  borderRadius: 999,
+                  backgroundColor: active ? YELLOW : "rgba(255,255,255,0.06)",
+                  borderWidth: 1,
+                  borderColor: active ? YELLOW : BORDER,
+                }}
+              >
+                <Text style={{ color: active ? NAV : "white", fontSize: 12, fontWeight: "800" }}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {redemptionGroups.length === 0 ? (
           <View style={{
