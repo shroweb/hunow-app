@@ -97,20 +97,17 @@ export default function VenuesScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 }}>
         <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12, letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 6 }}>
           Browse Rewards
         </Text>
         <Text style={{ color: "white", fontSize: 28, fontWeight: "900", letterSpacing: -0.5, marginBottom: 8 }}>
           Offers
         </Text>
-        <Text style={{ color: "rgba(255,255,255,0.52)", fontSize: 14, lineHeight: 20 }}>
-          Explore active rewards across partner venues near you.
-        </Text>
       </View>
 
       {/* Search */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 10 }}>
         <View style={{
           flexDirection: "row", alignItems: "center",
           backgroundColor: SURFACE,
