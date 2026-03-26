@@ -38,11 +38,25 @@ export default function LoginScreen() {
       <View className="flex-1 justify-center px-8">
         {/* Logo / brand */}
         <View className="items-center mb-10">
-          <Image
-            source={{ uri: BRAND_LOGO_URL }}
-            style={{ width: 124, height: 56, marginLeft: -18, marginBottom: 12, alignSelf: "center" }}
-            resizeMode="contain"
-          />
+          <View
+            style={{
+              backgroundColor: "#0F0032",
+              borderRadius: 24,
+              paddingHorizontal: 18,
+              paddingVertical: 16,
+              marginBottom: 12,
+              shadowColor: "#0F0032",
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.12,
+              shadowRadius: 18,
+            }}
+          >
+            <Image
+              source={{ uri: BRAND_LOGO_URL }}
+              style={{ width: 124, height: 56, marginLeft: -18, alignSelf: "center" }}
+              resizeMode="contain"
+            />
+          </View>
           <Text className="text-[#0F0032]/40 text-sm mt-1">Hull's city card app</Text>
         </View>
 
