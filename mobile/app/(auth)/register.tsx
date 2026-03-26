@@ -37,7 +37,7 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-[#F5F5F7]"
+      className="flex-1 bg-[#0F0032]"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
@@ -66,7 +66,7 @@ export default function RegisterScreen() {
               resizeMode="contain"
             />
           </View>
-          <Text className="text-[#0F0032]/40 text-sm mt-1">Get your free city card</Text>
+          <Text className="text-white/45 text-sm mt-1">Get your free city card</Text>
         </View>
 
         {/* Card */}
@@ -136,14 +136,14 @@ export default function RegisterScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text className="text-[#0F0032]/30 text-xs text-center mb-4">
+        <Text className="text-white/30 text-xs text-center mb-4">
           By creating an account you agree to the HU NOW terms of service.
         </Text>
 
         <View className="flex-row justify-center">
-          <Text className="text-[#0F0032]/40 text-sm">Already have an account? </Text>
+          <Text className="text-white/40 text-sm">Already have an account? </Text>
           <Link href="/(auth)/login">
-            <Text className="text-[#0F0032] text-sm font-bold">Sign in</Text>
+            <Text className="text-white text-sm font-bold">Sign in</Text>
           </Link>
         </View>
       </ScrollView>

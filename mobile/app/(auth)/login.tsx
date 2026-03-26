@@ -32,7 +32,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-[#F5F5F7]"
+      className="flex-1 bg-[#0F0032]"
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="flex-1 justify-center px-8">
@@ -57,7 +57,7 @@ export default function LoginScreen() {
               resizeMode="contain"
             />
           </View>
-          <Text className="text-[#0F0032]/40 text-sm mt-1">Hull's city card app</Text>
+          <Text className="text-white/45 text-sm mt-1">Hull's city card app</Text>
         </View>
 
         {/* Card */}
@@ -119,9 +119,9 @@ export default function LoginScreen() {
         </View>
 
         <View className="flex-row justify-center">
-          <Text className="text-[#0F0032]/40 text-sm">Don't have an account? </Text>
+          <Text className="text-white/40 text-sm">Don't have an account? </Text>
           <Link href="/(auth)/register">
-            <Text className="text-[#0F0032] text-sm font-bold">Get my card</Text>
+            <Text className="text-white text-sm font-bold">Get my card</Text>
           </Link>
         </View>
       </View>
