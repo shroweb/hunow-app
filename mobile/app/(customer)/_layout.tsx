@@ -96,10 +96,18 @@ export default function CustomerLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="events"
+        options={{
+          title: "Events",
+          tabBarIcon: ({ color, size, focused }) => (
+            <AnimatedTabIcon name="calendar" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
 
       {/* Hidden screens */}
       <Tabs.Screen name="profile" options={{ href: null }} />
-      <Tabs.Screen name="events" options={{ href: null }} />
       <Tabs.Screen name="venue/[id]" options={{ href: null }} />
       <Tabs.Screen name="event/[id]" options={{ href: null }} />
       <Tabs.Screen name="post/[id]" options={{ href: null }} />

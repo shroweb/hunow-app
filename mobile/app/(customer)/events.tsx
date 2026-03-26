@@ -56,7 +56,7 @@ export default function EventsScreen() {
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const data = await wordpress.getEvents({ perPage: 20 }).catch(() => [] as WPEvent[]);
+    const data = await wordpress.getEvents({ perPage: 100, order: "desc" }).catch(() => [] as WPEvent[]);
     setEvents(data);
     setLoading(false);
     setRefreshing(false);

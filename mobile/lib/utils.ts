@@ -163,9 +163,40 @@ export function parseEventDate(raw: string): Date | null {
     );
   }
 
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T00:00:00`);
+  }
+
   // YYYY-MM-DD HH:mm:ss
   if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}(:\d{2})?$/.test(value)) {
     return new Date(value.replace(" ", "T"));
+  }
+
+  // DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    const [day, month, year] = value.split("/");
+    return new Date(`${year}-${month}-${day}T00:00:00`);
+  }
+
+  // DD/MM/YYYY HH:mm[:ss]
+  if (/^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+    const [datePart, timePart] = value.split(/\s+/);
+    const [day, month, year] = datePart.split("/");
+    return new Date(`${year}-${month}-${day}T${timePart}`);
+  }
+
+  // DD-MM-YYYY
+  if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+    const [day, month, year] = value.split("-");
+    return new Date(`${year}-${month}-${day}T00:00:00`);
+  }
+
+  // DD-MM-YYYY HH:mm[:ss]
+  if (/^\d{2}-\d{2}-\d{4}\s+\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+    const [datePart, timePart] = value.split(/\s+/);
+    const [day, month, year] = datePart.split("-");
+    return new Date(`${year}-${month}-${day}T${timePart}`);
   }
 
   const d = new Date(value);
