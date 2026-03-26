@@ -44,7 +44,7 @@ export default function VouchersScreen() {
   const [redeemingCode, setRedeemingCode] = useState(false);
   const [vouchers, setVouchers] = useState<WPVoucher[]>([]);
   const [selectedVoucher, setSelectedVoucher] = useState<WPVoucher | null>(null);
-  const [showUsedVouchers, setShowUsedVouchers] = useState(false);
+  const [activeTab, setActiveTab] = useState<"redeem" | "active" | "redeemed">("active");
 
   async function load(showLoader = true) {
     if (!token) {
@@ -90,8 +90,8 @@ export default function VouchersScreen() {
   }, [vouchers]);
 
   const walletItems = useMemo(
-    () => [...(showUsedVouchers ? grouped.used : []), ...grouped.active],
-    [grouped.active, grouped.used, showUsedVouchers]
+    () => activeTab === "active" ? grouped.active : activeTab === "redeemed" ? grouped.used : [],
+    [activeTab, grouped.active, grouped.used]
   );
 
   return (
@@ -114,42 +114,6 @@ export default function VouchersScreen() {
               </View>
             </View>
 
-            <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 22, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 18 }}>
-              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "800", letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 10 }}>
-                Redeem Voucher Code
-              </Text>
-              <TextInput
-                value={code}
-                onChangeText={setCode}
-                placeholder="Enter voucher code"
-                autoCapitalize="characters"
-                placeholderTextColor="rgba(255,255,255,0.28)"
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.08)",
-                  borderRadius: 16,
-                  paddingHorizontal: 14,
-                  paddingVertical: 14,
-                  color: "white",
-                  fontSize: 15,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.08)",
-                  marginBottom: 12,
-                }}
-              />
-              <TouchableOpacity
-                onPress={handleRedeemCode}
-                disabled={redeemingCode || !code.trim()}
-                style={{
-                  backgroundColor: code.trim() ? YELLOW : "rgba(251,201,0,0.28)",
-                  borderRadius: 16,
-                  paddingVertical: 14,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: NAV, fontSize: 15, fontWeight: "900" }}>{redeemingCode ? "Redeeming..." : "Redeem Code"}</Text>
-              </TouchableOpacity>
-            </View>
-
             <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 20, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 14 }}>
               <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: "800", letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 8 }}>
                 Voucher Wallet
@@ -160,71 +124,81 @@ export default function VouchersScreen() {
               </Text>
             </View>
 
-            {grouped.used.length > 0 ? (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => setShowUsedVouchers((value) => !value)}
-                style={{
-                  marginTop: grouped.active.length > 0 ? 6 : 0,
-                  marginBottom: showUsedVouchers ? 10 : 16,
-                  backgroundColor: "rgba(255,255,255,0.05)",
-                  borderRadius: 18,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.08)",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, paddingRight: 12 }}>
-                  <View
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 16 }}>
+              {[
+                { key: "redeem" as const, label: "Redeem Code", count: null },
+                { key: "active" as const, label: "Active", count: grouped.active.length },
+                { key: "redeemed" as const, label: "Redeemed", count: grouped.used.length },
+              ].map((tab) => {
+                const selected = activeTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    activeOpacity={0.88}
+                    onPress={() => setActiveTab(tab.key)}
                     style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      backgroundColor: "rgba(255,255,255,0.08)",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      flex: tab.key === "redeem" ? 1.2 : 1,
+                      backgroundColor: selected ? YELLOW : "rgba(255,255,255,0.05)",
+                      borderRadius: 16,
+                      paddingVertical: 13,
+                      paddingHorizontal: 14,
+                      borderWidth: 1,
+                      borderColor: selected ? YELLOW : "rgba(255,255,255,0.08)",
                     }}
                   >
-                    <Ionicons name="archive-outline" size={18} color="rgba(255,255,255,0.8)" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: "white", fontSize: 15, fontWeight: "800" }}>
-                      Redeemed or expired
+                    <Text style={{ color: selected ? NAV : "white", fontSize: 13, fontWeight: "900", textAlign: "center" }}>
+                      {tab.label}
                     </Text>
-                    <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 12, marginTop: 2 }}>
-                      {grouped.used.length} voucher{grouped.used.length === 1 ? "" : "s"} hidden to keep this page tidy
-                    </Text>
-                  </View>
-                </View>
-                <View
+                    {tab.count !== null ? (
+                      <Text style={{ color: selected ? "rgba(15,0,50,0.66)" : "rgba(255,255,255,0.48)", fontSize: 11, fontWeight: "700", textAlign: "center", marginTop: 3 }}>
+                        {tab.count}
+                      </Text>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {activeTab === "redeem" ? (
+              <View style={{ backgroundColor: "rgba(255,255,255,0.06)", borderRadius: 22, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 8 }}>
+                <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "800", letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 10 }}>
+                  Redeem Voucher Code
+                </Text>
+                <TextInput
+                  value={code}
+                  onChangeText={setCode}
+                  placeholder="Enter voucher code"
+                  autoCapitalize="characters"
+                  placeholderTextColor="rgba(255,255,255,0.28)"
                   style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: 15,
                     backgroundColor: "rgba(255,255,255,0.08)",
+                    borderRadius: 16,
+                    paddingHorizontal: 14,
+                    paddingVertical: 14,
+                    color: "white",
+                    fontSize: 15,
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.08)",
+                    marginBottom: 12,
+                  }}
+                />
+                <TouchableOpacity
+                  onPress={handleRedeemCode}
+                  disabled={redeemingCode || !code.trim()}
+                  style={{
+                    backgroundColor: code.trim() ? YELLOW : "rgba(251,201,0,0.28)",
+                    borderRadius: 16,
+                    paddingVertical: 14,
                     alignItems: "center",
-                    justifyContent: "center",
                   }}
                 >
-                  <Ionicons
-                    name={showUsedVouchers ? "chevron-up" : "chevron-down"}
-                    size={18}
-                    color="rgba(255,255,255,0.82)"
-                  />
-                </View>
-              </TouchableOpacity>
-            ) : null}
-
-            {grouped.active.length > 0 ? (
-              <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 10 }}>Ready to use</Text>
+                  <Text style={{ color: NAV, fontSize: 15, fontWeight: "900" }}>{redeemingCode ? "Redeeming..." : "Redeem Code"}</Text>
+                </TouchableOpacity>
+              </View>
             ) : null}
           </View>
         }
-        renderItem={({ item, index }) => {
+        renderItem={({ item }) => {
           const isUsed = item.status !== "active";
           return (
             <View>
@@ -367,9 +341,15 @@ export default function VouchersScreen() {
             </View>
           ) : (
             <View style={{ alignItems: "center", marginTop: 20, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 22, padding: 24, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
-              <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginBottom: 6 }}>No vouchers yet</Text>
+              <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginBottom: 6 }}>
+                {activeTab === "redeem" ? "Enter a code to claim a voucher" : activeTab === "active" ? "No active vouchers" : "No redeemed vouchers yet"}
+              </Text>
               <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13, textAlign: "center", lineHeight: 19 }}>
-                Enter a voucher code above to claim your first reward.
+                {activeTab === "redeem"
+                  ? "Add a code above and it will appear in your wallet once claimed."
+                  : activeTab === "active"
+                    ? "Claim a voucher code to add your next reward to the wallet."
+                    : "Redeemed and expired vouchers will collect here once they’ve been used."}
               </Text>
             </View>
           )
