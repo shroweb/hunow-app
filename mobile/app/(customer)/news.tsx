@@ -233,11 +233,12 @@ export default function VouchersScreen() {
                 disabled={isUsed}
                 onPress={() => setSelectedVoucher(item)}
                 style={{
-                  backgroundColor: isUsed ? "rgba(255,255,255,0.04)" : "white",
+                  backgroundColor: isUsed ? "#2A174A" : "white",
                   borderRadius: 28,
                   marginBottom: 12,
-                  opacity: isUsed ? 0.58 : 1,
                   overflow: "hidden",
+                  borderWidth: isUsed ? 1 : 0,
+                  borderColor: isUsed ? "rgba(255,255,255,0.12)" : "transparent",
                 }}
               >
                 <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 16 }}>
@@ -248,8 +249,17 @@ export default function VouchersScreen() {
                       </Text>
                       <Text style={{ color: isUsed ? "white" : NAV, fontSize: 21, fontWeight: "900", lineHeight: 26 }}>{item.title}</Text>
                     </View>
-                    <View style={{ backgroundColor: isUsed ? "rgba(255,255,255,0.09)" : YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                      <Text style={{ color: isUsed ? "rgba(255,255,255,0.78)" : "#8A6A00", fontSize: 11, fontWeight: "900", textTransform: "uppercase" }}>
+                    <View
+                      style={{
+                        backgroundColor: isUsed ? "rgba(255,255,255,0.1)" : YELLOW + "22",
+                        borderRadius: 999,
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderWidth: isUsed ? 1 : 0,
+                        borderColor: isUsed ? "rgba(255,255,255,0.12)" : "transparent",
+                      }}
+                    >
+                      <Text style={{ color: isUsed ? "rgba(255,255,255,0.86)" : "#8A6A00", fontSize: 11, fontWeight: "900", textTransform: "uppercase" }}>
                         {item.status}
                       </Text>
                     </View>
@@ -271,7 +281,16 @@ export default function VouchersScreen() {
                       </View>
                     ) : null}
                   </View>
-                  <View style={{ backgroundColor: isUsed ? "rgba(255,255,255,0.08)" : "rgba(15,0,50,0.05)", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10 }}>
+                  <View
+                    style={{
+                      backgroundColor: isUsed ? "rgba(255,255,255,0.08)" : "rgba(15,0,50,0.05)",
+                      borderRadius: 14,
+                      paddingHorizontal: 12,
+                      paddingVertical: 10,
+                      borderWidth: isUsed ? 1 : 0,
+                      borderColor: isUsed ? "rgba(255,255,255,0.08)" : "transparent",
+                    }}
+                  >
                     <Text style={{ color: isUsed ? "rgba(255,255,255,0.45)" : "rgba(15,0,50,0.42)", fontSize: 10, fontWeight: "900", letterSpacing: 1.1, textTransform: "uppercase", marginBottom: 4 }}>
                       Voucher Code
                     </Text>
@@ -296,10 +315,45 @@ export default function VouchersScreen() {
                     </View>
                   </View>
                 ) : (
-                  <View style={{ paddingHorizontal: 18, paddingVertical: 16 }}>
-                    <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 14, fontWeight: "800" }}>
-                      {item.status === "redeemed" ? "Voucher redeemed" : "Voucher expired"}
-                    </Text>
+                  <View
+                    style={{
+                      paddingHorizontal: 18,
+                      paddingVertical: 16,
+                      backgroundColor: "rgba(255,255,255,0.05)",
+                      borderTopWidth: 1,
+                      borderTopColor: "rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, paddingRight: 12 }}>
+                        <View
+                          style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 18,
+                            backgroundColor: "rgba(255,255,255,0.1)",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Ionicons
+                            name={item.status === "redeemed" ? "checkmark-done" : "time-outline"}
+                            size={18}
+                            color="rgba(255,255,255,0.88)"
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: "white", fontSize: 14, fontWeight: "900" }}>
+                            {item.status === "redeemed" ? "Voucher redeemed" : "Voucher expired"}
+                          </Text>
+                          <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 12, marginTop: 2 }}>
+                            {item.status === "redeemed"
+                              ? "This voucher has already been used and can no longer be scanned."
+                              : "This voucher is no longer valid and has been moved out of your active wallet."}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
                   </View>
                 )}
               </TouchableOpacity>
