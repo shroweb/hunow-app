@@ -364,7 +364,7 @@ export default function HomeScreen() {
           </View>
         ) : activeOffers.length > 0 && (
           <View style={{ marginTop: 28 }}>
-            <SectionHeader title="Active Offers" actionLabel="View All" onPress={() => router.push("/(customer)/venues")} />
+            <SectionHeader icon="pricetag" title="Active Offers" actionLabel="View All" onPress={() => router.push("/(customer)/venues")} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
               {activeOffers.map((offer, index) => (
                 <TouchableOpacity
