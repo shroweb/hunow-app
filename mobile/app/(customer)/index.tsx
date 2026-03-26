@@ -417,18 +417,19 @@ export default function HomeScreen() {
                         <Ionicons name="pricetag-outline" size={22} color={YELLOW} />
                       </View>
                     )}
-                    {/* Yellow OFFER pill overlay */}
-                    <View style={{ position: "absolute", top: 10, left: 10 }}>
-                      {offer.featured ? <HUNowPickBadge /> : (
-                        <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
-                          <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>AVAILABLE NOW</Text>
-                        </View>
-                      )}
-                    </View>
                   </View>
 
                   {/* Text bottom half */}
                   <View style={{ paddingHorizontal: 12, paddingVertical: 12, flex: 1, justifyContent: "center" }}>
+                    {offer.featured ? (
+                      <View style={{ marginBottom: 8 }}>
+                        <HUNowPickBadge />
+                      </View>
+                    ) : (
+                      <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
+                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>AVAILABLE NOW</Text>
+                      </View>
+                    )}
                     <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 11, fontWeight: "700", marginBottom: 6 }} numberOfLines={1}>
                       {offer.venueName}
                     </Text>
