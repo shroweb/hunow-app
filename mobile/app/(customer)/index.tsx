@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { wordpress, getFeaturedImage, extractOffers, type WPEvent, type WPEat } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, extractOffers, type FavouriteOfferRef, type WPEvent, type WPEat } from "@/lib/wordpress";
 import { decodeHtml, parseEventDate, getLatLng } from "@/lib/utils";
 import { haversineKm } from "@/lib/haversine";
 import { useAuth } from "@/context/AuthContext";
@@ -44,12 +44,14 @@ function greeting() {
 }
 
 interface ActiveOffer {
+  key: string;
   venueId: number;
   venueName: string;
   offerTitle: string;
   img: string | null;
   featured?: boolean;
   distanceKm?: number;
+  tier?: "bronze" | "silver" | "gold";
 }
 
 function isDateOnlyValue(raw?: string | null): boolean {
@@ -107,6 +109,12 @@ function SectionHeader({
   );
 }
 
+function buildOfferFavouriteKey(favourite: FavouriteOfferRef | { venue_id: number; offer_index?: number; tier?: string }) {
+  return favourite.tier
+    ? `${favourite.venue_id}:tier:${favourite.tier}`
+    : `${favourite.venue_id}:standard:${favourite.offer_index ?? 0}`;
+}
+
 async function loadOffers(): Promise<ActiveOffer[]> {
   const venues = await wordpress.getEat({ page: 1, perPage: 100 });
   const result: ActiveOffer[] = [];
@@ -114,11 +122,23 @@ async function loadOffers(): Promise<ActiveOffer[]> {
     const offers = extractOffers(v);
     for (const o of offers) {
       result.push({
+        key: `${v.id}:standard:${o.id}`,
         venueId: v.id,
         venueName: decodeHtml(v.title.rendered),
         offerTitle: o.title,
         img: getFeaturedImage(v),
         featured: Boolean(o.featured),
+      });
+    }
+    for (const tierOffer of v.tier_offers ?? []) {
+      result.push({
+        key: `${v.id}:tier:${tierOffer.tier}`,
+        venueId: v.id,
+        venueName: decodeHtml(v.title.rendered),
+        offerTitle: tierOffer.title,
+        img: getFeaturedImage(v),
+        featured: Boolean(tierOffer.featured),
+        tier: tierOffer.tier,
       });
     }
   }
@@ -154,8 +174,8 @@ export default function HomeScreen() {
     if (token) {
       try {
         const favourites = await wordpress.getFavourites(token);
-        const favouriteVenueIds = new Set(favourites.map((item) => item.post_id));
-        setFavouriteOffers(wpOffers.filter((offer) => favouriteVenueIds.has(offer.venueId)).slice(0, 6));
+        const favouriteKeys = new Set(favourites.map((item) => buildOfferFavouriteKey(item)));
+        setFavouriteOffers(wpOffers.filter((offer) => favouriteKeys.has(offer.key)).slice(0, 6));
       } catch {
         setFavouriteOffers([]);
       }
@@ -180,6 +200,7 @@ export default function HomeScreen() {
             const distanceKm = haversineKm(loc.coords.latitude, loc.coords.longitude, coords.lat, coords.lng);
             const offers = extractOffers(v);
             return offers.map((offer) => ({
+              key: `${v.id}:standard:${offer.id}`,
               venueId: v.id,
               venueName: decodeHtml(v.title.rendered),
               offerTitle: offer.title,

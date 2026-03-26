@@ -8,9 +8,9 @@ import * as Haptics from "expo-haptics";
 import * as Brightness from "expo-brightness";
 import * as Location from "expo-location";
 import Animated, {
-  useSharedValue, withSpring, withSequence, withTiming, useAnimatedStyle,
+  useSharedValue, withSpring, withTiming, useAnimatedStyle,
 } from "react-native-reanimated";
-import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, type WPEat, type WPOffer } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, formatOfferSchedule, type FavouriteOfferRef, type WPEat, type WPOffer } from "@/lib/wordpress";
 import { fetchOfferStatuses, type OfferStatus } from "@/lib/wpAuth";
 import { decodeHtml, stripHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus, getLatLng } from "@/lib/utils";
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
@@ -28,6 +28,12 @@ const TIER_CONFIG: Record<string, { min: number; label: string; colour: string; 
   gold: { min: 1400, label: "Gold", colour: "#FBC900", icon: "trophy-outline", accent: "#FFF0A6" },
 };
 
+function buildFavouriteKey(favourite: FavouriteOfferRef | { venue_id: number; offer_index?: number; tier?: string }) {
+  return favourite.tier
+    ? `${favourite.venue_id}:tier:${favourite.tier}`
+    : `${favourite.venue_id}:standard:${favourite.offer_index ?? 0}`;
+}
+
 export default function VenueDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -36,15 +42,13 @@ export default function VenueDetailScreen() {
   const [offers, setOffers] = useState<WPOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
-  const [isFavourite, setIsFavourite] = useState(false);
+  const [favouriteKeys, setFavouriteKeys] = useState<string[]>([]);
   const [qrModalOffer, setQrModalOffer] = useState<WPOffer | null>(null);
   const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
   const [expandedOfferKeys, setExpandedOfferKeys] = useState<string[]>([]);
   const [checkinLoading, setCheckinLoading] = useState(false);
   const savedBrightness = useRef<number | null>(null);
 
-  // Favourite heart animation
-  const heartScale = useSharedValue(1);
   // QR modal reveal animation
   const qrRevealScale = useSharedValue(0.7);
   const qrRevealOpacity = useSharedValue(0);
@@ -73,11 +77,11 @@ export default function VenueDetailScreen() {
 
   // Load real favourite state from WP
   useEffect(() => {
-    if (!token || !id) return;
+    if (!token) return;
     wordpress.getFavourites(token).then((favs) => {
-      setIsFavourite(favs.some((f: { post_id: number }) => f.post_id === Number(id)));
+      setFavouriteKeys(favs.map((fav) => buildFavouriteKey(fav)));
     }).catch(() => {});
-  }, [id, token]);
+  }, [token]);
 
   // Brightness: max on QR modal open, restore on close
   useEffect(() => {
@@ -99,32 +103,30 @@ export default function VenueDetailScreen() {
     }
   }, [qrModalOffer]);
 
-  const heartAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: heartScale.value }],
-  }));
-
   const qrRevealStyle = useAnimatedStyle(() => ({
     transform: [{ scale: qrRevealScale.value }],
     opacity: qrRevealOpacity.value,
   }));
 
-  async function handleFavouriteToggle() {
+  async function handleOfferFavouriteToggle(favourite: FavouriteOfferRef) {
+    if (!token) {
+      Alert.alert("Sign in required", "Please sign in to save favourite offers.");
+      return;
+    }
+
+    const key = buildFavouriteKey(favourite);
+    const isSaved = favouriteKeys.includes(key);
+    setFavouriteKeys((current) => (isSaved ? current.filter((item) => item !== key) : [...current, key]));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    heartScale.value = withSequence(
-      withSpring(1.35, { damping: 6, stiffness: 300 }),
-      withSpring(1, { damping: 8, stiffness: 200 }),
-    );
-    const newState = !isFavourite;
-    setIsFavourite(newState);
-    if (!token) return;
+
     try {
-      if (newState) {
-        await wordpress.addFavourite(Number(id), token);
+      if (isSaved) {
+        await wordpress.removeFavourite(favourite, token);
       } else {
-        await wordpress.removeFavourite(Number(id), token);
+        await wordpress.addFavourite(favourite, token);
       }
     } catch {
-      setIsFavourite(!newState); // revert on failure
+      setFavouriteKeys((current) => (isSaved ? [...current, key] : current.filter((item) => item !== key)));
     }
   }
 
@@ -246,24 +248,6 @@ export default function VenueDetailScreen() {
             }}
           >
             <Ionicons name="chevron-back" size={20} color="white" />
-          </TouchableOpacity>
-
-          {/* Animated Favourite button */}
-          <TouchableOpacity
-            onPress={handleFavouriteToggle}
-            style={{
-              position: "absolute", top: 16, right: 16,
-              backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 20,
-              width: 36, height: 36, alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <Animated.View style={heartAnimStyle}>
-              <Ionicons
-                name={isFavourite ? "heart" : "heart-outline"}
-                size={20}
-                color={isFavourite ? "#FF4D6D" : "white"}
-              />
-            </Animated.View>
           </TouchableOpacity>
 
           <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 108, backgroundColor: "rgba(15,0,50,0.58)" }} />
@@ -428,6 +412,8 @@ export default function VenueDetailScreen() {
                 const ptsNeeded = Math.max(cfg.min - userPoints, 0);
                 const progress = Math.min(userPoints / cfg.min, 1);
                 const isExpanded = expandedOfferKeys.includes(offerKey);
+                const isSaved = favouriteKeys.includes(buildFavouriteKey({ venue_id: Number(id), tier: to.tier }));
+                const scheduleLabel = formatOfferSchedule(to.days_of_week ?? [], to.time_start, to.time_end);
                 const tierSummaryText = statusLoading && token
                   ? "Checking member availability..."
                   : unlocked
@@ -477,6 +463,12 @@ export default function VenueDetailScreen() {
                           </View>
                         </View>
                         <View style={{ alignItems: "flex-end", gap: 8 }}>
+                          <TouchableOpacity
+                            onPress={() => handleOfferFavouriteToggle({ venue_id: Number(id), tier: to.tier, offer_title: to.title })}
+                            style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: unlocked ? "rgba(15,0,50,0.06)" : "rgba(255,255,255,0.08)" }}
+                          >
+                            <Ionicons name={isSaved ? "heart" : "heart-outline"} size={15} color={isSaved ? "#FF4D6D" : unlocked ? NAV : "rgba(255,255,255,0.6)"} />
+                          </TouchableOpacity>
                           {statusLoading && token ? (
                             <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
                               <Text style={{ color: unlocked ? "rgba(15,0,50,0.45)" : "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: "700" }}>Checking…</Text>
@@ -536,6 +528,12 @@ export default function VenueDetailScreen() {
                           <Ionicons name="star" size={11} color={unlocked ? NAV : "rgba(255,255,255,0.5)"} />
                           <Text style={{ color: unlocked ? NAV : "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700" }}>+35 pts on redemption</Text>
                         </View>
+                        {scheduleLabel ? (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: unlocked ? "rgba(15,0,50,0.06)" : "rgba(255,255,255,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                            <Ionicons name="calendar-outline" size={11} color={unlocked ? NAV : "rgba(255,255,255,0.5)"} />
+                            <Text style={{ color: unlocked ? NAV : "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700" }}>{scheduleLabel}</Text>
+                          </View>
+                        ) : null}
                       </View>
 
                       {unlocked && availableNow ? (
@@ -620,6 +618,8 @@ export default function VenueDetailScreen() {
                 const status = offerStatuses.standard[offer.id];
                 const availableNow = status ? status.available : true;
                 const isExpanded = expandedOfferKeys.includes(offerKey);
+                const isSaved = favouriteKeys.includes(buildFavouriteKey({ venue_id: Number(id), offer_index: offer.id }));
+                const scheduleLabel = formatOfferSchedule(offer.days_of_week ?? [], offer.time_start, offer.time_end);
                 const standardSummaryText = statusLoading && token
                   ? "Checking member availability..."
                   : "Available to all HU NOW members";
@@ -658,6 +658,12 @@ export default function VenueDetailScreen() {
                           </View>
                         </View>
                         <View style={{ alignItems: "flex-end", gap: 8 }}>
+                        <TouchableOpacity
+                          onPress={() => handleOfferFavouriteToggle({ venue_id: Number(id), offer_index: offer.id, offer_title: offer.title })}
+                          style={{ width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(15,0,50,0.06)" }}
+                        >
+                          <Ionicons name={isSaved ? "heart" : "heart-outline"} size={15} color={isSaved ? "#FF4D6D" : NAV} />
+                        </TouchableOpacity>
                         <View style={{ flexDirection: "row", gap: 6, alignSelf: "flex-start" }}>
                           {offer.featured ? (
                             <HUNowPickBadge />
@@ -701,6 +707,12 @@ export default function VenueDetailScreen() {
                             <Text style={{ color: AMBER, fontSize: 11, fontWeight: "700" }}>{expiryLabel}</Text>
                           </View>
                         )}
+                        {scheduleLabel ? (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
+                            <Ionicons name="calendar-outline" size={11} color={NAV} />
+                            <Text style={{ color: NAV, fontSize: 11, fontWeight: "700" }}>{scheduleLabel}</Text>
+                          </View>
+                        ) : null}
                       </View>
 
                       {ctaText && ctaUrl && (

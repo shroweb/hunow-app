@@ -17,6 +17,9 @@ export interface WPOffer {
   limit_period?: "week" | "month" | "year" | "ever";
   starts_at?: string | null;
   ends_at?: string | null;
+  days_of_week?: number[];
+  time_start?: string | null;
+  time_end?: string | null;
 }
 
 export interface WPTierOffer {
@@ -29,6 +32,18 @@ export interface WPTierOffer {
   limit_period?: "week" | "month" | "year" | "ever";
   starts_at?: string | null;
   ends_at?: string | null;
+  days_of_week?: number[];
+  time_start?: string | null;
+  time_end?: string | null;
+}
+
+export interface FavouriteOfferRef {
+  venue_id: number;
+  offer_index?: number;
+  tier?: "bronze" | "silver" | "gold";
+  offer_title?: string;
+  content_type?: string;
+  date_added?: string;
 }
 
 export interface BusinessOffersResponse {
@@ -149,13 +164,29 @@ export function extractOffers(venue: WPEat): WPOffer[] {
         limit_period: o.limit_period ?? "month",
         starts_at: o.starts_at ?? null,
         ends_at: o.ends_at ?? null,
+        days_of_week: Array.isArray(o.days_of_week) ? o.days_of_week : [],
+        time_start: o.time_start ?? null,
+        time_end: o.time_end ?? null,
       }))
       .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)) || a.id - b.id);
   }
   // Fallback: single ACF offer_title field
   const title = venue.acf?.offer_title?.trim();
   if (title) {
-    return [{ id: 1, title, description: (venue.acf?.offer_description ?? "").trim(), featured: false, paused: false, limit_count: 1, limit_period: "month", starts_at: null, ends_at: null }];
+    return [{
+      id: 1,
+      title,
+      description: (venue.acf?.offer_description ?? "").trim(),
+      featured: false,
+      paused: false,
+      limit_count: 1,
+      limit_period: "month",
+      starts_at: null,
+      ends_at: null,
+      days_of_week: [],
+      time_start: null,
+      time_end: null,
+    }];
   }
   return [];
 }
@@ -168,6 +199,29 @@ export function formatOfferRule(limitCount = 1, limitPeriod: WPOffer["limit_peri
   }
   const periodLabel = count === 1 ? period : `${period}s`;
   return count === 1 ? `1x per ${period}` : `${count}x per ${periodLabel}`;
+}
+
+export function formatOfferSchedule(
+  daysOfWeek: number[] = [],
+  timeStart?: string | null,
+  timeEnd?: string | null,
+): string | null {
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const normalizedDays = Array.from(new Set((daysOfWeek ?? []).filter((day) => day >= 0 && day <= 6))).sort((a, b) => a - b);
+  const daysText = normalizedDays.length > 0 && normalizedDays.length < 7
+    ? normalizedDays.map((day) => dayLabels[day]).join(", ")
+    : "";
+  const timeText = timeStart && timeEnd
+    ? `${timeStart}–${timeEnd}`
+    : timeStart
+      ? `From ${timeStart}`
+      : timeEnd
+        ? `Until ${timeEnd}`
+        : "";
+
+  if (!daysText && !timeText) return null;
+  if (daysText && timeText) return `${daysText} · ${timeText}`;
+  return daysText || timeText;
 }
 
 /** Get the best available image URL from an embedded WP post, with ACF fallbacks */
@@ -351,20 +405,25 @@ export const wordpress = {
   },
 
   /** Get user's favourites */
-  getFavourites(token: string): Promise<{ post_id: number }[]> {
+  getFavourites(token: string): Promise<FavouriteOfferRef[]> {
     return get(`${HUNOW_BASE}/favourites`, token);
   },
 
-  /** Add a favourite */
-  addFavourite(postId: number, token: string): Promise<unknown> {
-    return post(`${HUNOW_BASE}/favourites`, { post_id: postId }, token);
+  /** Add an offer favourite */
+  addFavourite(favourite: FavouriteOfferRef, token: string): Promise<unknown> {
+    return post(`${HUNOW_BASE}/favourites`, favourite, token);
   },
 
-  /** Remove a favourite */
-  removeFavourite(postId: number, token: string): Promise<unknown> {
-    return fetch(`${HUNOW_BASE}/favourites/${postId}`, {
+  /** Remove an offer favourite */
+  removeFavourite(favourite: FavouriteOfferRef, token: string): Promise<unknown> {
+    return fetch(`${HUNOW_BASE}/favourites`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(favourite),
     }).then((r) => r.json());
   },
 

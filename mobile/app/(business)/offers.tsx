@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import {
   wordpress,
   formatOfferRule,
+  formatOfferSchedule,
   type BusinessOffersResponse,
   type WPOffer,
   type WPTierOffer,
@@ -16,6 +17,15 @@ import { BusinessSetupGate } from "@/components/BusinessSetupGate";
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
 const PERIODS: Array<WPOffer["limit_period"]> = ["week", "month", "year", "ever"];
+const WEEK_DAYS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+];
 const TIER_META: Record<"bronze" | "silver" | "gold", { label: string; colour: string; unlock: string }> = {
   bronze: { label: "Bronze", colour: "#CD7F32", unlock: "200 pts" },
   silver: { label: "Silver", colour: "#C0C0C0", unlock: "600 pts" },
@@ -24,6 +34,10 @@ const TIER_META: Record<"bronze" | "silver" | "gold", { label: string; colour: s
 
 function sanitiseDateInput(value: string) {
   return value.trim();
+}
+
+function sanitiseTimeInput(value: string) {
+  return value.trim().slice(0, 5);
 }
 
 function FieldLabel({ children, light = false }: { children: string; light?: boolean }) {
@@ -92,6 +106,43 @@ function PeriodSelector({
             }}
           >
             <Text style={{ color: active ? NAV : dark ? "rgba(255,255,255,0.88)" : "rgba(15,0,50,0.6)", fontSize: 12, fontWeight: "800", textTransform: "capitalize" }}>{period}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function DaySelector({
+  value = [],
+  onChange,
+  accent = YELLOW,
+  dark = false,
+}: {
+  value?: number[];
+  onChange: (next: number[]) => void;
+  accent?: string;
+  dark?: boolean;
+}) {
+  const current = Array.isArray(value) ? value : [];
+  return (
+    <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+      {WEEK_DAYS.map((day) => {
+        const active = current.includes(day.value);
+        return (
+          <TouchableOpacity
+            key={day.value}
+            onPress={() => onChange(active ? current.filter((item) => item !== day.value) : [...current, day.value].sort((a, b) => a - b))}
+            style={{
+              borderRadius: 999,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              backgroundColor: active ? accent : dark ? "rgba(255,255,255,0.12)" : "rgba(15,0,50,0.05)",
+              borderWidth: 1,
+              borderColor: active ? accent : dark ? "rgba(255,255,255,0.12)" : "rgba(15,0,50,0.08)",
+            }}
+          >
+            <Text style={{ color: active ? NAV : dark ? "rgba(255,255,255,0.88)" : "rgba(15,0,50,0.6)", fontSize: 12, fontWeight: "800" }}>{day.label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -170,6 +221,9 @@ export default function BusinessOffersScreen() {
               limit_period: source.limit_period,
               starts_at: source.starts_at,
               ends_at: source.ends_at,
+              days_of_week: source.days_of_week ?? [],
+              time_start: source.time_start ?? null,
+              time_end: source.time_end ?? null,
             }
           : offer
       );
@@ -188,6 +242,9 @@ export default function BusinessOffersScreen() {
           description: offer.description.trim(),
           starts_at: sanitiseDateInput(offer.starts_at ?? ""),
           ends_at: sanitiseDateInput(offer.ends_at ?? ""),
+          days_of_week: (offer.days_of_week ?? []).slice().sort((a, b) => a - b),
+          time_start: sanitiseTimeInput(offer.time_start ?? ""),
+          time_end: sanitiseTimeInput(offer.time_end ?? ""),
         })),
         tier_offers: tierOffers.map((offer) => ({
           ...offer,
@@ -195,6 +252,9 @@ export default function BusinessOffersScreen() {
           description: offer.description.trim(),
           starts_at: sanitiseDateInput(offer.starts_at ?? ""),
           ends_at: sanitiseDateInput(offer.ends_at ?? ""),
+          days_of_week: (offer.days_of_week ?? []).slice().sort((a, b) => a - b),
+          time_start: sanitiseTimeInput(offer.time_start ?? ""),
+          time_end: sanitiseTimeInput(offer.time_end ?? ""),
         })),
       };
 
@@ -382,6 +442,22 @@ export default function BusinessOffersScreen() {
                     <Input value={offer.ends_at ?? ""} onChangeText={(value) => updateStandard(offer.id, { ends_at: value })} placeholder="2026-03-31T23:59" autoCapitalize="none" />
                   </View>
                 </View>
+
+                <View style={{ marginBottom: 12 }}>
+                  <FieldLabel>Days Of Week</FieldLabel>
+                  <DaySelector value={offer.days_of_week ?? []} onChange={(value) => updateStandard(offer.id, { days_of_week: value })} />
+                </View>
+
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <FieldLabel>Start Time</FieldLabel>
+                    <Input value={offer.time_start ?? ""} onChangeText={(value) => updateStandard(offer.id, { time_start: sanitiseTimeInput(value) })} placeholder="12:00" autoCapitalize="none" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <FieldLabel>End Time</FieldLabel>
+                    <Input value={offer.time_end ?? ""} onChangeText={(value) => updateStandard(offer.id, { time_end: sanitiseTimeInput(value) })} placeholder="15:00" autoCapitalize="none" />
+                  </View>
+                </View>
               </>
             ) : (
               <View style={{ gap: 8 }}>
@@ -397,6 +473,11 @@ export default function BusinessOffersScreen() {
                   <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12 }}>
                     {offer.starts_at ? `Starts ${offer.starts_at}` : "Always on"}
                     {offer.ends_at ? ` • Ends ${offer.ends_at}` : ""}
+                  </Text>
+                ) : null}
+                {formatOfferSchedule(offer.days_of_week ?? [], offer.time_start, offer.time_end) ? (
+                  <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12 }}>
+                    {formatOfferSchedule(offer.days_of_week ?? [], offer.time_start, offer.time_end)}
                   </Text>
                 ) : null}
               </View>
@@ -490,6 +571,22 @@ export default function BusinessOffersScreen() {
                       <Input dark value={offer.ends_at ?? ""} onChangeText={(value) => updateTier(offer.tier, { ends_at: value })} placeholder="2026-03-31T23:59" autoCapitalize="none" />
                     </View>
                   </View>
+
+                  <View style={{ marginBottom: 12 }}>
+                    <FieldLabel light>Days Of Week</FieldLabel>
+                    <DaySelector value={offer.days_of_week ?? []} onChange={(value) => updateTier(offer.tier, { days_of_week: value })} accent={meta.colour} dark />
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: 12 }}>
+                    <View style={{ flex: 1 }}>
+                      <FieldLabel light>Start Time</FieldLabel>
+                      <Input dark value={offer.time_start ?? ""} onChangeText={(value) => updateTier(offer.tier, { time_start: sanitiseTimeInput(value) })} placeholder="12:00" autoCapitalize="none" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <FieldLabel light>End Time</FieldLabel>
+                      <Input dark value={offer.time_end ?? ""} onChangeText={(value) => updateTier(offer.tier, { time_end: sanitiseTimeInput(value) })} placeholder="15:00" autoCapitalize="none" />
+                    </View>
+                  </View>
                 </>
               ) : (
                 <View style={{ gap: 8 }}>
@@ -506,6 +603,11 @@ export default function BusinessOffersScreen() {
                     <Text style={{ color: "rgba(255,255,255,0.68)", fontSize: 12 }}>
                       {offer.starts_at ? `Starts ${offer.starts_at}` : "Always on"}
                       {offer.ends_at ? ` • Ends ${offer.ends_at}` : ""}
+                    </Text>
+                  ) : null}
+                  {formatOfferSchedule(offer.days_of_week ?? [], offer.time_start, offer.time_end) ? (
+                    <Text style={{ color: "rgba(255,255,255,0.68)", fontSize: 12 }}>
+                      {formatOfferSchedule(offer.days_of_week ?? [], offer.time_start, offer.time_end)}
                     </Text>
                   ) : null}
                 </View>
