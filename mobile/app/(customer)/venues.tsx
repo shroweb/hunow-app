@@ -39,11 +39,26 @@ export default function VenuesScreen() {
       wordpress.getEat({ page: 1, perPage: 100 }),
       wordpress.getCuisines().catch(() => [] as { id: number; name: string }[]),
     ]);
-    setAllVenues(results.filter(hasOffers));
-    setCuisines([{ id: null, name: "All" }, ...cats]);
+    const venuesWithOffers = results.filter(hasOffers);
+    const availableCats = cats.filter((cat) => {
+      const selectedName = cat.name.toLowerCase();
+      return venuesWithOffers.some((venue) => {
+        const cuisineType = getSearchableText(venue.acf?.cuisine_type);
+        const category = getSearchableText(venue.acf?.category);
+        return cuisineType.includes(selectedName) || category.includes(selectedName);
+      });
+    });
+    setAllVenues(venuesWithOffers);
+    setCuisines([{ id: null, name: "All" }, ...availableCats]);
     setLoading(false);
     setRefreshing(false);
   }
+
+  useEffect(() => {
+    if (activeFilter !== null && !cuisines.some((c) => c.id === activeFilter)) {
+      setActiveFilter(null);
+    }
+  }, [activeFilter, cuisines]);
 
   function onRefresh() { setRefreshing(true); load(); }
 
