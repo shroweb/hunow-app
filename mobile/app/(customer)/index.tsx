@@ -415,8 +415,8 @@ export default function HomeScreen() {
                         <HUNowPickBadge />
                       </View>
                     ) : (
-                      <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
-                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>AVAILABLE NOW</Text>
+                      <View style={{ alignSelf: "flex-start", backgroundColor: "rgba(34,197,94,0.14)", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
+                        <Text style={{ color: "#15803D", fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>ACTIVE</Text>
                       </View>
                     )}
                     <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 11, fontWeight: "700", marginBottom: 6 }} numberOfLines={1}>
