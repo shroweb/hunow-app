@@ -20,10 +20,11 @@ export function buildMemberQrPayload(payload: HUNowQrPayload): string {
 }
 
 export function parseMemberQrPayload(raw: string): HUNowQrPayload | null {
-  if (!raw.startsWith(PREFIX)) return null;
+  const value = raw.trim();
+  if (!value.startsWith(PREFIX)) return null;
 
   try {
-    const parsed = JSON.parse(raw.slice(PREFIX.length)) as Partial<HUNowQrPayload>;
+    const parsed = JSON.parse(value.slice(PREFIX.length)) as Partial<HUNowQrPayload>;
     if (!parsed || parsed.version !== 1 || typeof parsed.card_token !== "string" || !parsed.card_token.trim()) {
       return null;
     }
@@ -45,11 +46,18 @@ export function buildVoucherQrPayload(payload: HUNowVoucherQrPayload): string {
 }
 
 export function parseVoucherQrPayload(raw: string): HUNowVoucherQrPayload | null {
-  if (!raw.startsWith(VOUCHER_PREFIX)) return null;
+  const value = raw.trim();
+  const payloadString = value.startsWith(VOUCHER_PREFIX)
+    ? value.slice(VOUCHER_PREFIX.length)
+    : value.startsWith(PREFIX)
+      ? value.slice(PREFIX.length)
+      : null;
+
+  if (!payloadString) return null;
 
   try {
-    const parsed = JSON.parse(raw.slice(VOUCHER_PREFIX.length)) as Partial<HUNowVoucherQrPayload>;
-    if (!parsed || parsed.version !== 1 || typeof parsed.voucher_token !== "string" || !parsed.voucher_token.trim()) {
+    const parsed = JSON.parse(payloadString) as Partial<HUNowVoucherQrPayload>;
+    if (!parsed || typeof parsed.voucher_token !== "string" || !parsed.voucher_token.trim()) {
       return null;
     }
     return {
