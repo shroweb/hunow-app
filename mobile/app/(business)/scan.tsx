@@ -12,6 +12,8 @@ import { useAuth } from "@/context/AuthContext";
 import { ConfettiCannon } from "@/components/ConfettiCannon";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BusinessSetupGate } from "@/components/BusinessSetupGate";
+import { parseMemberQrPayload } from "@/lib/qrPayload";
+import { TIER_META } from "@/lib/tierMeta";
 
 const DASHBOARD_REFRESH_KEY = "hunow_business_dashboard_refresh";
 
@@ -28,6 +30,7 @@ export default function ScanScreen() {
   const [cardInfo, setCardInfo] = useState<{ name: string; points: number; tier: string } | null>(null);
   const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
   const [selectedOffer, setSelectedOffer] = useState<WPOffer | null>(null);
+  const [scanHint, setScanHint] = useState<string | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [redeemSuccess, setRedeemSuccess] = useState(false);
@@ -64,14 +67,43 @@ export default function ScanScreen() {
     lastScan.current = data;
     setScanning(false);
 
+    const qrPayload = parseMemberQrPayload(data);
+    const resolvedCardToken = qrPayload?.card_token ?? data;
+
     try {
-      const member = await lookupCard(data, token, wpPostId);
-      setCardToken(data);
+      const member = await lookupCard(resolvedCardToken, token, wpPostId);
+      setCardToken(resolvedCardToken);
       setCardInfo({ name: member.name, points: member.points, tier: member.tier ?? "standard" });
       setOfferStatuses({
         standard: Object.fromEntries((member.offer_statuses?.standard ?? []).map((s) => [s.offer_index ?? 0, s])),
         tier: Object.fromEntries((member.offer_statuses?.tier ?? []).map((s) => [s.tier ?? "", s])),
       });
+      setScanHint(null);
+      setSelectedOffer(null);
+
+      if (qrPayload && qrPayload.venue_id === wpPostId) {
+        if (typeof qrPayload.offer_index === "number") {
+          const matchedOffer = offers.find((offer) => offer.id === qrPayload.offer_index);
+          if (matchedOffer) {
+            setSelectedOffer(matchedOffer);
+            setScanHint(`Preselected from member QR: ${decodeHtml(matchedOffer.title)}`);
+          }
+        } else if (qrPayload.tier) {
+          const matchedTier = tierOffers.find((offer) => offer.tier === qrPayload.tier);
+          if (matchedTier) {
+            setSelectedOffer({
+              id: -1,
+              title: matchedTier.title,
+              description: matchedTier.description,
+              _tier: matchedTier.tier,
+              limit_count: matchedTier.limit_count,
+              limit_period: matchedTier.limit_period,
+            } as any);
+            setScanHint(`Preselected from member QR: ${matchedTier.title}`);
+          }
+        }
+      }
+
       setRedeemSuccess(false);
       setModalVisible(true);
     } catch (err: any) {
@@ -104,6 +136,7 @@ export default function ScanScreen() {
   function resetScan() {
     setModalVisible(false);
     setSelectedOffer(null);
+    setScanHint(null);
     setCardToken(null);
     setCardInfo(null);
     setOfferStatuses({ standard: {}, tier: {} });
@@ -318,6 +351,14 @@ export default function ScanScreen() {
                 <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
                   Select offer to redeem
                 </Text>
+                {scanHint ? (
+                  <View style={{ backgroundColor: "rgba(251,201,0,0.12)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, borderWidth: 1, borderColor: "rgba(251,201,0,0.25)" }}>
+                    <Text style={{ color: "#0F0032", fontSize: 12, fontWeight: "800" }}>{scanHint}</Text>
+                    <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 11, marginTop: 2 }}>
+                      Staff can still change the selected reward before redeeming.
+                    </Text>
+                  </View>
+                ) : null}
 
                 <ScrollView style={{ marginBottom: 16 }} showsVerticalScrollIndicator={false}>
                   {offersLoading && <ActivityIndicator color="#0F0032" style={{ marginVertical: 16 }} />}
@@ -379,7 +420,6 @@ export default function ScanScreen() {
                 {wpPostId && cardInfo && (() => {
                   const TIER_MIN: Record<string, number> = { bronze: 200, silver: 600, gold: 1400 };
                   const TIER_COLOUR: Record<string, string> = { bronze: "#CD7F32", silver: "#C0C0C0", gold: "#FBC900" };
-                  const TIER_EMOJI: Record<string, string> = { bronze: "🥉", silver: "🥈", gold: "🥇" };
                   const memberPoints = cardInfo.points;
                   const qualifyingTierOffers = tierOffers.filter(to => memberPoints >= (TIER_MIN[to.tier] ?? 99999));
                   if (qualifyingTierOffers.length === 0) return null;
@@ -411,8 +451,8 @@ export default function ScanScreen() {
                           >
                             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                               <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                                  <Text style={{ fontSize: 12 }}>{TIER_EMOJI[to.tier]}</Text>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                                  <Ionicons name={TIER_META[to.tier].icon} size={13} color={colour} />
                                   <View style={{ backgroundColor: colour + "22", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
                                     <Text style={{ color: colour, fontSize: 10, fontWeight: "800" }}>{to.tier.toUpperCase()} OFFER</Text>
                                   </View>

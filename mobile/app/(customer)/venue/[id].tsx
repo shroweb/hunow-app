@@ -16,6 +16,7 @@ import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/Skeleton";
 import { HUNowPickBadge } from "@/components/HUNowPickBadge";
+import { buildMemberQrPayload } from "@/lib/qrPayload";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -129,6 +130,22 @@ export default function VenueDetailScreen() {
     setExpandedOfferKeys((prev) =>
       prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
     );
+  }
+
+  function getQrValue() {
+    if (!user?.card_token) return "";
+    if (!qrModalOffer) return user.card_token;
+
+    const tier = (qrModalOffer as any).tier as "bronze" | "silver" | "gold" | undefined;
+    const offerIndex = qrModalOffer.id > 0 ? qrModalOffer.id : undefined;
+    return buildMemberQrPayload({
+      version: 1,
+      card_token: user.card_token,
+      venue_id: Number(id),
+      offer_index: offerIndex,
+      tier,
+      offer_title: qrModalOffer.title,
+    });
   }
 
   if (loading) {
@@ -675,7 +692,7 @@ export default function VenueDetailScreen() {
             shadowColor: YELLOW, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 24, elevation: 20,
           }, qrRevealStyle]}>
             {user?.card_token ? (
-              <QRCode value={user.card_token} size={220} color={NAV} backgroundColor="transparent" />
+              <QRCode value={getQrValue()} size={220} color={NAV} backgroundColor="transparent" />
             ) : (
               <View style={{ width: 220, height: 220, alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 13 }}>No card token</Text>

@@ -18,10 +18,10 @@ const SEEN_TIER_KEY = "hunow_seen_member_tier";
 const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 const TIERS = [
-  { name: "Standard", min: 0,    max: 199,  colour: "rgba(255,255,255,0.5)" },
-  { name: "Bronze",   min: 200,  max: 599,  colour: "#CD7F32" },
-  { name: "Silver",   min: 600, max: 1399, colour: "#C0C0C0" },
-  { name: "Gold",     min: 1400, max: 99999, colour: YELLOW },
+  { name: "Standard", min: 0,    max: 199,  colour: "rgba(255,255,255,0.5)", icon: "ellipse" as const },
+  { name: "Bronze",   min: 200,  max: 599,  colour: "#CD7F32", icon: "medal-outline" as const },
+  { name: "Silver",   min: 600, max: 1399, colour: "#C0C0C0", icon: "diamond-outline" as const },
+  { name: "Gold",     min: 1400, max: 99999, colour: YELLOW, icon: "trophy-outline" as const },
 ];
 
 function getTier(points: number) {
@@ -261,9 +261,12 @@ export default function MyCardScreen() {
             </View>
             {/* Tier badge */}
             <View style={{ backgroundColor: currentTier.colour + "18", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: currentTier.colour + "55" }}>
-              <Text style={{ color: currentTier.colour, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>
-                {currentTier.name.toUpperCase()}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <Ionicons name={currentTier.icon} size={12} color={currentTier.colour} />
+                <Text style={{ color: currentTier.colour, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>
+                  {currentTier.name.toUpperCase()}
+                </Text>
+              </View>
             </View>
           </View>
 

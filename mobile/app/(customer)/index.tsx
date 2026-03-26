@@ -14,6 +14,7 @@ import { haversineKm } from "@/lib/haversine";
 import { useAuth } from "@/context/AuthContext";
 import { OfferCardSkeleton } from "@/components/OfferCardSkeleton";
 import { HUNowPickBadge } from "@/components/HUNowPickBadge";
+import { TIER_META } from "@/lib/tierMeta";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -21,10 +22,10 @@ const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.09)";
 const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 const TIERS = [
-  { name: "Standard", min: 0, max: 199, colour: "rgba(255,255,255,0.5)" },
-  { name: "Bronze", min: 200, max: 599, colour: "#CD7F32" },
-  { name: "Silver", min: 600, max: 1399, colour: "#C0C0C0" },
-  { name: "Gold", min: 1400, max: 99999, colour: YELLOW },
+  { name: "Standard", min: 0, max: 199, colour: TIER_META.standard.color, icon: TIER_META.standard.icon },
+  { name: "Bronze", min: 200, max: 599, colour: TIER_META.bronze.color, icon: TIER_META.bronze.icon },
+  { name: "Silver", min: 600, max: 1399, colour: TIER_META.silver.color, icon: TIER_META.silver.icon },
+  { name: "Gold", min: 1400, max: 99999, colour: TIER_META.gold.color, icon: TIER_META.gold.icon },
 ];
 
 function getTier(points: number) {
@@ -251,7 +252,10 @@ export default function HomeScreen() {
               <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 3 }}>
                 Tier Progress
               </Text>
-              <Text style={{ color: "white", fontSize: 17, fontWeight: "800" }}>{currentTier.name}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name={currentTier.icon} size={16} color={currentTier.colour} />
+                <Text style={{ color: "white", fontSize: 17, fontWeight: "800" }}>{currentTier.name}</Text>
+              </View>
             </View>
             <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
               <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>{currentPoints} pts</Text>
