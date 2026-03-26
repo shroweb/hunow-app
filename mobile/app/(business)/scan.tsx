@@ -31,6 +31,7 @@ export default function ScanScreen() {
   const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
   const [selectedOffer, setSelectedOffer] = useState<WPOffer | null>(null);
   const [scanHint, setScanHint] = useState<string | null>(null);
+  const [venueMismatchHint, setVenueMismatchHint] = useState<{ offerTitle?: string | null } | null>(null);
   const [voucherInfo, setVoucherInfo] = useState<WPVoucher | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -77,6 +78,7 @@ export default function ScanScreen() {
         setCardInfo(null);
         setCardToken(null);
         setScanHint(null);
+        setVenueMismatchHint(null);
         setRedeemSuccess(false);
         setModalVisible(true);
       } catch (err: any) {
@@ -100,6 +102,7 @@ export default function ScanScreen() {
       });
       setVoucherInfo(null);
       setScanHint(null);
+      setVenueMismatchHint(null);
       setSelectedOffer(null);
 
       if (qrPayload && qrPayload.venue_id === wpPostId) {
@@ -123,6 +126,10 @@ export default function ScanScreen() {
             setScanHint(`Preselected from member QR: ${matchedTier.title}`);
           }
         }
+      } else if (qrPayload?.venue_id && qrPayload.venue_id !== wpPostId) {
+        setVenueMismatchHint({
+          offerTitle: qrPayload.offer_title ?? null,
+        });
       }
 
       setRedeemSuccess(false);
@@ -173,6 +180,7 @@ export default function ScanScreen() {
     setModalVisible(false);
     setSelectedOffer(null);
     setScanHint(null);
+    setVenueMismatchHint(null);
     setCardToken(null);
     setCardInfo(null);
     setVoucherInfo(null);
@@ -450,6 +458,18 @@ export default function ScanScreen() {
                     <Text style={{ color: "#0F0032", fontSize: 12, fontWeight: "800" }}>{scanHint}</Text>
                     <Text style={{ color: "rgba(15,0,50,0.5)", fontSize: 11, marginTop: 2 }}>
                       Staff can still change the selected reward before redeeming.
+                    </Text>
+                  </View>
+                ) : null}
+                {venueMismatchHint ? (
+                  <View style={{ backgroundColor: "rgba(245,158,11,0.12)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, borderWidth: 1, borderColor: "rgba(245,158,11,0.28)" }}>
+                    <Text style={{ color: "#0F0032", fontSize: 12, fontWeight: "800" }}>
+                      This QR was opened for a different venue.
+                    </Text>
+                    <Text style={{ color: "rgba(15,0,50,0.56)", fontSize: 11, marginTop: 3, lineHeight: 16 }}>
+                      {venueMismatchHint.offerTitle
+                        ? `The member opened "${decodeHtml(venueMismatchHint.offerTitle)}", but you’re scanning at ${user?.venue_name ?? "your venue"}. Showing this venue’s valid rewards instead.`
+                        : `You’re scanning at ${user?.venue_name ?? "your venue"}, so we’re showing this venue’s valid rewards instead.`}
                     </Text>
                   </View>
                 ) : null}
