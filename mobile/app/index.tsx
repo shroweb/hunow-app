@@ -1,22 +1,17 @@
-import { useEffect } from "react";
 import { View, ActivityIndicator, Text } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AppEntryScreen() {
-  const router = useRouter();
   const { user, loading } = useAuth();
 
-  useEffect(() => {
-    if (loading) return;
-
+  if (!loading) {
     if (!user) {
-      router.replace("/(auth)/login");
-      return;
+      return <Redirect href="/(auth)/login" />;
     }
 
-    router.replace(user.role === "business" ? "/(business)" : "/(customer)");
-  }, [user, loading, router]);
+    return <Redirect href={user.role === "business" ? "/(business)" : "/(customer)"} />;
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#0F0032", alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }}>
