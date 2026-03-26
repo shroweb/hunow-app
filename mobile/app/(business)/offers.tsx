@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert, Modal, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -161,6 +161,7 @@ export default function BusinessOffersScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [menuTarget, setMenuTarget] = useState<{ type: "standard"; id: number } | { type: "tier"; tier: WPTierOffer["tier"] } | null>(null);
   const businessReady = user?.role === "business" && user?.setup_status === "ready" && Boolean(user?.venue_id);
   const editingEnabled = appConfig?.feature_flags?.business_offers_editing !== false;
 
@@ -286,6 +287,54 @@ export default function BusinessOffersScreen() {
           : offer
       );
     });
+  }
+
+  function standardMenuActions(offer: WPOffer) {
+    return [
+      {
+        label: offer.paused ? "Resume" : "Pause",
+        onPress: () => updateStandard(offer.id, { paused: !offer.paused }),
+      },
+      {
+        label: "Duplicate",
+        onPress: () => duplicateStandard(offer.id),
+      },
+      {
+        label: offer.archived ? "Restore" : "Archive",
+        onPress: () => updateStandard(offer.id, { archived: !offer.archived }),
+      },
+      {
+        label: editingStandard[offer.id] ? "Done Editing" : "Edit",
+        onPress: () => setEditingStandard((current) => ({ ...current, [offer.id]: !current[offer.id] })),
+      },
+      {
+        label: "Delete",
+        destructive: true,
+        onPress: () => deleteStandard(offer.id),
+      },
+    ];
+  }
+
+  function tierMenuActions(offer: WPTierOffer) {
+    return [
+      {
+        label: offer.paused ? "Resume" : "Pause",
+        onPress: () => updateTier(offer.tier, { paused: !offer.paused }),
+      },
+      {
+        label: offer.archived ? "Restore" : "Archive",
+        onPress: () => updateTier(offer.tier, { archived: !offer.archived }),
+      },
+      {
+        label: editingTier[offer.tier] ? "Done Editing" : "Edit",
+        onPress: () => setEditingTier((current) => ({ ...current, [offer.tier]: !current[offer.tier] })),
+      },
+      {
+        label: "Delete",
+        destructive: true,
+        onPress: () => deleteTier(offer.tier),
+      },
+    ];
   }
 
   async function handleSave() {
@@ -427,6 +476,70 @@ export default function BusinessOffersScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
+      <Modal visible={Boolean(menuTarget)} transparent animationType="fade" onRequestClose={() => setMenuTarget(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.42)", justifyContent: "flex-end" }} onPress={() => setMenuTarget(null)}>
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: "#12043A",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingHorizontal: 20,
+              paddingTop: 14,
+              paddingBottom: 28,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+            }}
+          >
+            <View style={{ alignItems: "center", marginBottom: 14 }}>
+              <View style={{ width: 42, height: 4, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.22)" }} />
+            </View>
+            {menuTarget?.type === "standard"
+              ? standardMenuActions(displayStandardOffers.find((offer) => offer.id === menuTarget.id) as WPOffer)
+                  .map((action) => (
+                    <TouchableOpacity
+                      key={action.label}
+                      onPress={() => {
+                        setMenuTarget(null);
+                        action.onPress();
+                      }}
+                      style={{
+                        paddingVertical: 16,
+                        borderBottomWidth: 1,
+                        borderBottomColor: "rgba(255,255,255,0.06)",
+                      }}
+                    >
+                      <Text style={{ color: action.destructive ? "#FCA5A5" : "white", fontSize: 16, fontWeight: "800" }}>{action.label}</Text>
+                    </TouchableOpacity>
+                  ))
+              : menuTarget?.type === "tier"
+                ? tierMenuActions(displayTierOffers.find((offer) => offer.tier === menuTarget.tier) as WPTierOffer)
+                    .map((action) => (
+                      <TouchableOpacity
+                        key={action.label}
+                        onPress={() => {
+                          setMenuTarget(null);
+                          action.onPress();
+                        }}
+                        style={{
+                          paddingVertical: 16,
+                          borderBottomWidth: 1,
+                          borderBottomColor: "rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        <Text style={{ color: action.destructive ? "#FCA5A5" : "white", fontSize: 16, fontWeight: "800" }}>{action.label}</Text>
+                      </TouchableOpacity>
+                    ))
+                : null}
+            <TouchableOpacity
+              onPress={() => setMenuTarget(null)}
+              style={{ marginTop: 14, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 16, paddingVertical: 15, alignItems: "center" }}
+            >
+              <Text style={{ color: "white", fontSize: 15, fontWeight: "800" }}>Close</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
         <View style={{ marginBottom: 18 }}>
           <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 4 }}>
@@ -476,38 +589,12 @@ export default function BusinessOffersScreen() {
                   ) : null}
                 </View>
               </View>
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => updateStandard(offer.id, { paused: !offer.paused })}
-                  style={{ backgroundColor: offer.paused ? "rgba(239,68,68,0.12)" : "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                >
-                  <Text style={{ color: offer.paused ? "#B91C1C" : "rgba(15,0,50,0.72)", fontSize: 11, fontWeight: "800" }}>{offer.paused ? "Paused" : "Pause"}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => duplicateStandard(offer.id)}
-                  style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                >
-                  <Text style={{ color: "rgba(15,0,50,0.72)", fontSize: 11, fontWeight: "800" }}>Duplicate</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => updateStandard(offer.id, { archived: !offer.archived })}
-                  style={{ backgroundColor: offer.archived ? "rgba(15,0,50,0.12)" : "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                >
-                  <Text style={{ color: "rgba(15,0,50,0.72)", fontSize: 11, fontWeight: "800" }}>{offer.archived ? "Restore" : "Archive"}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => deleteStandard(offer.id)}
-                  style={{ backgroundColor: "rgba(239,68,68,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                >
-                  <Text style={{ color: "#B91C1C", fontSize: 11, fontWeight: "800" }}>Delete</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setEditingStandard((current) => ({ ...current, [offer.id]: !current[offer.id] }))}
-                  style={{ backgroundColor: "rgba(251,201,0,0.18)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                >
-                  <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>{editingStandard[offer.id] ? "Done" : "Edit"}</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => setMenuTarget({ type: "standard", id: offer.id })}
+                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(15,0,50,0.06)", alignItems: "center", justifyContent: "center" }}
+              >
+                <Ionicons name="ellipsis-horizontal" size={20} color={NAV} />
+              </TouchableOpacity>
             </View>
 
             {editingStandard[offer.id] ? (
@@ -653,32 +740,12 @@ export default function BusinessOffersScreen() {
                     ) : null}
                   </View>
                 </View>
-                <View style={{ flexDirection: "row", gap: 8 }}>
-                  <TouchableOpacity
-                    onPress={() => updateTier(offer.tier, { paused: !offer.paused })}
-                    style={{ backgroundColor: offer.paused ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                  >
-                    <Text style={{ color: offer.paused ? "#FCA5A5" : "rgba(255,255,255,0.86)", fontSize: 11, fontWeight: "800" }}>{offer.paused ? "Paused" : "Pause"}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => updateTier(offer.tier, { archived: !offer.archived })}
-                    style={{ backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                  >
-                    <Text style={{ color: "rgba(255,255,255,0.86)", fontSize: 11, fontWeight: "800" }}>{offer.archived ? "Restore" : "Archive"}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => deleteTier(offer.tier)}
-                    style={{ backgroundColor: "rgba(239,68,68,0.15)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                  >
-                    <Text style={{ color: "#FCA5A5", fontSize: 11, fontWeight: "800" }}>Delete</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setEditingTier((current) => ({ ...current, [offer.tier]: !current[offer.tier] }))}
-                    style={{ backgroundColor: meta.colour + "22", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
-                  >
-                    <Text style={{ color: meta.colour, fontSize: 11, fontWeight: "800" }}>{editingTier[offer.tier] ? "Done" : "Edit"}</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                  onPress={() => setMenuTarget({ type: "tier", tier: offer.tier })}
+                  style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.12)", alignItems: "center", justifyContent: "center" }}
+                >
+                  <Ionicons name="ellipsis-horizontal" size={20} color="white" />
+                </TouchableOpacity>
               </View>
 
               {editingTier[offer.tier] ? (
