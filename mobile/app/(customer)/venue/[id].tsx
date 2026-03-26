@@ -11,7 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, type WPEat, type WPOffer } from "@/lib/wordpress";
 import { fetchOfferStatuses, type OfferStatus } from "@/lib/wpAuth";
-import { decodeHtml, stripHtml, getDisplayAddress } from "@/lib/utils";
+import { decodeHtml, stripHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus } from "@/lib/utils";
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/Skeleton";
@@ -36,6 +36,7 @@ export default function VenueDetailScreen() {
   const [isFavourite, setIsFavourite] = useState(false);
   const [qrModalOffer, setQrModalOffer] = useState<WPOffer | null>(null);
   const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
+  const [expandedOfferKeys, setExpandedOfferKeys] = useState<string[]>([]);
   const savedBrightness = useRef<number | null>(null);
 
   // Favourite heart animation
@@ -123,6 +124,12 @@ export default function VenueDetailScreen() {
     }
   }
 
+  function toggleExpanded(key: string) {
+    setExpandedOfferKeys((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+  }
+
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: NAV }}>
@@ -153,6 +160,8 @@ export default function VenueDetailScreen() {
   const ctaText = venue.acf?.offer_cta_text as string | undefined;
   const venueName = decodeHtml(venue.title.rendered);
   const locationText = getDisplayAddress(venue.acf?.address);
+  const todayHours = getTodayOpeningHours(venue.acf?.opening_hours);
+  const todayStatus = getTodayOpeningStatus(venue.acf?.opening_hours);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
@@ -214,6 +223,22 @@ export default function VenueDetailScreen() {
         </View>
 
         <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
+          {(todayStatus || todayHours) ? (
+            <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              {todayStatus ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: todayStatus.isOpen ? "rgba(34,197,94,0.14)" : "rgba(245,158,11,0.16)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Ionicons name={todayStatus.isOpen ? "checkmark-circle-outline" : "time-outline"} size={12} color={todayStatus.isOpen ? "#22C55E" : "#F59E0B"} />
+                  <Text style={{ color: todayStatus.isOpen ? "#86EFAC" : "#FCD34D", fontSize: 11, fontWeight: "800" }}>{todayStatus.label}</Text>
+                </View>
+              ) : null}
+              {todayHours ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.6)" />
+                  <Text style={{ color: "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: "700" }}>{todayHours}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
           {venue.excerpt?.rendered ? (
             <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
               {stripHtml(venue.excerpt.rendered)}
@@ -291,16 +316,23 @@ export default function VenueDetailScreen() {
               {venue.tier_offers.map((to) => {
                 const cfg = TIER_CONFIG[to.tier];
                 if (!cfg) return null;
+                const offerKey = `tier:${to.tier}`;
                 const userPoints = user?.points ?? 0;
                 const status = offerStatuses.tier[to.tier];
                 const unlocked = status?.unlocked ?? (userPoints >= cfg.min);
                 const availableNow = status ? status.available : true;
                 const ptsNeeded = Math.max(cfg.min - userPoints, 0);
                 const progress = Math.min(userPoints / cfg.min, 1);
+                const isExpanded = expandedOfferKeys.includes(offerKey);
+                const tierSummaryText = statusLoading && token
+                  ? "Checking member availability..."
+                  : unlocked
+                    ? (status?.available ? `${formatOfferRule(to.limit_count, to.limit_period)} available` : (status?.status_label ?? "Currently unavailable"))
+                    : `${ptsNeeded} more points to unlock`;
 
                 return (
                   <View
-                    key={to.tier}
+                    key={offerKey}
                     style={{
                       backgroundColor: to.featured && unlocked ? "#FFF9E8" : unlocked ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.035)",
                       borderRadius: 22, overflow: "hidden", marginBottom: 12,
@@ -313,7 +345,11 @@ export default function VenueDetailScreen() {
                       elevation: unlocked ? 4 : 0,
                     }}
                   >
-                    <View style={{ backgroundColor: unlocked ? cfg.colour + "18" : "rgba(255,255,255,0.03)", borderBottomWidth: 1, borderBottomColor: unlocked ? cfg.colour + "22" : "rgba(255,255,255,0.06)", paddingHorizontal: 16, paddingVertical: 14 }}>
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => toggleExpanded(offerKey)}
+                      style={{ backgroundColor: unlocked ? cfg.colour + "18" : "rgba(255,255,255,0.03)", borderBottomWidth: isExpanded ? 1 : 0, borderBottomColor: unlocked ? cfg.colour + "22" : "rgba(255,255,255,0.06)", paddingHorizontal: 16, paddingVertical: 14 }}
+                    >
                       <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, flex: 1, minWidth: 0 }}>
                           <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: unlocked ? cfg.colour + "26" : "rgba(255,255,255,0.07)" }}>
@@ -329,28 +365,33 @@ export default function VenueDetailScreen() {
                               </View>
                             </View>
                             <Text style={{ color: unlocked ? "rgba(15,0,50,0.55)" : "rgba(255,255,255,0.42)", fontSize: 12, marginTop: 3 }}>
-                              {unlocked
-                                ? (status?.available ? `${formatOfferRule(to.limit_count, to.limit_period)} available` : status?.status_label ?? "Currently unavailable")
-                                : `${ptsNeeded} more points to unlock`}
+                              {tierSummaryText}
                             </Text>
                           </View>
                         </View>
-                        {unlocked && availableNow ? (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(34,197,94,0.11)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
-                            <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
-                            <Text style={{ color: "#22C55E", fontSize: 11, fontWeight: "800" }}>UNLOCKED</Text>
-                          </View>
-                        ) : unlocked ? (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(245,158,11,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
-                            <Ionicons name="time-outline" size={12} color="#F59E0B" />
-                            <Text style={{ color: "#F59E0B", fontSize: 11, fontWeight: "800" }}>USED</Text>
-                          </View>
-                        ) : (
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
-                            <Ionicons name="lock-closed" size={11} color="rgba(255,255,255,0.45)" />
-                            <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700" }}>LOCKED</Text>
-                          </View>
-                        )}
+                        <View style={{ alignItems: "flex-end", gap: 8 }}>
+                          {statusLoading && token ? (
+                            <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
+                              <Text style={{ color: unlocked ? "rgba(15,0,50,0.45)" : "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: "700" }}>Checking…</Text>
+                            </View>
+                          ) : unlocked && availableNow ? (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(34,197,94,0.11)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
+                              <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
+                              <Text style={{ color: "#22C55E", fontSize: 11, fontWeight: "800" }}>UNLOCKED</Text>
+                            </View>
+                          ) : unlocked ? (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(245,158,11,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
+                              <Ionicons name="time-outline" size={12} color="#F59E0B" />
+                              <Text style={{ color: "#F59E0B", fontSize: 11, fontWeight: "800" }}>USED</Text>
+                            </View>
+                          ) : (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" }}>
+                              <Ionicons name="lock-closed" size={11} color="rgba(255,255,255,0.45)" />
+                              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: "700" }}>LOCKED</Text>
+                            </View>
+                          )}
+                          <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={unlocked ? NAV : "rgba(255,255,255,0.55)"} />
+                        </View>
                       </View>
 
                       {!unlocked && (
@@ -363,12 +404,13 @@ export default function VenueDetailScreen() {
                           </Text>
                         </View>
                       )}
-                    </View>
+                    </TouchableOpacity>
 
+                    {isExpanded && (
                     <View style={{ padding: 16 }}>
                       {to.featured ? (
                         <View style={{ alignSelf: "flex-start", backgroundColor: unlocked ? YELLOW + "22" : "rgba(251,201,0,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 10 }}>
-                          <Text style={{ color: unlocked ? NAV : YELLOW, fontSize: 10, fontWeight: "900", letterSpacing: 0.8 }}>FEATURED REWARD</Text>
+                          <Text style={{ color: unlocked ? NAV : YELLOW, fontSize: 10, fontWeight: "900", letterSpacing: 0.8 }}>FEATURED BY HU NOW</Text>
                         </View>
                       ) : null}
                       <Text style={{ color: unlocked ? NAV : "white", fontWeight: "800", fontSize: 17, marginBottom: to.description ? 6 : 10 }}>
@@ -427,6 +469,7 @@ export default function VenueDetailScreen() {
                         </View>
                       )}
                     </View>
+                    )}
                   </View>
                 );
               })}
@@ -468,10 +511,15 @@ export default function VenueDetailScreen() {
               </View>
             ) : (
               offers.map((offer) => {
+                const offerKey = `standard:${offer.id}`;
                 const expiryRaw = venue.acf?.offer_expiry as string | undefined;
                 const expiryLabel = expiryRaw ? getExpiryBadgeLabel(expiryRaw) : null;
                 const status = offerStatuses.standard[offer.id];
                 const availableNow = status ? status.available : true;
+                const isExpanded = expandedOfferKeys.includes(offerKey);
+                const standardSummaryText = statusLoading && token
+                  ? "Checking member availability..."
+                  : "Available to all HU NOW members";
 
                 return (
                   <View
@@ -486,7 +534,11 @@ export default function VenueDetailScreen() {
                       opacity: availableNow ? 1 : 0.88,
                     }}
                   >
-                    <View style={{ backgroundColor: YELLOW + "18", borderBottomWidth: 1, borderBottomColor: YELLOW + "33", paddingHorizontal: 16, paddingVertical: 14 }}>
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                          onPress={() => toggleExpanded(offerKey)}
+                      style={{ backgroundColor: YELLOW + "18", borderBottomWidth: isExpanded ? 1 : 0, borderBottomColor: YELLOW + "33", paddingHorizontal: 16, paddingVertical: 14 }}
+                    >
                       <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10, flex: 1, minWidth: 0 }}>
                           <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: YELLOW + "22" }}>
@@ -495,26 +547,30 @@ export default function VenueDetailScreen() {
                           <View style={{ flex: 1, minWidth: 0 }}>
                             <Text style={{ color: NAV, fontWeight: "900", fontSize: 17 }}>{decodeHtml(offer.title)}</Text>
                             <Text style={{ color: "rgba(15,0,50,0.52)", fontSize: 12, marginTop: 3 }}>
-                              Available to all HU NOW members
+                              {standardSummaryText}
                             </Text>
                           </View>
                         </View>
+                        <View style={{ alignItems: "flex-end", gap: 8 }}>
                         <View style={{ flexDirection: "row", gap: 6, alignSelf: "flex-start" }}>
                           {offer.featured ? (
                             <View style={{ backgroundColor: YELLOW, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
-                              <Text style={{ color: NAV, fontSize: 11, fontWeight: "900" }}>FEATURED</Text>
+                              <Text style={{ color: NAV, fontSize: 11, fontWeight: "900" }}>HU NOW PICK</Text>
                             </View>
                           ) : null}
                           <View style={{ backgroundColor: YELLOW + "26", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 }}>
                             <Text style={{ color: NAV, fontSize: 11, fontWeight: "800" }}>STANDARD</Text>
                           </View>
                         </View>
+                          <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={18} color={NAV} />
+                        </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
 
+                    {isExpanded && (
                     <View style={{ padding: 16 }}>
                       {offer.featured ? (
-                        <Text style={{ color: "#8A6A00", fontSize: 12, fontWeight: "900", marginBottom: 10 }}>Promoted reward</Text>
+                        <Text style={{ color: "#8A6A00", fontSize: 12, fontWeight: "900", marginBottom: 10 }}>Featured by HU NOW</Text>
                       ) : null}
                       {offer.description ? (
                         <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
@@ -579,6 +635,7 @@ export default function VenueDetailScreen() {
                         </View>
                       )}
                     </View>
+                    )}
                   </View>
                 );
               })

@@ -335,9 +335,9 @@ export default function HomeScreen() {
                         <Text style={{ color: "white", fontSize: 10, fontWeight: "700" }}>{dist}</Text>
                       </View>
                     <View style={{ padding: 14 }}>
-                      <View style={{ alignSelf: "flex-start", backgroundColor: offer.featured ? YELLOW : YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
-                        <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>{offer.featured ? "FEATURED" : "AVAILABLE NOW"}</Text>
-                      </View>
+                        <View style={{ alignSelf: "flex-start", backgroundColor: offer.featured ? YELLOW : YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5, marginBottom: 8 }}>
+                          <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>{offer.featured ? "HU NOW PICK" : "AVAILABLE NOW"}</Text>
+                        </View>
                       <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
                         {offer.venueName}
                       </Text>
@@ -420,7 +420,7 @@ export default function HomeScreen() {
                       backgroundColor: offer.featured ? "#F59E0B" : YELLOW, borderRadius: 999,
                       paddingHorizontal: 9, paddingVertical: 5,
                     }}>
-                      <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{offer.featured ? "FEATURED" : "STANDARD"}</Text>
+                      <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{offer.featured ? "HU NOW PICK" : "STANDARD"}</Text>
                     </View>
                   </View>
 

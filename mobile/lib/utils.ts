@@ -45,6 +45,44 @@ export function getTodayOpeningHours(hours: unknown): string | null {
   return match?.hours?.trim() || null;
 }
 
+function parseHourToken(hourRaw: string, minuteRaw: string | undefined, meridiemRaw: string | undefined): number | null {
+  let hour = Number(hourRaw);
+  const minute = Number(minuteRaw ?? "0");
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  const meridiem = (meridiemRaw ?? "").toLowerCase();
+  if (meridiem === "pm" && hour < 12) hour += 12;
+  if (meridiem === "am" && hour === 12) hour = 0;
+  return hour * 60 + minute;
+}
+
+export function getTodayOpeningStatus(hours: unknown): { isOpen: boolean; label: string } | null {
+  const todayHours = getTodayOpeningHours(hours);
+  if (!todayHours) return null;
+  if (/closed/i.test(todayHours)) {
+    return { isOpen: false, label: "Closed today" };
+  }
+
+  const match = todayHours.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i);
+  if (!match) return null;
+
+  const [, startHour, startMinute, startMeridiem, endHour, endMinute, endMeridiem] = match;
+  const inferredMeridiem = startMeridiem || endMeridiem || undefined;
+  const start = parseHourToken(startHour, startMinute, startMeridiem || inferredMeridiem);
+  const end = parseHourToken(endHour, endMinute, endMeridiem || inferredMeridiem);
+  if (start === null || end === null) return null;
+
+  const now = new Date();
+  const current = now.getHours() * 60 + now.getMinutes();
+  const adjustedEnd = end <= start ? end + 24 * 60 : end;
+  const adjustedCurrent = current < start && adjustedEnd > 24 * 60 ? current + 24 * 60 : current;
+  const isOpen = adjustedCurrent >= start && adjustedCurrent <= adjustedEnd;
+
+  return {
+    isOpen,
+    label: isOpen ? "Open now" : "Closed now",
+  };
+}
+
 /** Extract lat/lng from a WP ACF Google Maps address object */
 export function getLatLng(address: unknown): { lat: number; lng: number } | null {
   if (!address || typeof address !== "object") return null;

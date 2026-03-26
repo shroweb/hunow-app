@@ -208,9 +208,12 @@ export default function NewsScreen() {
             ) : null
           }
           ListEmptyComponent={
-            <View style={{ alignItems: "center", marginTop: 48 }}>
-              <Ionicons name="newspaper-outline" size={40} color="rgba(255,255,255,0.15)" />
-              <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, marginTop: 12 }}>No news yet</Text>
+            <View style={{ alignItems: "center", marginTop: 40, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 22, padding: 24, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+              <Image source={{ uri: BRAND_LOGO_URL }} style={{ width: 72, height: 34, marginLeft: -10, marginBottom: 12 }} resizeMode="contain" />
+              <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginBottom: 6 }}>No news yet</Text>
+              <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13, textAlign: "center", lineHeight: 19 }}>
+                Local stories, launches, and updates will appear here as soon as they go live.
+              </Text>
             </View>
           }
         />

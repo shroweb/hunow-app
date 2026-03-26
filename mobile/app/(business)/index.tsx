@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +10,7 @@ import { fetchBusinessDashboard, type BusinessDashboardResponse } from "@/lib/wp
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
+const DASHBOARD_REFRESH_KEY = "hunow_business_dashboard_refresh";
 
 export default function BusinessDashboard() {
   const router = useRouter();
@@ -31,6 +33,26 @@ export default function BusinessDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    let mounted = true;
+    let lastSeen: string | null = null;
+    AsyncStorage.getItem(DASHBOARD_REFRESH_KEY).then((value) => {
+      lastSeen = value;
+    });
+    const interval = setInterval(async () => {
+      if (!mounted || !token) return;
+      const next = await AsyncStorage.getItem(DASHBOARD_REFRESH_KEY);
+      if (next && next !== lastSeen) {
+        lastSeen = next;
+        load("refresh");
+      }
+    }, 2500);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [load, token]);
 
   useFocusEffect(useCallback(() => {
     load("refresh");

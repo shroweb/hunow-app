@@ -267,6 +267,18 @@ export default function BusinessOffersScreen() {
               <View>
                 <Text style={{ color: NAV, fontSize: 18, fontWeight: "900" }}>Offer {offer.id}</Text>
                 <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 12, marginTop: 4 }}>{offer.title.trim() || "No offer set yet"}</Text>
+                <View style={{ flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                  {offer.featured ? (
+                    <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Text style={{ color: "#8A6A00", fontSize: 10, fontWeight: "900" }}>Featured by HU NOW</Text>
+                    </View>
+                  ) : null}
+                  {offer.paused ? (
+                    <View style={{ backgroundColor: "rgba(239,68,68,0.12)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Text style={{ color: "#B91C1C", fontSize: 10, fontWeight: "900" }}>Paused</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <TouchableOpacity
@@ -375,6 +387,18 @@ export default function BusinessOffersScreen() {
                 <View>
                   <Text style={{ color: "white", fontSize: 18, fontWeight: "900" }}>{meta.label}</Text>
                   <Text style={{ color: meta.colour, fontSize: 12, fontWeight: "700", marginTop: 2 }}>Unlocks at {meta.unlock}</Text>
+                  <View style={{ flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                    {offer.featured ? (
+                      <View style={{ backgroundColor: meta.colour + "22", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={{ color: meta.colour, fontSize: 10, fontWeight: "900" }}>Featured by HU NOW</Text>
+                      </View>
+                    ) : null}
+                    {offer.paused ? (
+                      <View style={{ backgroundColor: "rgba(239,68,68,0.15)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={{ color: "#FCA5A5", fontSize: 10, fontWeight: "900" }}>Paused</Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
                 <View style={{ flexDirection: "row", gap: 8 }}>
                   <TouchableOpacity

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, Modal, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -9,8 +10,12 @@ import { lookupCard, wpRedeem, type OfferStatus } from "@/lib/wpAuth";
 import { decodeHtml } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { ConfettiCannon } from "@/components/ConfettiCannon";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const DASHBOARD_REFRESH_KEY = "hunow_business_dashboard_refresh";
 
 export default function ScanScreen() {
+  const router = useRouter();
   const { user, token } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(false);
@@ -84,6 +89,7 @@ export default function ScanScreen() {
       const result = await wpRedeem(cardToken, selectedOffer.title, wpPostId, token, offerIndex, tier);
       setPointsAwarded(result.points_awarded ?? 35);
       setRedeemSuccess(true);
+      await AsyncStorage.setItem(DASHBOARD_REFRESH_KEY, String(Date.now()));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
       const ui = getStaffFailureMessage(err?.message ?? "");
@@ -255,6 +261,15 @@ export default function ScanScreen() {
                   <Ionicons name="star" size={14} color="#FBC900" />
                   <Text style={{ color: "#0F0032", fontWeight: "800", fontSize: 14 }}>{pointsAwarded} points awarded</Text>
                 </View>
+                <TouchableOpacity
+                  style={{ width: "100%", backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 16, paddingVertical: 15, alignItems: "center", marginBottom: 10 }}
+                  onPress={() => {
+                    resetScan();
+                    setTimeout(() => router.push("/(business)" as any), 0);
+                  }}
+                >
+                  <Text style={{ color: "#0F0032", fontSize: 15, fontWeight: "800" }}>View Updated Dashboard</Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={{ width: "100%", backgroundColor: "#0F0032", borderRadius: 16, paddingVertical: 16, alignItems: "center" }}
                   onPress={resetScan}

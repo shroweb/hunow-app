@@ -12,6 +12,7 @@ const NAV = "#0F0032";
 const YELLOW = "#FBC900";
 const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.08)";
+const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 function isDateOnlyValue(raw?: string | null): boolean {
   if (!raw) return false;
@@ -166,8 +167,8 @@ export default function EventsScreen() {
           <VenueCardSkeleton count={4} />
         ) : sortedEvents.length === 0 ? (
           <View style={{ marginHorizontal: 20, marginTop: 12, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 22, padding: 28, alignItems: "center", borderWidth: 1, borderColor: BORDER }}>
-            <Ionicons name="calendar-outline" size={42} color="rgba(255,255,255,0.18)" />
-            <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginTop: 12, marginBottom: 6 }}>No upcoming events</Text>
+            <Image source={{ uri: BRAND_LOGO_URL }} style={{ width: 72, height: 34, marginLeft: -10, marginBottom: 12 }} resizeMode="contain" />
+            <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginBottom: 6 }}>No upcoming events</Text>
             <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, textAlign: "center", lineHeight: 19 }}>
               New events will appear here as venues publish them.
             </Text>

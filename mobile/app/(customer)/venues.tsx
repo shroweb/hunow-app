@@ -8,13 +8,14 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, extractOffers, type WPEat } from "@/lib/wordpress";
-import { decodeHtml, getDisplayAddress, getTodayOpeningHours } from "@/lib/utils";
+import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus } from "@/lib/utils";
 import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
 const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.1)";
+const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
 interface Cuisine { id: number | null; name: string }
 
@@ -164,6 +165,7 @@ export default function VenuesScreen() {
             const featured = Boolean(offers[0]?.featured);
             const location = getDisplayAddress(item.acf?.address);
             const todayHours = getTodayOpeningHours(item.acf?.opening_hours);
+            const todayStatus = getTodayOpeningStatus(item.acf?.opening_hours);
 
             return (
               <TouchableOpacity
@@ -186,7 +188,7 @@ export default function VenuesScreen() {
                     </View>
                   )}
                   <View style={{ position: "absolute", top: 10, left: 10, backgroundColor: featured ? "#F59E0B" : YELLOW, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
-                    <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{featured ? "FEATURED" : "STANDARD"}</Text>
+                    <Text style={{ color: NAV, fontSize: 10, fontWeight: "800", letterSpacing: 0.6 }}>{featured ? "HU NOW PICK" : "STANDARD"}</Text>
                   </View>
                   <View style={{ position: "absolute", top: 10, right: 10, backgroundColor: "rgba(15,0,50,0.72)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 }}>
                     <Text style={{ color: "white", fontSize: 10, fontWeight: "800" }}>{offerCount} {offerCount === 1 ? "offer" : "offers"}</Text>
@@ -205,21 +207,21 @@ export default function VenuesScreen() {
                   <Text style={{ color: "rgba(15,0,50,0.46)", fontSize: 11, marginBottom: 2 }} numberOfLines={1}>
                     {offerCount > 1 ? `${offerCount} offers • Earn 35pts` : "Earn 35pts"}
                   </Text>
-                  {(location || todayHours) ? (
+                  {(location || todayHours || todayStatus) ? (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
                       {location ? (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "55%" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "58%" }}>
                           <Ionicons name="location-outline" size={11} color="rgba(15,0,50,0.4)" />
                           <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 11, flexShrink: 1 }} numberOfLines={1}>
                             {location}
                           </Text>
                         </View>
                       ) : null}
-                      {todayHours ? (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "45%" }}>
-                          <Ionicons name="time-outline" size={11} color="rgba(15,0,50,0.4)" />
-                          <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 11, flexShrink: 1 }} numberOfLines={1}>
-                            {todayHours}
+                      {todayStatus ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, maxWidth: "42%" }}>
+                          <Ionicons name={todayStatus.isOpen ? "checkmark-circle-outline" : "time-outline"} size={11} color={todayStatus.isOpen ? "#15803D" : "#B45309"} />
+                          <Text style={{ color: todayStatus.isOpen ? "#15803D" : "#B45309", fontSize: 11, fontWeight: "700", flexShrink: 1 }} numberOfLines={1}>
+                            {todayStatus.label}
                           </Text>
                         </View>
                       ) : null}
@@ -230,9 +232,12 @@ export default function VenuesScreen() {
             );
           }}
           ListEmptyComponent={
-            <View style={{ alignItems: "center", marginTop: 48 }}>
-              <Ionicons name="pricetag-outline" size={40} color="rgba(255,255,255,0.15)" />
-              <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 14, marginTop: 12 }}>No offers found</Text>
+            <View style={{ alignItems: "center", marginTop: 44, marginHorizontal: 20, backgroundColor: SURFACE, borderRadius: 22, padding: 24, borderWidth: 1, borderColor: BORDER }}>
+              <Image source={{ uri: BRAND_LOGO_URL }} style={{ width: 72, height: 34, marginLeft: -10, marginBottom: 12 }} resizeMode="contain" />
+              <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginBottom: 6 }}>No offers found</Text>
+              <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 13, textAlign: "center", lineHeight: 19 }}>
+                Try another search or category to explore live HU NOW rewards across the city.
+              </Text>
             </View>
           }
           ListHeaderComponent={
