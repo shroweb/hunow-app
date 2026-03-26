@@ -18,7 +18,7 @@ const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.1)";
 const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
-interface Cuisine { id: number | string | null; name: string }
+interface Cuisine { id: number | string | null; name: string; venueIds?: number[] }
 
 function collectNumericIds(value: unknown): number[] {
   if (typeof value === "number" && Number.isFinite(value)) return [value];
@@ -54,35 +54,40 @@ export default function VenuesScreen() {
       wordpress.getCuisines().catch(() => [] as { id: number; name: string }[]),
     ]);
     const venuesWithOffers = results.filter(hasOffers);
-    const availableCats = cats.filter((cat) => {
-      const selectedName = cat.name.toLowerCase();
-      return venuesWithOffers.some((venue) => {
-        const cuisineType = getSearchableText(venue.acf?.cuisine_type);
-        const category = getSearchableText(venue.acf?.category);
-        return cuisineType.includes(selectedName) || category.includes(selectedName);
+    const filterMap = new Map<string, Cuisine>();
+
+    venuesWithOffers.forEach((venue) => {
+      const rawValues = [venue.acf?.cuisine_type, venue.acf?.category];
+      const resolvedLabels = [
+        ...rawValues.flatMap((raw) =>
+          collectNumericIds(raw)
+            .map((id) => cats.find((cat) => Number(cat.id) === id)?.name)
+            .filter((name): name is string => Boolean(name))
+        ),
+        ...rawValues.flatMap((raw) => getFilterLabels(raw).filter((label) => !/^\d+$/.test(label))),
+      ];
+
+      Array.from(new Set(resolvedLabels)).forEach((label) => {
+        const key = label.toLowerCase();
+        const existing = filterMap.get(key);
+        if (existing) {
+          existing.venueIds = Array.from(new Set([...(existing.venueIds ?? []), venue.id]));
+        } else {
+          const matchedTerm = cats.find((cat) => cat.name.toLowerCase() === key);
+          filterMap.set(key, {
+            id: matchedTerm?.id ?? `derived:${key}`,
+            name: label,
+            venueIds: [venue.id],
+          });
+        }
       });
     });
-    const derivedCats = Array.from(
-      new Set(
-        venuesWithOffers.flatMap((venue) => {
-          const rawValues = [venue.acf?.cuisine_type, venue.acf?.category];
-          const idLabels = rawValues.flatMap((raw) =>
-            collectNumericIds(raw)
-              .map((id) => cats.find((cat) => Number(cat.id) === id)?.name)
-              .filter((name): name is string => Boolean(name))
-          );
-          const directLabels = rawValues.flatMap((raw) =>
-            getFilterLabels(raw).filter((label) => !/^\d+$/.test(label))
-          );
-          return [...idLabels, ...directLabels];
-        })
-      )
-    )
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b))
-      .map((name) => ({ id: `derived:${name.toLowerCase()}`, name }));
+
+    const availableCats = Array.from(filterMap.values())
+      .filter((cat) => (cat.venueIds?.length ?? 0) > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
     setAllVenues(venuesWithOffers);
-    setCuisines([{ id: null, name: "All" }, ...(availableCats.length > 0 ? availableCats : derivedCats)]);
+    setCuisines([{ id: null, name: "All", venueIds: venuesWithOffers.map((venue) => venue.id) }, ...availableCats]);
     setLoading(false);
     setRefreshing(false);
   }
@@ -109,11 +114,10 @@ export default function VenuesScreen() {
     }
 
     if (activeFilter !== null) {
+      const selectedCuisine = cuisines.find((c) => c.id === activeFilter);
+      const allowedVenueIds = new Set(selectedCuisine?.venueIds ?? []);
       venues = venues.filter((v) => {
-        const cuisineType = getSearchableText(v.acf?.cuisine_type);
-        const category = getSearchableText(v.acf?.category);
-        const selectedName = cuisines.find((c) => c.id === activeFilter)?.name.toLowerCase() ?? "";
-        return cuisineType.includes(selectedName) || category.includes(selectedName);
+        return allowedVenueIds.has(v.id);
       });
     }
 
