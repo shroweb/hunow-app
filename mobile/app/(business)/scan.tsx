@@ -6,13 +6,13 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, extractOffers, formatOfferRule, type WPOffer, type WPTierOffer } from "@/lib/wordpress";
-import { lookupCard, wpRedeem, type OfferStatus } from "@/lib/wpAuth";
+import { lookupCard, wpRedeem, lookupVoucher, redeemVoucher, type OfferStatus, type WPVoucher } from "@/lib/wpAuth";
 import { decodeHtml } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { ConfettiCannon } from "@/components/ConfettiCannon";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BusinessSetupGate } from "@/components/BusinessSetupGate";
-import { parseMemberQrPayload } from "@/lib/qrPayload";
+import { parseMemberQrPayload, parseVoucherQrPayload } from "@/lib/qrPayload";
 import { TIER_META } from "@/lib/tierMeta";
 
 const DASHBOARD_REFRESH_KEY = "hunow_business_dashboard_refresh";
@@ -31,6 +31,7 @@ export default function ScanScreen() {
   const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
   const [selectedOffer, setSelectedOffer] = useState<WPOffer | null>(null);
   const [scanHint, setScanHint] = useState<string | null>(null);
+  const [voucherInfo, setVoucherInfo] = useState<WPVoucher | null>(null);
   const [redeeming, setRedeeming] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [redeemSuccess, setRedeemSuccess] = useState(false);
@@ -67,6 +68,25 @@ export default function ScanScreen() {
     lastScan.current = data;
     setScanning(false);
 
+    const voucherPayload = parseVoucherQrPayload(data);
+    if (voucherPayload) {
+      try {
+        const voucher = await lookupVoucher(voucherPayload.voucher_token, token);
+        setVoucherInfo(voucher);
+        setSelectedOffer(null);
+        setCardInfo(null);
+        setCardToken(null);
+        setScanHint(null);
+        setRedeemSuccess(false);
+        setModalVisible(true);
+      } catch (err: any) {
+        Alert.alert("Invalid Voucher", err?.message ?? "This voucher QR code could not be read.");
+        lastScan.current = "";
+        setScanning(true);
+      }
+      return;
+    }
+
     const qrPayload = parseMemberQrPayload(data);
     const resolvedCardToken = qrPayload?.card_token ?? data;
 
@@ -78,6 +98,7 @@ export default function ScanScreen() {
         standard: Object.fromEntries((member.offer_statuses?.standard ?? []).map((s) => [s.offer_index ?? 0, s])),
         tier: Object.fromEntries((member.offer_statuses?.tier ?? []).map((s) => [s.tier ?? "", s])),
       });
+      setVoucherInfo(null);
       setScanHint(null);
       setSelectedOffer(null);
 
@@ -133,12 +154,28 @@ export default function ScanScreen() {
     setRedeeming(false);
   }
 
+  async function handleRedeemVoucher() {
+    if (!voucherInfo?.token || !token) return;
+    setRedeeming(true);
+    try {
+      await redeemVoucher(voucherInfo.token, token);
+      setVoucherInfo((current) => current ? { ...current, status: "redeemed", redeemed_at: new Date().toISOString() } : current);
+      setRedeemSuccess(true);
+      await AsyncStorage.setItem(DASHBOARD_REFRESH_KEY, String(Date.now()));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert("Voucher redemption failed", err?.message ?? "Could not redeem voucher.");
+    }
+    setRedeeming(false);
+  }
+
   function resetScan() {
     setModalVisible(false);
     setSelectedOffer(null);
     setScanHint(null);
     setCardToken(null);
     setCardInfo(null);
+    setVoucherInfo(null);
     setOfferStatuses({ standard: {}, tier: {} });
     setRedeemSuccess(false);
     lastScan.current = "";
@@ -277,11 +314,11 @@ export default function ScanScreen() {
                   <Ionicons name="checkmark-circle" size={52} color="#22C55E" />
                 </View>
                 <Text style={{ color: "#0F0032", fontSize: 26, fontWeight: "900", marginBottom: 6 }}>Redeemed!</Text>
-                <Text style={{ color: "#0F0032", fontWeight: "700", fontSize: 15, textAlign: "center", marginBottom: 4 }}>
-                  {selectedOffer ? decodeHtml(selectedOffer.title) : ""}
+                    <Text style={{ color: "#0F0032", fontWeight: "700", fontSize: 15, textAlign: "center", marginBottom: 4 }}>
+                  {voucherInfo ? voucherInfo.title : selectedOffer ? decodeHtml(selectedOffer.title) : ""}
                 </Text>
                 <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 13, textAlign: "center", marginBottom: 20 }}>
-                  for {cardInfo?.name ?? "member"}
+                  {voucherInfo ? `at ${voucherInfo.venue_name ?? "venue"}` : `for ${cardInfo?.name ?? "member"}`}
                 </Text>
                 {selectedRule && (
                   <View style={{ backgroundColor: "rgba(15,0,50,0.05)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12, width: "100%" }}>
@@ -296,10 +333,19 @@ export default function ScanScreen() {
                     ) : null}
                   </View>
                 )}
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(251,201,0,0.12)", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 28 }}>
-                  <Ionicons name="star" size={14} color="#FBC900" />
-                  <Text style={{ color: "#0F0032", fontWeight: "800", fontSize: 14 }}>{pointsAwarded} points awarded</Text>
-                </View>
+                {!voucherInfo ? (
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "rgba(251,201,0,0.12)", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginBottom: 28 }}>
+                    <Ionicons name="star" size={14} color="#FBC900" />
+                    <Text style={{ color: "#0F0032", fontWeight: "800", fontSize: 14 }}>{pointsAwarded} points awarded</Text>
+                  </View>
+                ) : (
+                  <View style={{ backgroundColor: "rgba(15,0,50,0.05)", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 28, width: "100%" }}>
+                    <Text style={{ color: "#0F0032", fontSize: 12, fontWeight: "800", marginBottom: 3 }}>Voucher Updated</Text>
+                    <Text style={{ color: "rgba(15,0,50,0.58)", fontSize: 12 }}>
+                      This voucher is now marked as redeemed and can no longer be used.
+                    </Text>
+                  </View>
+                )}
                 <TouchableOpacity
                   style={{ width: "100%", backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 16, paddingVertical: 15, alignItems: "center", marginBottom: 10 }}
                   onPress={() => {
@@ -315,6 +361,54 @@ export default function ScanScreen() {
                 >
                   <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>Done</Text>
                 </TouchableOpacity>
+              </View>
+            ) : voucherInfo ? (
+              <View>
+                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 20 }}>
+                  <View style={{ backgroundColor: "#FBC900", borderRadius: 24, width: 48, height: 48, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                    <Ionicons name="ticket-outline" size={22} color="#0F0032" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, marginBottom: 2 }}>Voucher Scanned</Text>
+                    <Text style={{ color: "#0F0032", fontWeight: "800", fontSize: 17 }}>{voucherInfo.title}</Text>
+                    <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12, marginTop: 3 }}>{voucherInfo.venue_name}</Text>
+                  </View>
+                </View>
+
+                <View style={{ backgroundColor: "#F5F5F7", borderRadius: 16, padding: 16, marginBottom: 18 }}>
+                  {voucherInfo.description ? (
+                    <Text style={{ color: "#0F0032", fontSize: 14, lineHeight: 20, marginBottom: 10 }}>{voucherInfo.description}</Text>
+                  ) : null}
+                  <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                    <View style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: "rgba(15,0,50,0.74)", fontSize: 11, fontWeight: "800", textTransform: "uppercase" }}>{voucherInfo.status}</Text>
+                    </View>
+                    {voucherInfo.expires_at ? (
+                      <View style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                        <Text style={{ color: "rgba(15,0,50,0.74)", fontSize: 11, fontWeight: "800" }}>Expires {new Date(voucherInfo.expires_at).toLocaleDateString("en-GB")}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: "#F5F5F7", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                    onPress={resetScan}
+                  >
+                    <Text style={{ color: "rgba(15,0,50,0.55)", fontWeight: "700" }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, borderRadius: 14, paddingVertical: 15, alignItems: "center", backgroundColor: voucherInfo.status === "active" ? "#FBC900" : "rgba(251,201,0,0.3)" }}
+                    onPress={handleRedeemVoucher}
+                    disabled={voucherInfo.status !== "active" || redeeming}
+                  >
+                    {redeeming
+                      ? <ActivityIndicator color="#0F0032" />
+                      : <Text style={{ fontWeight: "800", color: voucherInfo.status === "active" ? "#0F0032" : "rgba(15,0,50,0.35)" }}>Redeem Voucher</Text>
+                    }
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : (
               /* ── Offer Selection ── */

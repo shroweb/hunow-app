@@ -99,9 +99,9 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="news"
         options={{
-          title: "News",
+          title: "Vouchers",
           tabBarIcon: ({ color, size, focused }) => (
-            <AnimatedTabIcon name="newspaper" color={color} size={size} focused={focused} />
+            <AnimatedTabIcon name="ticket" color={color} size={size} focused={focused} />
           ),
         }}
       />

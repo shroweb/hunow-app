@@ -13,6 +13,11 @@ const GOOGLE_LOGIN_URL = `${WP_BASE}/hunow/v1/google-login`;
 const LOOKUP_URL = `${WP_BASE}/hunow/v1/lookup-card`;
 const REDEEM_URL = `${WP_BASE}/hunow/v1/redeem`;
 const OFFER_STATUSES_URL = `${WP_BASE}/hunow/v1/offer-statuses`;
+const VOUCHERS_URL = `${WP_BASE}/hunow/v1/vouchers`;
+const VOUCHER_CODE_URL = `${WP_BASE}/hunow/v1/vouchers/redeem-code`;
+const LOOKUP_VOUCHER_URL = `${WP_BASE}/hunow/v1/lookup-voucher`;
+const REDEEM_VOUCHER_URL = `${WP_BASE}/hunow/v1/redeem-voucher`;
+const BUSINESS_VOUCHERS_URL = `${WP_BASE}/hunow/v1/business-vouchers`;
 
 const TOKEN_KEY = "wp_jwt_token";
 const USER_KEY = "wp_user";
@@ -106,6 +111,23 @@ export interface BusinessDashboardResponse {
     range: "7d" | "30d" | "90d" | "all";
     recent_scans: { offer_title: string; timestamp: string; member_email: string }[];
   };
+}
+
+export interface WPVoucher {
+  id: number;
+  token: string;
+  code: string;
+  title: string;
+  description: string;
+  venue_id: number;
+  venue_name?: string | null;
+  expires_at?: string | null;
+  required_tier?: "bronze" | "silver" | "gold" | null;
+  claimed_user_id?: number;
+  claimed_at?: string | null;
+  redeemed_at?: string | null;
+  source?: "admin" | "venue";
+  status: "active" | "redeemed" | "expired";
 }
 
 /** Persist token to AsyncStorage */
@@ -264,6 +286,83 @@ export async function fetchBusinessDashboard(jwt: string, range: "7d" | "30d" | 
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { message?: string };
     throw new Error(err.message ?? "Could not load business dashboard");
+  }
+  return res.json();
+}
+
+export async function fetchVouchers(jwt: string): Promise<WPVoucher[]> {
+  const res = await fetch(VOUCHERS_URL, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not load vouchers");
+  }
+  return res.json();
+}
+
+export async function redeemVoucherCode(code: string, jwt: string): Promise<WPVoucher> {
+  const res = await fetch(VOUCHER_CODE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ code }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not redeem voucher code.");
+  }
+  return res.json();
+}
+
+export async function lookupVoucher(voucherToken: string, jwt: string): Promise<WPVoucher> {
+  const res = await fetch(LOOKUP_VOUCHER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ voucher_token: voucherToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Invalid voucher");
+  }
+  return res.json();
+}
+
+export async function redeemVoucher(voucherToken: string, jwt: string): Promise<{ success: boolean; voucher: WPVoucher }> {
+  const res = await fetch(REDEEM_VOUCHER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ voucher_token: voucherToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not redeem voucher.");
+  }
+  return res.json();
+}
+
+export async function fetchBusinessVouchers(jwt: string): Promise<WPVoucher[]> {
+  const res = await fetch(BUSINESS_VOUCHERS_URL, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not load venue vouchers.");
+  }
+  return res.json();
+}
+
+export async function createBusinessVoucher(
+  payload: { title: string; code: string; description?: string; expires_at?: string },
+  jwt: string,
+): Promise<WPVoucher> {
+  const res = await fetch(BUSINESS_VOUCHERS_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not create voucher.");
   }
   return res.json();
 }
