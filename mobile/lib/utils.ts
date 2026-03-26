@@ -83,6 +83,22 @@ export function getTodayOpeningStatus(hours: unknown): { isOpen: boolean; label:
   };
 }
 
+export function getSearchableText(value: unknown): string {
+  if (typeof value === "string") return value.toLowerCase();
+  if (typeof value === "number" || typeof value === "boolean") return String(value).toLowerCase();
+  if (Array.isArray(value)) {
+    return value.map((item) => getSearchableText(item)).filter(Boolean).join(" ").trim();
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>)
+      .map((item) => getSearchableText(item))
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+  }
+  return "";
+}
+
 /** Extract lat/lng from a WP ACF Google Maps address object */
 export function getLatLng(address: unknown): { lat: number; lng: number } | null {
   if (!address || typeof address !== "object") return null;

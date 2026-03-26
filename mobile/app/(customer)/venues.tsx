@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, extractOffers, type WPEat } from "@/lib/wordpress";
-import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus } from "@/lib/utils";
+import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus, getSearchableText } from "@/lib/utils";
 import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 import { HUNowPickBadge } from "@/components/HUNowPickBadge";
 
@@ -62,8 +62,8 @@ export default function VenuesScreen() {
 
     if (activeFilter !== null) {
       venues = venues.filter((v) => {
-        const cuisineType = (v.acf?.cuisine_type as string | undefined)?.toLowerCase() ?? "";
-        const category = (v.acf?.category as string | undefined)?.toLowerCase() ?? "";
+        const cuisineType = getSearchableText(v.acf?.cuisine_type);
+        const category = getSearchableText(v.acf?.category);
         const selectedName = cuisines.find((c) => c.id === activeFilter)?.name.toLowerCase() ?? "";
         return cuisineType.includes(selectedName) || category.includes(selectedName);
       });
