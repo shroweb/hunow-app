@@ -198,7 +198,7 @@ export default function VenueDetailScreen() {
           </TouchableOpacity>
 
           <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 108, backgroundColor: "rgba(15,0,50,0.58)" }} />
-          <View style={{ position: "absolute", left: 20, right: 20, bottom: 18 }}>
+          <View style={{ position: "absolute", left: 20, right: 20, bottom: 28 }}>
             <Text style={{ color: "white", fontSize: 22, fontWeight: "900", letterSpacing: -0.5, marginBottom: locationText ? 8 : 0 }}>
               {venueName}
             </Text>
