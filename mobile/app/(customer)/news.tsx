@@ -44,6 +44,7 @@ export default function VouchersScreen() {
   const [redeemingCode, setRedeemingCode] = useState(false);
   const [vouchers, setVouchers] = useState<WPVoucher[]>([]);
   const [selectedVoucher, setSelectedVoucher] = useState<WPVoucher | null>(null);
+  const [showUsedVouchers, setShowUsedVouchers] = useState(false);
 
   async function load(showLoader = true) {
     if (!token) {
@@ -88,10 +89,15 @@ export default function VouchersScreen() {
     return { active, used };
   }, [vouchers]);
 
+  const walletItems = useMemo(
+    () => [...grouped.active, ...(showUsedVouchers ? grouped.used : [])],
+    [grouped.active, grouped.used, showUsedVouchers]
+  );
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
       <FlatList
-        data={[...grouped.active, ...grouped.used]}
+        data={walletItems}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
         refreshControl={
@@ -157,16 +163,71 @@ export default function VouchersScreen() {
             {grouped.active.length > 0 ? (
               <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 10 }}>Ready to use</Text>
             ) : null}
+
+            {grouped.used.length > 0 ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setShowUsedVouchers((value) => !value)}
+                style={{
+                  marginTop: grouped.active.length > 0 ? 6 : 0,
+                  marginBottom: showUsedVouchers ? 10 : 16,
+                  backgroundColor: "rgba(255,255,255,0.05)",
+                  borderRadius: 18,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.08)",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, paddingRight: 12 }}>
+                  <View
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name="archive-outline" size={18} color="rgba(255,255,255,0.8)" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "white", fontSize: 15, fontWeight: "800" }}>
+                      Redeemed or expired
+                    </Text>
+                    <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 12, marginTop: 2 }}>
+                      {grouped.used.length} voucher{grouped.used.length === 1 ? "" : "s"} hidden to keep this page tidy
+                    </Text>
+                  </View>
+                </View>
+                <View
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
+                    backgroundColor: "rgba(255,255,255,0.08)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons
+                    name={showUsedVouchers ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color="rgba(255,255,255,0.82)"
+                  />
+                </View>
+              </TouchableOpacity>
+            ) : null}
           </View>
         }
         renderItem={({ item, index }) => {
           const isUsed = item.status !== "active";
-          const isFirstUsed = index === grouped.active.length && grouped.used.length > 0;
           return (
             <View>
-              {isFirstUsed ? (
-                <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginTop: 6, marginBottom: 10 }}>Used or expired</Text>
-              ) : null}
               <TouchableOpacity
                 activeOpacity={0.9}
                 disabled={isUsed}
