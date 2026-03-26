@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { wpLogin, wpRegister, wpGoogleLogin, fetchMe, clearAuth, restoreSession, fetchAppConfig, type WPUser, type AppConfig } from "@/lib/wpAuth";
+import { registerPushNotifications } from "@/lib/push";
 
 interface AuthState {
   user: WPUser | null;
@@ -46,6 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!state.token || !state.user) return;
+    registerPushNotifications(state.token).catch(() => {
+      // Keep auth flow resilient even if push registration fails.
+    });
+  }, [state.token, state.user]);
 
   async function login(email: string, password: string) {
     const { token, user } = await wpLogin(email, password);

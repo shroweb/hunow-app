@@ -17,7 +17,8 @@
       "bundleIdentifier": "co.uk.hunow.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Camera is used to scan HU NOW offer QR codes.",
-        "NSLocationWhenInUseUsageDescription": "Used to show HU NOW venues near you."
+        "NSLocationWhenInUseUsageDescription": "Used to show HU NOW venues near you.",
+        "NSUserNotificationsUsageDescription": "HU NOW sends offer, voucher, and reward updates."
       }
     },
     "android": {
@@ -30,7 +31,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-camera"
+      "expo-camera",
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true
