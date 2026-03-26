@@ -37,7 +37,22 @@ export interface WPUser {
   subscription_tier?: string;
   setup_status?: "ready" | "needs_venue";
   setup_message?: string | null;
+  referral_code?: string | null;
+  referral_count?: number;
+  today_checked_in?: boolean;
+  last_daily_checkin?: string | null;
+  login_streak?: number;
+  challenges?: WPChallenge[];
   redemptions: WPRedemption[];
+}
+
+export interface WPChallenge {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  target: number;
+  reward: string;
 }
 
 export interface AppConfig {
@@ -172,11 +187,12 @@ export async function wpRegister(
   name: string,
   email: string,
   password: string,
+  referralCode?: string,
 ): Promise<{ token: string; user: WPUser }> {
   const res = await fetch(REGISTER_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password, role: "customer" }),
+    body: JSON.stringify({ name, email, password, role: "customer", ...(referralCode?.trim() ? { referral_code: referralCode.trim().toUpperCase() } : {}) }),
   });
 
   if (!res.ok) {

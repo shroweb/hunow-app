@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, Linking, Modal } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image, Linking, Modal, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -30,7 +30,7 @@ const TIER_CONFIG: Record<string, { min: number; label: string; colour: string; 
 export default function VenueDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [venue, setVenue] = useState<WPEat | null>(null);
   const [offers, setOffers] = useState<WPOffer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +39,7 @@ export default function VenueDetailScreen() {
   const [qrModalOffer, setQrModalOffer] = useState<WPOffer | null>(null);
   const [offerStatuses, setOfferStatuses] = useState<{ standard: Record<number, OfferStatus>; tier: Record<string, OfferStatus> }>({ standard: {}, tier: {} });
   const [expandedOfferKeys, setExpandedOfferKeys] = useState<string[]>([]);
+  const [checkinLoading, setCheckinLoading] = useState(false);
   const savedBrightness = useRef<number | null>(null);
 
   // Favourite heart animation
@@ -130,6 +131,24 @@ export default function VenueDetailScreen() {
     setExpandedOfferKeys((prev) =>
       prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
     );
+  }
+
+  async function handleCheckIn() {
+    if (!token) {
+      Alert.alert("Sign in required", "Please sign in to check in and earn points.");
+      return;
+    }
+    setCheckinLoading(true);
+    try {
+      const result = await wordpress.dailyCheckin(token);
+      await refreshUser();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(result.already_checked_in ? "Already checked in" : "Check-in complete", result.message);
+    } catch (error: any) {
+      Alert.alert("Couldn’t check in", error?.message ?? "Please try again.");
+    } finally {
+      setCheckinLoading(false);
+    }
   }
 
   function getQrValue() {
@@ -268,6 +287,41 @@ export default function VenueDetailScreen() {
               ) : null}
             </View>
           ) : null}
+          <View style={{
+            backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16,
+            marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+          }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1, paddingRight: 12 }}>
+                <View style={{ backgroundColor: YELLOW + "22", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="walk-outline" size={18} color={YELLOW} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "white", fontSize: 15, fontWeight: "800" }}>Daily Check-In</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 12, marginTop: 2 }}>
+                    {user?.today_checked_in ? `Checked in today • ${user?.login_streak ?? 0} day streak` : "Check in once per day to build your streak"}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>+1 pt</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={handleCheckIn}
+              disabled={checkinLoading || !!user?.today_checked_in}
+              style={{
+                backgroundColor: user?.today_checked_in ? "rgba(255,255,255,0.08)" : YELLOW,
+                borderRadius: 14,
+                paddingVertical: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: user?.today_checked_in ? "rgba(255,255,255,0.5)" : NAV, fontWeight: "900" }}>
+                {checkinLoading ? "Checking in…" : user?.today_checked_in ? "Checked in today" : "Check in"}
+              </Text>
+            </TouchableOpacity>
+          </View>
           {venue.excerpt?.rendered ? (
             <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
               {stripHtml(venue.excerpt.rendered)}

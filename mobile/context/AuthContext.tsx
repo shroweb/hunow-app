@@ -11,7 +11,7 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
   refreshAppConfig: () => Promise<void>;
@@ -53,8 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, user, token, appConfig, loading: false }));
   }
 
-  async function register(name: string, email: string, password: string) {
-    const { token, user } = await wpRegister(name, email, password);
+  async function register(name: string, email: string, password: string, referralCode?: string) {
+    const { token, user } = await wpRegister(name, email, password, referralCode);
     const appConfig = state.appConfig ?? await fetchAppConfig();
     setState((prev) => ({ ...prev, user, token, appConfig, loading: false }));
   }

@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert } from "react-native";
+import { useMemo, useState } from "react";
+import { View, Text, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert, Share } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/AuthContext";
-import { requestPasswordReset, updateEmail } from "@/lib/wpAuth";
+import { requestPasswordReset, updateEmail, type WPChallenge } from "@/lib/wpAuth";
+import { TIER_META } from "@/lib/tierMeta";
 
 const NAV = "#0F0032";
 const YELLOW = "#FBC900";
@@ -12,14 +14,70 @@ function memberNumber(token: string): string {
   return "HUNOW-" + token.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
 
+function getTier(points: number) {
+  if (points >= 1400) return "gold";
+  if (points >= 600) return "silver";
+  if (points >= 200) return "bronze";
+  return "standard";
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <View style={{ height: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+      <View style={{ width: `${Math.max(0, Math.min(value, 1)) * 100}%`, height: "100%", backgroundColor: YELLOW, borderRadius: 999 }} />
+    </View>
+  );
+}
+
+function ChallengeCard({ item }: { item: WPChallenge }) {
+  const progress = item.target > 0 ? Math.min(item.progress / item.target, 1) : 0;
+  return (
+    <View
+      style={{
+        backgroundColor: "rgba(255,255,255,0.07)",
+        borderRadius: 18,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.08)",
+        marginBottom: 10,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+        <View style={{ flex: 1, paddingRight: 12 }}>
+          <Text style={{ color: "white", fontSize: 15, fontWeight: "800", marginBottom: 4 }}>{item.title}</Text>
+          <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 13, lineHeight: 18 }}>{item.description}</Text>
+        </View>
+        <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+          <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>{item.reward}</Text>
+        </View>
+      </View>
+      <Text style={{ color: "rgba(255,255,255,0.56)", fontSize: 12, fontWeight: "700", marginBottom: 8 }}>
+        {item.progress} / {item.target}
+      </Text>
+      <ProgressBar value={progress} />
+    </View>
+  );
+}
+
 export default function ProfileScreen() {
   const { user, token, signOut, refreshUser } = useAuth();
   const [nextEmail, setNextEmail] = useState(user?.email ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [savingEmail, setSavingEmail] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+
   if (!user) return null;
   const currentUser = user;
+
+  const tierKey = getTier(currentUser.points ?? 0) as keyof typeof TIER_META;
+  const tierMeta = TIER_META[tierKey];
+  const memberSince = currentUser.card_created
+    ? new Date(currentUser.card_created).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+    : "—";
+  const streakText = user.today_checked_in
+    ? `Checked in today • ${user.login_streak ?? 0} day streak`
+    : `${user.login_streak ?? 0} day streak ready to continue`;
+  const challengeList = useMemo(() => currentUser.challenges ?? [], [currentUser.challenges]);
 
   async function handleUpdateEmail() {
     if (!token) return;
@@ -50,70 +108,162 @@ export default function ProfileScreen() {
     setSendingReset(false);
   }
 
+  async function handleShareReferral() {
+    const code = currentUser.referral_code ?? "";
+    if (!code) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await Share.share({
+      message: `Join HU NOW with my invite code ${code} and unlock city rewards across Hull.`,
+    });
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: NAV }}>
-      <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
-        <Text style={{ color: "white", fontSize: 26, fontWeight: "900", marginTop: 20, marginBottom: 20, letterSpacing: -0.5 }}>Profile</Text>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+        <Text style={{ color: "white", fontSize: 28, fontWeight: "900", marginBottom: 18, letterSpacing: -0.5 }}>Profile</Text>
 
-        {/* Avatar + name */}
-        <View style={{ alignItems: "center", marginBottom: 24 }}>
-          <View style={{
-            backgroundColor: YELLOW, borderRadius: 40, width: 80, height: 80,
-            alignItems: "center", justifyContent: "center", marginBottom: 12,
-            shadowColor: YELLOW, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12,
-          }}>
-            <Text style={{ color: NAV, fontSize: 28, fontWeight: "900" }}>
-              {user.display_name.charAt(0).toUpperCase()}
-            </Text>
+        <View
+          style={{
+            backgroundColor: "rgba(255,255,255,0.07)",
+            borderRadius: 24,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
+            marginBottom: 16,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 18 }}>
+            <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: YELLOW, alignItems: "center", justifyContent: "center", marginRight: 14 }}>
+              <Text style={{ color: NAV, fontSize: 28, fontWeight: "900" }}>{user.display_name.charAt(0).toUpperCase()}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "white", fontSize: 24, fontWeight: "900", marginBottom: 3 }}>{user.display_name}</Text>
+              <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 12, fontWeight: "700", marginBottom: 6 }}>{memberNumber(user.card_token)}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name={tierMeta.icon} size={14} color={tierMeta.color} />
+                <Text style={{ color: tierMeta.color, fontSize: 12, fontWeight: "800", textTransform: "capitalize" }}>{tierMeta.label} member</Text>
+              </View>
+            </View>
           </View>
-          <Text style={{ color: "white", fontSize: 20, fontWeight: "800" }}>{user.display_name}</Text>
-          <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 13, marginTop: 4 }}>{memberNumber(user.card_token)}</Text>
-        </View>
 
-        {/* Points */}
-        <View style={{
-          backgroundColor: YELLOW, borderRadius: 18, padding: 18,
-          flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16,
-          shadowColor: YELLOW, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12,
-        }}>
-          <View>
-            <Text style={{ color: "rgba(15,0,50,0.55)", fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
-              HU NOW Points
-            </Text>
-            <Text style={{ color: NAV, fontSize: 34, fontWeight: "900", marginTop: 2 }}>{user.points}</Text>
-          </View>
-          <View style={{ backgroundColor: "rgba(15,0,50,0.12)", borderRadius: 20, width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="star" size={22} color={NAV} />
-          </View>
-        </View>
-
-        {/* Account details */}
-        <View style={{
-          backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, overflow: "hidden",
-          marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-        }}>
-          <View style={{ paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" }}>
-            <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 3 }}>Name</Text>
-            <Text style={{ color: "white", fontWeight: "600" }}>{user.display_name}</Text>
-          </View>
-          <View style={{ paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.06)" }}>
-            <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 3 }}>Email</Text>
-            <Text style={{ color: "white", fontWeight: "600" }}>{user.email}</Text>
-          </View>
-          <View style={{ paddingHorizontal: 18, paddingVertical: 14 }}>
-            <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 3 }}>Member since</Text>
-            <Text style={{ color: "white", fontWeight: "600" }}>
-              {user.card_created
-                ? new Date(user.card_created).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
-                : "—"}
-            </Text>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            <View style={{ flex: 1, backgroundColor: YELLOW, borderRadius: 18, padding: 16 }}>
+              <Text style={{ color: "rgba(15,0,50,0.55)", fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Points</Text>
+              <Text style={{ color: NAV, fontSize: 32, fontWeight: "900" }}>{currentUser.points}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+              <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>Check-in streak</Text>
+              <Text style={{ color: "white", fontSize: 28, fontWeight: "900", marginBottom: 2 }}>{user.login_streak ?? 0}</Text>
+              <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 11 }}>{streakText}</Text>
+            </View>
           </View>
         </View>
 
-        <View style={{
-          backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, overflow: "hidden",
-          marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", padding: 18,
-        }}>
+        <View
+          style={{
+            backgroundColor: "rgba(255,255,255,0.07)",
+            borderRadius: 20,
+            padding: 18,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
+            marginBottom: 16,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <Text style={{ color: "white", fontSize: 18, fontWeight: "800" }}>Invite friends</Text>
+            <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+              <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>{user.referral_count ?? 0} joined</Text>
+            </View>
+          </View>
+          <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
+            Share your invite code. When a friend joins with it, both of you get a HU NOW points boost.
+          </Text>
+          <View style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 12 }}>
+            <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 10, fontWeight: "900", textTransform: "uppercase", letterSpacing: 1.1, marginBottom: 4 }}>Your invite code</Text>
+            <Text style={{ color: "white", fontSize: 24, fontWeight: "900", letterSpacing: 1.2 }}>{user.referral_code ?? "HUNOW"}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={handleShareReferral}
+            style={{ backgroundColor: YELLOW, borderRadius: 14, paddingVertical: 14, alignItems: "center" }}
+          >
+            <Text style={{ color: NAV, fontWeight: "900" }}>Share Invite</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View
+          style={{
+            backgroundColor: "rgba(255,255,255,0.07)",
+            borderRadius: 20,
+            padding: 18,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 12 }}>Account</Text>
+          <View style={{ gap: 12 }}>
+            <View>
+              <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginBottom: 3 }}>Email</Text>
+              <Text style={{ color: "white", fontWeight: "700" }}>{user.email}</Text>
+            </View>
+            <View>
+              <Text style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginBottom: 3 }}>Member since</Text>
+              <Text style={{ color: "white", fontWeight: "700" }}>{memberSince}</Text>
+            </View>
+          </View>
+        </View>
+
+        {challengeList.length > 0 ? (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 10 }}>Challenges</Text>
+            {challengeList.map((item) => (
+              <ChallengeCard key={item.id} item={item} />
+            ))}
+          </View>
+        ) : null}
+
+        {user.redemptions.length > 0 && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 10 }}>Recent Redemptions</Text>
+            {user.redemptions.slice(0, 5).map((r, i) => (
+              <View
+                key={i}
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.07)",
+                  borderRadius: 16,
+                  padding: 14,
+                  marginBottom: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.08)",
+                }}
+              >
+                <View style={{ backgroundColor: YELLOW + "22", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                  <Ionicons name="ticket-outline" size={16} color={YELLOW} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>{r.offer_title}</Text>
+                  <Text style={{ color: "rgba(255,255,255,0.42)", fontSize: 12 }}>{r.venue_name}</Text>
+                </View>
+                <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
+                  {new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View
+          style={{
+            backgroundColor: "rgba(255,255,255,0.07)",
+            borderRadius: 20,
+            padding: 18,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
+            marginBottom: 16,
+          }}
+        >
           <Text style={{ color: "white", fontWeight: "800", fontSize: 16, marginBottom: 12 }}>Account security</Text>
 
           <Text style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginBottom: 6 }}>New email</Text>
@@ -125,8 +275,14 @@ export default function ProfileScreen() {
             placeholder="new@email.com"
             placeholderTextColor="rgba(255,255,255,0.25)"
             style={{
-              backgroundColor: "rgba(255,255,255,0.06)", color: "white", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14,
-              borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 12,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              color: "white",
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 14,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+              marginBottom: 12,
             }}
           />
 
@@ -139,8 +295,14 @@ export default function ProfileScreen() {
             placeholder="Enter current password"
             placeholderTextColor="rgba(255,255,255,0.25)"
             style={{
-              backgroundColor: "rgba(255,255,255,0.06)", color: "white", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14,
-              borderWidth: 1, borderColor: "rgba(255,255,255,0.08)", marginBottom: 12,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              color: "white",
+              borderRadius: 14,
+              paddingHorizontal: 14,
+              paddingVertical: 14,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
+              marginBottom: 12,
             }}
           />
 
@@ -161,38 +323,16 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Recent redemptions */}
-        {user.redemptions.length > 0 && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ color: "white", fontWeight: "800", fontSize: 16, marginBottom: 12 }}>Recent Redemptions</Text>
-            {user.redemptions.map((r, i) => (
-              <View key={i} style={{
-                backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 16, padding: 14,
-                marginBottom: 8, flexDirection: "row", alignItems: "center",
-                borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-              }}>
-                <View style={{ backgroundColor: YELLOW + "33", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center", marginRight: 12 }}>
-                  <Ionicons name="ticket-outline" size={16} color={YELLOW} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ color: "white", fontWeight: "600", fontSize: 13 }}>{r.offer_title}</Text>
-                  <Text style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}>{r.venue_name}</Text>
-                </View>
-                <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 11 }}>
-                  {new Date(r.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {/* Sign out */}
         <TouchableOpacity
           onPress={signOut}
           style={{
-            borderWidth: 1, borderColor: "rgba(255,80,80,0.3)",
+            borderWidth: 1,
+            borderColor: "rgba(255,80,80,0.3)",
             backgroundColor: "rgba(255,80,80,0.08)",
-            borderRadius: 18, paddingVertical: 16, alignItems: "center", marginBottom: 32,
+            borderRadius: 18,
+            paddingVertical: 16,
+            alignItems: "center",
+            marginBottom: 24,
           }}
         >
           <Text style={{ color: "#ff6b6b", fontWeight: "700" }}>Sign Out</Text>

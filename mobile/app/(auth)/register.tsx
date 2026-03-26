@@ -13,6 +13,7 @@ export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +29,7 @@ export default function RegisterScreen() {
     setLoading(true);
     setError(null);
     try {
-      await register(name.trim(), email.trim(), password);
+      await register(name.trim(), email.trim(), password, referralCode.trim());
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Registration failed. Please try again.");
     }
@@ -120,6 +121,18 @@ export default function RegisterScreen() {
               onChangeText={setPassword}
               secureTextEntry
               autoComplete="new-password"
+            />
+          </View>
+
+          <View className="bg-[#F5F5F7] rounded-2xl px-4 py-4 mb-6 border border-[#E5E5EA]">
+            <Text className="text-[#0F0032]/40 text-xs mb-1">Invite code (optional)</Text>
+            <TextInput
+              className="text-[#0F0032] text-base"
+              placeholder="e.g. HUNOAB12"
+              placeholderTextColor="rgba(15,0,50,0.25)"
+              value={referralCode}
+              onChangeText={(value) => setReferralCode(value.toUpperCase())}
+              autoCapitalize="characters"
             />
           </View>
 

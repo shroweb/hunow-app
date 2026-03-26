@@ -379,7 +379,7 @@ export const wordpress = {
   },
 
   /** Daily check-in */
-  dailyCheckin(token: string): Promise<{ points_awarded: number; message: string }> {
+  dailyCheckin(token: string): Promise<{ points_awarded?: number; message: string; already_checked_in?: boolean; streak?: number }> {
     return post(`${HUNOW_BASE}/daily-checkin`, {}, token);
   },
 
