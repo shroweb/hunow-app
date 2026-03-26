@@ -379,8 +379,11 @@ export const wordpress = {
   },
 
   /** Daily check-in */
-  dailyCheckin(token: string): Promise<{ points_awarded?: number; message: string; already_checked_in?: boolean; streak?: number }> {
-    return post(`${HUNOW_BASE}/daily-checkin`, {}, token);
+  dailyCheckin(
+    token: string,
+    body?: { venue_id?: number; lat?: number; lng?: number }
+  ): Promise<{ points_awarded?: number; message: string; already_checked_in?: boolean; streak?: number; venue_id?: number | null }> {
+    return post(`${HUNOW_BASE}/daily-checkin`, body ?? {}, token);
   },
 
   /** Register device for push */

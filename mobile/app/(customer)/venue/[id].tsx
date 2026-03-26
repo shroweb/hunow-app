@@ -6,12 +6,13 @@ import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
 import * as Haptics from "expo-haptics";
 import * as Brightness from "expo-brightness";
+import * as Location from "expo-location";
 import Animated, {
   useSharedValue, withSpring, withSequence, withTiming, useAnimatedStyle,
 } from "react-native-reanimated";
 import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, type WPEat, type WPOffer } from "@/lib/wordpress";
 import { fetchOfferStatuses, type OfferStatus } from "@/lib/wpAuth";
-import { decodeHtml, stripHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus } from "@/lib/utils";
+import { decodeHtml, stripHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus, getLatLng } from "@/lib/utils";
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton } from "@/components/Skeleton";
@@ -140,7 +141,27 @@ export default function VenueDetailScreen() {
     }
     setCheckinLoading(true);
     try {
-      const result = await wordpress.dailyCheckin(token);
+      const venueCoords = getLatLng(venue?.acf?.address);
+      if (!venueCoords) {
+        Alert.alert("Check-in unavailable", "This venue doesn’t have a valid location set yet.");
+        return;
+      }
+
+      let permission = await Location.getForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        permission = await Location.requestForegroundPermissionsAsync();
+      }
+      if (permission.status !== "granted") {
+        Alert.alert("Location needed", "Allow location access so we can verify you’re at this venue.");
+        return;
+      }
+
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const result = await wordpress.dailyCheckin(token, {
+        venue_id: Number(id),
+        lat: current.coords.latitude,
+        lng: current.coords.longitude,
+      });
       await refreshUser();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(result.already_checked_in ? "Already checked in" : "Check-in complete", result.message);
