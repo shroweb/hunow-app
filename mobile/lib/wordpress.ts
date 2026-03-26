@@ -296,6 +296,35 @@ async function post<T>(url: string, body: unknown, token?: string): Promise<T> {
   return res.json();
 }
 
+async function uploadMedia(
+  url: string,
+  file: { uri: string; name: string; type: string },
+  token: string,
+): Promise<{ id: number; source_url?: string; guid?: { rendered?: string } }> {
+  const formData = new FormData();
+  formData.append("file", {
+    uri: file.uri,
+    name: file.name,
+    type: file.type,
+  } as any);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as any).message ?? `WP upload error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
 function buildQuery(params: Record<string, string | number | boolean>): string {
   const q = new URLSearchParams(
     Object.entries(params)
@@ -391,6 +420,16 @@ export const wordpress = {
     token: string,
   ): Promise<BusinessOffersResponse> {
     return post<BusinessOffersResponse>(`${HUNOW_BASE}/business-offers`, body, token);
+  },
+
+  uploadOfferImage(
+    file: { uri: string; name: string; type: string },
+    token: string,
+  ): Promise<{ id: number; source_url: string | null }> {
+    return uploadMedia(`${BASE.replace("/wp/v2", "")}/wp/v2/media`, file, token).then((media) => ({
+      id: media.id,
+      source_url: media.source_url ?? media.guid?.rendered ?? null,
+    }));
   },
 
   /** Get user's points total */

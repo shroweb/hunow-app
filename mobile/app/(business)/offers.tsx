@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput,
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/context/AuthContext";
 import {
   wordpress,
@@ -159,6 +160,7 @@ export default function BusinessOffersScreen() {
   const [editingTier, setEditingTier] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const businessReady = user?.role === "business" && user?.setup_status === "ready" && Boolean(user?.venue_id);
   const editingEnabled = appConfig?.feature_flags?.business_offers_editing !== false;
 
@@ -270,6 +272,48 @@ export default function BusinessOffersScreen() {
       Alert.alert("Couldn’t save offers", err?.message ?? "Please try again.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function pickAndUploadImage(
+    key: string,
+    onUploaded: (url: string) => void,
+  ) {
+    if (!token) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Photo access needed", "Allow photo library access to upload offer images.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.85,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    const fileName = asset.fileName || `offer-${Date.now()}.jpg`;
+    const mimeType = asset.mimeType || "image/jpeg";
+
+    try {
+      setUploadingKey(key);
+      const media = await wordpress.uploadOfferImage({
+        uri: asset.uri,
+        name: fileName,
+        type: mimeType,
+      }, token);
+      if (!media.source_url) {
+        throw new Error("Upload succeeded, but no media URL was returned.");
+      }
+      onUploaded(media.source_url);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert("Couldn’t upload image", err?.message ?? "Please try again.");
+    } finally {
+      setUploadingKey(null);
     }
   }
 
@@ -421,6 +465,14 @@ export default function BusinessOffersScreen() {
                   <FieldLabel>Offer Image URL</FieldLabel>
                   <Input value={offer.image_url ?? ""} onChangeText={(value) => updateStandard(offer.id, { image_url: value.trim() })} placeholder="https://..." autoCapitalize="none" />
                 </View>
+                <TouchableOpacity
+                  onPress={() => pickAndUploadImage(`standard:${offer.id}`, (url) => updateStandard(offer.id, { image_url: url }))}
+                  style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 14, paddingVertical: 12, alignItems: "center", marginBottom: 12 }}
+                >
+                  {uploadingKey === `standard:${offer.id}`
+                    ? <ActivityIndicator color={NAV} />
+                    : <Text style={{ color: NAV, fontSize: 13, fontWeight: "800" }}>Upload from phone</Text>}
+                </TouchableOpacity>
 
                 <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
                   <View style={{ flex: 1 }}>
@@ -559,6 +611,14 @@ export default function BusinessOffersScreen() {
                     <FieldLabel light>Offer Image URL</FieldLabel>
                     <Input dark value={offer.image_url ?? ""} onChangeText={(value) => updateTier(offer.tier, { image_url: value.trim() })} placeholder="https://..." autoCapitalize="none" />
                   </View>
+                  <TouchableOpacity
+                    onPress={() => pickAndUploadImage(`tier:${offer.tier}`, (url) => updateTier(offer.tier, { image_url: url }))}
+                    style={{ backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 14, paddingVertical: 12, alignItems: "center", marginBottom: 12 }}
+                  >
+                    {uploadingKey === `tier:${offer.tier}`
+                      ? <ActivityIndicator color="white" />
+                      : <Text style={{ color: "white", fontSize: 13, fontWeight: "800" }}>Upload from phone</Text>}
+                  </TouchableOpacity>
 
                   <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
                     <View style={{ flex: 1 }}>
