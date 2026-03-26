@@ -21,6 +21,14 @@ function getTier(points: number) {
   return "standard";
 }
 
+function getTierKey(tier?: string | null, points = 0) {
+  const normalized = tier?.toLowerCase();
+  if (normalized && normalized in TIER_META) {
+    return normalized as keyof typeof TIER_META;
+  }
+  return getTier(points) as keyof typeof TIER_META;
+}
+
 function ProgressBar({ value }: { value: number }) {
   return (
     <View style={{ height: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
@@ -69,7 +77,7 @@ export default function ProfileScreen() {
   if (!user) return null;
   const currentUser = user;
 
-  const tierKey = getTier(currentUser.points ?? 0) as keyof typeof TIER_META;
+  const tierKey = getTierKey(currentUser.tier, currentUser.points ?? 0);
   const tierMeta = TIER_META[tierKey];
   const memberSince = currentUser.card_created
     ? new Date(currentUser.card_created).toLocaleDateString("en-GB", { month: "long", year: "numeric" })

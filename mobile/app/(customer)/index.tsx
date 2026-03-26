@@ -32,6 +32,12 @@ function getTier(points: number) {
   return [...TIERS].reverse().find((t) => points >= t.min) ?? TIERS[0];
 }
 
+function getTierByKey(tier?: string | null) {
+  if (!tier) return null;
+  const normalized = tier.toLowerCase();
+  return TIERS.find((item) => item.name.toLowerCase() === normalized) ?? null;
+}
+
 function getNextTier(points: number) {
   return TIERS.find((t) => t.min > points) ?? null;
 }
@@ -202,7 +208,7 @@ export default function HomeScreen() {
   // Skeleton state — show header and nav instantly, skeleton for content sections
   const showSkeleton = loading;
   const currentPoints = user?.points ?? 0;
-  const currentTier = getTier(currentPoints);
+  const currentTier = getTierByKey(user?.tier) ?? getTier(currentPoints);
   const nextTier = getNextTier(currentPoints);
   const tierProgress = nextTier ? (currentPoints - currentTier.min) / (nextTier.min - currentTier.min) : 1;
   const pointsToNext = nextTier ? nextTier.min - currentPoints : 0;

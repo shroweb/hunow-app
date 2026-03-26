@@ -26,6 +26,12 @@ function getTier(points: number) {
   return [...TIERS].reverse().find((t) => points >= t.min) ?? TIERS[0];
 }
 
+function getTierByKey(tier?: string | null) {
+  if (!tier) return null;
+  const normalized = tier.toLowerCase();
+  return TIERS.find((item) => item.name.toLowerCase() === normalized) ?? null;
+}
+
 function getNextTier(points: number) {
   return TIERS.find((t) => t.min > points) ?? null;
 }
@@ -71,7 +77,7 @@ export default function MyCardScreen() {
 
   useEffect(() => {
     if (!user) return;
-    const currentTierName = getTier(user.points ?? 0).name;
+    const currentTierName = (getTierByKey(user.tier) ?? getTier(user.points ?? 0)).name;
     async function maybeCelebrateTier() {
       const seenTier = await AsyncStorage.getItem(SEEN_TIER_KEY);
       if (seenTier !== currentTierName) {
@@ -87,7 +93,7 @@ export default function MyCardScreen() {
   if (!user) return null;
 
   const currentPoints = user.points ?? 0;
-  const currentTier = getTier(currentPoints);
+  const currentTier = getTierByKey(user.tier) ?? getTier(currentPoints);
   const nextTier = getNextTier(currentPoints);
   const tierProgress = nextTier
     ? (currentPoints - currentTier.min) / (nextTier.min - currentTier.min)
