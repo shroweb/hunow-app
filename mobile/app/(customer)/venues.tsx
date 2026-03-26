@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { wordpress, getFeaturedImage, extractOffers, type WPEat } from "@/lib/wordpress";
-import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus, getSearchableText } from "@/lib/utils";
+import { decodeHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus, getSearchableText, getFilterLabels } from "@/lib/utils";
 import { VenueCardSkeleton } from "@/components/VenueCardSkeleton";
 import { HUNowPickBadge } from "@/components/HUNowPickBadge";
 
@@ -18,13 +18,13 @@ const SURFACE = "rgba(255,255,255,0.07)";
 const BORDER = "rgba(255,255,255,0.1)";
 const BRAND_LOGO_URL = "https://hunow.co.uk/wp-content/uploads/2025/02/Group-1-1.png";
 
-interface Cuisine { id: number | null; name: string }
+interface Cuisine { id: number | string | null; name: string }
 
 export default function VenuesScreen() {
   const [allVenues, setAllVenues] = useState<WPEat[]>([]);
   const [cuisines, setCuisines] = useState<Cuisine[]>([{ id: null, name: "All" }]);
   const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState<number | null>(null);
+  const [activeFilter, setActiveFilter] = useState<number | string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
@@ -48,8 +48,19 @@ export default function VenuesScreen() {
         return cuisineType.includes(selectedName) || category.includes(selectedName);
       });
     });
+    const derivedCats = Array.from(
+      new Set(
+        venuesWithOffers.flatMap((venue) => [
+          ...getFilterLabels(venue.acf?.cuisine_type),
+          ...getFilterLabels(venue.acf?.category),
+        ])
+      )
+    )
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ id: `derived:${name.toLowerCase()}`, name }));
     setAllVenues(venuesWithOffers);
-    setCuisines([{ id: null, name: "All" }, ...availableCats]);
+    setCuisines([{ id: null, name: "All" }, ...(availableCats.length > 0 ? availableCats : derivedCats)]);
     setLoading(false);
     setRefreshing(false);
   }

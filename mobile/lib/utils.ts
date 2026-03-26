@@ -99,6 +99,43 @@ export function getSearchableText(value: unknown): string {
   return "";
 }
 
+function toTitleCase(value: string): string {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+export function getFilterLabels(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) => toTitleCase(part));
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return [String(value)];
+  }
+  if (Array.isArray(value)) {
+    return Array.from(new Set(value.flatMap((item) => getFilterLabels(item)).filter(Boolean)));
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const named = [record.name, record.label, record.title].find((item) => typeof item === "string" && item.trim());
+    if (typeof named === "string") return [toTitleCase(named.trim())];
+    return Array.from(
+      new Set(
+        Object.values(record)
+          .flatMap((item) => getFilterLabels(item))
+          .filter(Boolean)
+      )
+    );
+  }
+  return [];
+}
+
 /** Extract lat/lng from a WP ACF Google Maps address object */
 export function getLatLng(address: unknown): { lat: number; lng: number } | null {
   if (!address || typeof address !== "object") return null;
