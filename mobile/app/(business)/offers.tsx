@@ -204,6 +204,62 @@ export default function BusinessOffersScreen() {
     setTierOffers((current) => current.map((offer) => (offer.tier === tier ? { ...offer, ...patch } : offer)));
   }
 
+  function deleteStandard(id: number) {
+    Alert.alert("Delete offer", "This will clear this offer slot completely.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          updateStandard(id, {
+            title: "",
+            description: "",
+            image_url: null,
+            featured: false,
+            paused: false,
+            archived: false,
+            limit_count: 1,
+            limit_period: "month",
+            starts_at: null,
+            ends_at: null,
+            days_of_week: [],
+            time_start: null,
+            time_end: null,
+          });
+          setEditingStandard((current) => ({ ...current, [id]: false }));
+        },
+      },
+    ]);
+  }
+
+  function deleteTier(tier: WPTierOffer["tier"]) {
+    Alert.alert("Delete tier offer", "This will clear this tier reward completely.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          updateTier(tier, {
+            title: "",
+            description: "",
+            image_url: null,
+            featured: false,
+            paused: false,
+            archived: false,
+            limit_count: 1,
+            limit_period: "month",
+            starts_at: null,
+            ends_at: null,
+            days_of_week: [],
+            time_start: null,
+            time_end: null,
+          });
+          setEditingTier((current) => ({ ...current, [tier]: false }));
+        },
+      },
+    ]);
+  }
+
   function duplicateStandard(id: number) {
     setStandardOffers((current) => {
       const source = current.find((offer) => offer.id === id);
@@ -317,7 +373,12 @@ export default function BusinessOffersScreen() {
     }
   }
 
-  const hasEditingOpen = Object.values(editingStandard).some(Boolean) || Object.values(editingTier).some(Boolean);
+  const displayStandardOffers = [...standardOffers].sort(
+    (a, b) => Number(Boolean(a.archived)) - Number(Boolean(b.archived)) || a.id - b.id
+  );
+  const displayTierOffers = [...tierOffers].sort(
+    (a, b) => Number(Boolean(a.archived)) - Number(Boolean(b.archived)) || a.tier.localeCompare(b.tier)
+  );
 
   if (loading) {
     return (
@@ -391,7 +452,7 @@ export default function BusinessOffersScreen() {
         </View>
 
         <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 10 }}>Standard Offers</Text>
-        {standardOffers.map((offer) => (
+        {displayStandardOffers.map((offer) => (
           <View key={offer.id} style={{ backgroundColor: "white", borderRadius: 20, padding: 16, marginBottom: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <View>
@@ -408,6 +469,11 @@ export default function BusinessOffersScreen() {
                       <Text style={{ color: "#B91C1C", fontSize: 10, fontWeight: "900" }}>Paused</Text>
                     </View>
                   ) : null}
+                  {offer.archived ? (
+                    <View style={{ backgroundColor: "rgba(15,0,50,0.08)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                      <Text style={{ color: "rgba(15,0,50,0.62)", fontSize: 10, fontWeight: "900" }}>Archived</Text>
+                    </View>
+                  ) : null}
                 </View>
               </View>
               <View style={{ flexDirection: "row", gap: 8 }}>
@@ -422,6 +488,18 @@ export default function BusinessOffersScreen() {
                   style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
                 >
                   <Text style={{ color: "rgba(15,0,50,0.72)", fontSize: 11, fontWeight: "800" }}>Duplicate</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => updateStandard(offer.id, { archived: !offer.archived })}
+                  style={{ backgroundColor: offer.archived ? "rgba(15,0,50,0.12)" : "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: "rgba(15,0,50,0.72)", fontSize: 11, fontWeight: "800" }}>{offer.archived ? "Restore" : "Archive"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => deleteStandard(offer.id)}
+                  style={{ backgroundColor: "rgba(239,68,68,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                >
+                  <Text style={{ color: "#B91C1C", fontSize: 11, fontWeight: "800" }}>Delete</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setEditingStandard((current) => ({ ...current, [offer.id]: !current[offer.id] }))}
@@ -531,6 +609,7 @@ export default function BusinessOffersScreen() {
                   {formatOfferRule(offer.limit_count, offer.limit_period)}
                 </Text>
                 {offer.paused ? <Text style={{ color: "#B91C1C", fontSize: 12, fontWeight: "800" }}>Currently paused</Text> : null}
+                {offer.archived ? <Text style={{ color: "rgba(15,0,50,0.6)", fontSize: 12, fontWeight: "800" }}>Currently archived</Text> : null}
                 {(offer.starts_at || offer.ends_at) ? (
                   <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 12 }}>
                     {offer.starts_at ? `Starts ${offer.starts_at}` : "Always on"}
@@ -548,7 +627,7 @@ export default function BusinessOffersScreen() {
         ))}
 
         <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginTop: 8, marginBottom: 10 }}>Tier Offers</Text>
-        {tierOffers.map((offer) => {
+        {displayTierOffers.map((offer) => {
           const meta = TIER_META[offer.tier];
           return (
             <View key={offer.tier} style={{ backgroundColor: "#20113F", borderRadius: 20, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: meta.colour + "66" }}>
@@ -567,6 +646,11 @@ export default function BusinessOffersScreen() {
                         <Text style={{ color: "#FCA5A5", fontSize: 10, fontWeight: "900" }}>Paused</Text>
                       </View>
                     ) : null}
+                    {offer.archived ? (
+                      <View style={{ backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                        <Text style={{ color: "rgba(255,255,255,0.78)", fontSize: 10, fontWeight: "900" }}>Archived</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
                 <View style={{ flexDirection: "row", gap: 8 }}>
@@ -575,6 +659,18 @@ export default function BusinessOffersScreen() {
                     style={{ backgroundColor: offer.paused ? "rgba(239,68,68,0.15)" : "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
                   >
                     <Text style={{ color: offer.paused ? "#FCA5A5" : "rgba(255,255,255,0.86)", fontSize: 11, fontWeight: "800" }}>{offer.paused ? "Paused" : "Pause"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => updateTier(offer.tier, { archived: !offer.archived })}
+                    style={{ backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                  >
+                    <Text style={{ color: "rgba(255,255,255,0.86)", fontSize: 11, fontWeight: "800" }}>{offer.archived ? "Restore" : "Archive"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => deleteTier(offer.tier)}
+                    style={{ backgroundColor: "rgba(239,68,68,0.15)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 }}
+                  >
+                    <Text style={{ color: "#FCA5A5", fontSize: 11, fontWeight: "800" }}>Delete</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setEditingTier((current) => ({ ...current, [offer.tier]: !current[offer.tier] }))}
@@ -679,6 +775,7 @@ export default function BusinessOffersScreen() {
                     {formatOfferRule(offer.limit_count, offer.limit_period)}
                   </Text>
                   {offer.paused ? <Text style={{ color: "#FCA5A5", fontSize: 12, fontWeight: "800" }}>Currently paused</Text> : null}
+                  {offer.archived ? <Text style={{ color: "rgba(255,255,255,0.74)", fontSize: 12, fontWeight: "800" }}>Currently archived</Text> : null}
                   {(offer.starts_at || offer.ends_at) ? (
                     <Text style={{ color: "rgba(255,255,255,0.68)", fontSize: 12 }}>
                       {offer.starts_at ? `Starts ${offer.starts_at}` : "Always on"}
@@ -696,22 +793,20 @@ export default function BusinessOffersScreen() {
           );
         })}
 
-        {hasEditingOpen && (
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={saving}
-            style={{
-              backgroundColor: saving ? "rgba(251,201,0,0.5)" : YELLOW,
-              borderRadius: 18,
-              paddingVertical: 17,
-              alignItems: "center",
-              marginTop: 4,
-              marginBottom: 18,
-            }}
-          >
-            {saving ? <ActivityIndicator color={NAV} /> : <Text style={{ color: NAV, fontSize: 16, fontWeight: "900" }}>Save Offers</Text>}
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={saving}
+          style={{
+            backgroundColor: saving ? "rgba(251,201,0,0.5)" : YELLOW,
+            borderRadius: 18,
+            paddingVertical: 17,
+            alignItems: "center",
+            marginTop: 4,
+            marginBottom: 18,
+          }}
+        >
+          {saving ? <ActivityIndicator color={NAV} /> : <Text style={{ color: NAV, fontSize: 16, fontWeight: "900" }}>Save Offers</Text>}
+        </TouchableOpacity>
 
       </ScrollView>
     </SafeAreaView>

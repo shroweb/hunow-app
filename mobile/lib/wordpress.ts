@@ -14,6 +14,7 @@ export interface WPOffer {
   image_url?: string | null;
   featured?: boolean;
   paused?: boolean;
+  archived?: boolean;
   limit_count?: number;
   limit_period?: "week" | "month" | "year" | "ever";
   starts_at?: string | null;
@@ -30,6 +31,7 @@ export interface WPTierOffer {
   image_url?: string | null;
   featured?: boolean;
   paused?: boolean;
+  archived?: boolean;
   limit_count?: number;
   limit_period?: "week" | "month" | "year" | "ever";
   starts_at?: string | null;
@@ -163,6 +165,7 @@ export function extractOffers(venue: WPEat): WPOffer[] {
         image_url: o.image_url ?? null,
         featured: Boolean(o.featured),
         paused: Boolean(o.paused),
+        archived: Boolean(o.archived),
         limit_count: o.limit_count ?? 1,
         limit_period: o.limit_period ?? "month",
         starts_at: o.starts_at ?? null,
@@ -183,6 +186,7 @@ export function extractOffers(venue: WPEat): WPOffer[] {
       image_url: null,
       featured: false,
       paused: false,
+      archived: false,
       limit_count: 1,
       limit_period: "month",
       starts_at: null,
