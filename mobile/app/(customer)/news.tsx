@@ -90,7 +90,7 @@ export default function VouchersScreen() {
   }, [vouchers]);
 
   const walletItems = useMemo(
-    () => [...grouped.active, ...(showUsedVouchers ? grouped.used : [])],
+    () => [...(showUsedVouchers ? grouped.used : []), ...grouped.active],
     [grouped.active, grouped.used, showUsedVouchers]
   );
 
@@ -160,10 +160,6 @@ export default function VouchersScreen() {
               </Text>
             </View>
 
-            {grouped.active.length > 0 ? (
-              <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 10 }}>Ready to use</Text>
-            ) : null}
-
             {grouped.used.length > 0 ? (
               <TouchableOpacity
                 activeOpacity={0.85}
@@ -221,6 +217,10 @@ export default function VouchersScreen() {
                   />
                 </View>
               </TouchableOpacity>
+            ) : null}
+
+            {grouped.active.length > 0 ? (
+              <Text style={{ color: "white", fontWeight: "800", fontSize: 18, marginBottom: 10 }}>Ready to use</Text>
             ) : null}
           </View>
         }
