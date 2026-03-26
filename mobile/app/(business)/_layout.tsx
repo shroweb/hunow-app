@@ -47,9 +47,18 @@ export default function BusinessLayout() {
         }}
       />
       <Tabs.Screen
+        name="vouchers"
+        options={{
+          title: "Vouchers",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "ticket" : "ticket-outline"} size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="scan"
         options={{
-          title: "Scan Card",
+          title: "Scan",
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? "scan-circle" : "scan-circle-outline"} size={size} color={color} />
           ),
