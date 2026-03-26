@@ -8,7 +8,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
-import { wordpress, getFeaturedImage, extractOffers, type WPEvent, type WPPost, type WPEat } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, extractOffers, type WPEvent, type WPEat } from "@/lib/wordpress";
 import { decodeHtml, parseEventDate, getLatLng } from "@/lib/utils";
 import { haversineKm } from "@/lib/haversine";
 import { useAuth } from "@/context/AuthContext";
@@ -131,7 +131,6 @@ export default function HomeScreen() {
   const CARD_W = width - 48;
 
   const [events, setEvents]     = useState<WPEvent[]>([]);
-  const [news, setNews]         = useState<WPPost[]>([]);
   const [activeOffers, setActiveOffers] = useState<ActiveOffer[]>([]);
   const [nearbyOffers, setNearbyOffers] = useState<ActiveOffer[]>([]);
   const [favouriteOffers, setFavouriteOffers] = useState<ActiveOffer[]>([]);
@@ -140,9 +139,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   async function load() {
-    const [wpEvents, wpNews, wpOffers] = await Promise.all([
+    const [wpEvents, wpOffers] = await Promise.all([
       wordpress.getEvents({ perPage: 4 }),
-      wordpress.getPosts({ perPage: 4 }).catch(() => [] as WPPost[]),
       loadOffers().catch(() => [] as ActiveOffer[]),
     ]);
     const now = new Date();
@@ -151,7 +149,6 @@ export default function HomeScreen() {
       return cutoff ? cutoff.getTime() >= now.getTime() : false;
     });
     setEvents(upcomingEvents.slice(0, 4));
-    setNews([...wpNews].sort((a, b) => Number(Boolean(b.sticky)) - Number(Boolean(a.sticky)) || new Date(b.date).getTime() - new Date(a.date).getTime()));
     setActiveOffers(wpOffers);
     if (token) {
       try {
@@ -226,64 +223,26 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ────────────────────────────────────── */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <View>
+        <View style={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <View style={{ justifyContent: "flex-start" }}>
             <Image
               source={{ uri: BRAND_LOGO_URL }}
-              style={{ width: 112, height: 52, marginBottom: 10, marginLeft: -18, alignSelf: "flex-start" }}
+              style={{ width: 112, height: 52, marginLeft: -18, alignSelf: "flex-start" }}
               resizeMode="contain"
             />
+          </View>
+          <View style={{ alignItems: "flex-end", paddingTop: 8, flex: 1 }}>
             <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 13 }}>{greeting()}</Text>
             <Text style={{ color: "white", fontSize: 28, fontWeight: "900", letterSpacing: -0.5, marginTop: 2 }}>
               {user?.display_name?.split(" ")[0] ?? "Welcome"}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push("/(customer)/card")}
-            style={{
-              flexDirection: "row", alignItems: "center", gap: 6,
-              backgroundColor: YELLOW, borderRadius: 20,
-              paddingHorizontal: 12, paddingVertical: 7,
-              shadowColor: YELLOW, shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: 0.4, shadowRadius: 8,
-            }}
-          >
-            <Ionicons name="star" size={13} color={NAV} />
-            <Text style={{ color: NAV, fontSize: 13, fontWeight: "800" }}>{user?.points ?? 0} pts</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Quick Nav ─────────────────────────────────── */}
-        <View style={{ flexDirection: "row", paddingHorizontal: 20, marginTop: 20, gap: 10 }}>
-          {[
-            { label: "Offers",  icon: "pricetag-outline"  as const, route: "/(customer)/venues" },
-            { label: "Events",  icon: "calendar-outline"  as const, route: "/(customer)/events" },
-            { label: "News",    icon: "newspaper-outline" as const, route: "/(customer)/news"   },
-            { label: "My Card", icon: "card-outline"      as const, route: "/(customer)/card"   },
-          ].map((item) => (
-            <TouchableOpacity
-              key={item.label}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); router.push(item.route as any); }}
-              style={{
-                flex: 1, backgroundColor: SURFACE,
-                borderRadius: 18, alignItems: "center", paddingVertical: 13,
-                borderWidth: 1, borderColor: BORDER,
-              }}
-            >
-              <Ionicons name={item.icon} size={22} color={YELLOW} />
-              <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontWeight: "600", marginTop: 5, textAlign: "center" }}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
         </View>
 
         <TouchableOpacity
           onPress={() => router.push("/(customer)/card")}
           style={{
-            marginHorizontal: 20, marginTop: 18, backgroundColor: SURFACE,
+            marginHorizontal: 20, marginTop: 10, backgroundColor: SURFACE,
             borderRadius: 22, padding: 18, borderWidth: 1, borderColor: BORDER,
           }}
         >
@@ -294,8 +253,8 @@ export default function HomeScreen() {
               </Text>
               <Text style={{ color: "white", fontSize: 17, fontWeight: "800" }}>{currentTier.name}</Text>
             </View>
-            <View style={{ backgroundColor: currentTier.colour + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-              <Text style={{ color: currentTier.colour, fontSize: 11, fontWeight: "800" }}>{currentPoints} pts</Text>
+            <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+              <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>{currentPoints} pts</Text>
             </View>
           </View>
           <Text style={{ color: "rgba(255,255,255,0.52)", fontSize: 13, marginBottom: 10 }}>
@@ -308,60 +267,6 @@ export default function HomeScreen() {
             View rewards and your full card
           </Text>
         </TouchableOpacity>
-
-        {favouriteOffers.length > 0 && (
-          <View style={{ marginTop: 28 }}>
-            <SectionHeader
-              icon="heart"
-              title="Favourites"
-              actionLabel="View All"
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push("/(customer)/venues");
-              }}
-            />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-              {favouriteOffers.map((offer, index) => (
-                <TouchableOpacity
-                  key={`fav-${offer.venueId}-${index}`}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push(`/(customer)/venue/${offer.venueId}` as any);
-                  }}
-                  style={{
-                    width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
-                    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
-                  }}
-                >
-                  {offer.img ? (
-                    <Image source={{ uri: offer.img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
-                  ) : (
-                    <View style={{ width: "100%", height: 110, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
-                      <Ionicons name="heart-outline" size={28} color="rgba(15,0,50,0.2)" />
-                    </View>
-                  )}
-                  <View style={{ padding: 14 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      {offer.featured ? <HUNowPickBadge /> : (
-                        <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
-                          <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>SAVED</Text>
-                        </View>
-                      )}
-                      <Ionicons name="heart" size={14} color="#FF4D6D" />
-                    </View>
-                    <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
-                      {offer.venueName}
-                    </Text>
-                    <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
-                      {decodeHtml(offer.offerTitle)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
 
         {/* ── Near You ──────────────────────────────────── */}
         {(nearbyOffers.length > 0 || nearbyState === "denied" || nearbyState === "unavailable") && (
@@ -515,6 +420,60 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {favouriteOffers.length > 0 && (
+          <View style={{ marginTop: 28 }}>
+            <SectionHeader
+              icon="heart"
+              title="Favourites"
+              actionLabel="View All"
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push("/(customer)/venues");
+              }}
+            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+              {favouriteOffers.map((offer, index) => (
+                <TouchableOpacity
+                  key={`fav-${offer.venueId}-${index}`}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push(`/(customer)/venue/${offer.venueId}` as any);
+                  }}
+                  style={{
+                    width: 224, backgroundColor: "white", borderRadius: 22, overflow: "hidden",
+                    shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
+                  }}
+                >
+                  {offer.img ? (
+                    <Image source={{ uri: offer.img }} style={{ width: "100%", height: 110 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ width: "100%", height: 110, backgroundColor: "rgba(15,0,50,0.08)", alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="heart-outline" size={28} color="rgba(15,0,50,0.2)" />
+                    </View>
+                  )}
+                  <View style={{ padding: 14 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      {offer.featured ? <HUNowPickBadge /> : (
+                        <View style={{ alignSelf: "flex-start", backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 9, paddingVertical: 5 }}>
+                          <Text style={{ color: NAV, fontWeight: "800", fontSize: 10, letterSpacing: 0.6 }}>SAVED</Text>
+                        </View>
+                      )}
+                      <Ionicons name="heart" size={14} color="#FF4D6D" />
+                    </View>
+                    <Text style={{ color: "rgba(15,0,50,0.58)", fontWeight: "700", fontSize: 12, marginBottom: 6 }} numberOfLines={1}>
+                      {offer.venueName}
+                    </Text>
+                    <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 19 }} numberOfLines={2}>
+                      {decodeHtml(offer.offerTitle)}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* ── Events ────────────────────────────────────── */}
         {events.length > 0 && (
           <View style={{ marginTop: 28 }}>
@@ -558,47 +517,6 @@ export default function HomeScreen() {
                           {date.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                         </Text>
                       )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ── News ──────────────────────────────────────── */}
-        {news.length > 0 && (
-          <View style={{ marginTop: 28, marginBottom: 16 }}>
-            <SectionHeader title="News" actionLabel="View All" onPress={() => router.push("/(customer)/news" as any)} />
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-              {news.map((post) => {
-                const img = getFeaturedImage(post as any);
-                return (
-                  <TouchableOpacity
-                    key={post.id}
-                    activeOpacity={0.88}
-                    onPress={() => router.push(`/(customer)/post/${post.id}` as any)}
-                    style={{
-                      width: 224, backgroundColor: "white", borderRadius: 22,
-                      overflow: "hidden",
-                      shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.18, shadowRadius: 10, elevation: 5,
-                    }}
-                  >
-                    {img ? (
-                      <Image source={{ uri: img }} style={{ width: "100%", height: 132 }} resizeMode="cover" />
-                    ) : (
-                      <View style={{ width: "100%", height: 132, backgroundColor: "rgba(15,0,50,0.06)", alignItems: "center", justifyContent: "center" }}>
-                        <Ionicons name="newspaper-outline" size={32} color="rgba(15,0,50,0.2)" />
-                      </View>
-                    )}
-                    <View style={{ padding: 14 }}>
-                      <Text style={{ color: "rgba(15,0,50,0.42)", fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 8 }}>
-                        HU NOW News
-                      </Text>
-                      <Text style={{ color: NAV, fontWeight: "800", fontSize: 15, lineHeight: 20 }} numberOfLines={3}>
-                        {decodeHtml(post.title.rendered)}
-                      </Text>
                     </View>
                   </TouchableOpacity>
                 );
