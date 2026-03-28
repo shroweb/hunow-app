@@ -393,7 +393,7 @@ export default function VenueDetailScreen() {
                       <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 12, marginTop: 2 }}>
                         {loyaltyStatus.reward_title}
                       </Text>
-                      <Text style={{ color: "rgba(255,255,255,0.36)", fontSize: 11, fontWeight: "700", marginTop: 5 }}>
+                      <Text style={{ color: "rgba(255,255,255,0.36)", fontSize: 11, fontWeight: "700", marginTop: 5, marginBottom: 6 }}>
                         {expandedOfferKeys.includes("loyalty") ? "Tap to collapse" : "Tap to expand"}
                       </Text>
                     </View>
