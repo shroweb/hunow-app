@@ -186,7 +186,7 @@ export default function ScanScreen() {
         body: result.cycle_completed
           ? `${result.voucher?.title ?? "Loyalty reward"} has been added to ${result.member_name}'s vouchers and the card has reset to 0/10.`
           : result.points_awarded > 0
-            ? `${result.member_name} reached 5 stamps and earned +5 HU NOW points.`
+            ? `${result.member_name} reached 5 stamps and earned +${result.loyalty_status.points_milestone.points} HU NOW points.`
             : `${result.member_name} is now on ${result.loyalty_status.stamp_count}/${result.loyalty_status.target} stamps.`,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -536,7 +536,7 @@ export default function ScanScreen() {
 
                     <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: loyaltyFeedback ? 10 : 0 }}>
                       <View style={{ backgroundColor: "rgba(251,201,0,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                        <Text style={{ color: "#0F0032", fontSize: 11, fontWeight: "800" }}>5 stamps = +5 pts</Text>
+                        <Text style={{ color: "#0F0032", fontSize: 11, fontWeight: "800" }}>5 stamps = +{loyaltyStatus.points_milestone.points} pts</Text>
                       </View>
                       <View style={{ backgroundColor: "rgba(34,197,94,0.10)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
                         <Text style={{ color: "#166534", fontSize: 11, fontWeight: "800" }}>10 stamps = {loyaltyStatus.reward_title}</Text>

@@ -196,7 +196,7 @@ export default function BusinessLoyaltyScreen() {
             {data.venue_name}
           </Text>
           <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 20 }}>
-            Configure one loyalty card for this venue. Staff add stamps after purchases, members earn +5 points at 5 stamps, and a loyalty voucher at 10.
+            Configure one loyalty card for this venue. Staff add stamps after purchases, members earn +35 points at 5 stamps, and a loyalty voucher at 10.
           </Text>
         </View>
 
@@ -231,7 +231,7 @@ export default function BusinessLoyaltyScreen() {
 
           <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
             <View style={{ backgroundColor: "rgba(251,201,0,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-              <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>5 stamps = +5 pts</Text>
+              <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>5 stamps = +35 pts</Text>
             </View>
             <View style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
               <Text style={{ color: "white", fontSize: 11, fontWeight: "900" }}>10 stamps = voucher reward</Text>

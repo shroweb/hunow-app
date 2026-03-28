@@ -404,7 +404,7 @@ export default function VenueDetailScreen() {
               <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: loyaltyStatus.reward_description ? 10 : 0 }}>
                 <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
                   <Text style={{ color: "rgba(255,255,255,0.76)", fontSize: 11, fontWeight: "800" }}>
-                    5 {loyaltyStatus.stamp_label.toLowerCase()}s = +5 pts
+                    5 {loyaltyStatus.stamp_label.toLowerCase()}s = +{loyaltyStatus.points_milestone.points} pts
                   </Text>
                 </View>
                 <View style={{ backgroundColor: "rgba(34,197,94,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
