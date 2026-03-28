@@ -242,6 +242,7 @@ export default function VenueDetailScreen() {
   const locationText = getDisplayAddress(venue.acf?.address);
   const todayHours = getTodayOpeningHours(venue.acf?.opening_hours);
   const todayStatus = getTodayOpeningStatus(venue.acf?.opening_hours);
+  const isLoyaltyQr = !!qrModalOffer && qrModalOffer.id === 0 && !(qrModalOffer as any).tier;
   const venueCoords = getLatLng(venue.acf?.address);
   const mapsQuery = venueCoords
     ? `${venueCoords.lat},${venueCoords.lng}`
@@ -954,7 +955,7 @@ export default function VenueDetailScreen() {
       >
         <View style={{ flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center", paddingHorizontal: 32 }}>
           <Text style={{ color: "rgba(255,255,255,0.45)", fontSize: 12, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 8 }}>
-            Present to staff
+            {isLoyaltyQr ? "Show to staff for a stamp" : "Present to staff"}
           </Text>
           <Text style={{ color: "white", fontSize: 20, fontWeight: "900", textAlign: "center", marginBottom: 28, letterSpacing: -0.5 }}>
             {qrModalOffer ? decodeHtml(qrModalOffer.title) : ""}
@@ -981,8 +982,10 @@ export default function VenueDetailScreen() {
             flexDirection: "row", alignItems: "center", gap: 6, marginTop: 24,
             backgroundColor: YELLOW + "22", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
           }}>
-            <Ionicons name="star" size={14} color={YELLOW} />
-            <Text style={{ color: YELLOW, fontSize: 14, fontWeight: "700" }}>+35 pts on redemption</Text>
+            <Ionicons name={isLoyaltyQr ? "card-outline" : "star"} size={14} color={YELLOW} />
+            <Text style={{ color: YELLOW, fontSize: 14, fontWeight: "700" }}>
+              {isLoyaltyQr ? "Staff will add 1 loyalty stamp" : "+35 pts on redemption"}
+            </Text>
           </View>
 
           <TouchableOpacity
