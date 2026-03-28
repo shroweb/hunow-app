@@ -50,6 +50,7 @@ export default function VenueDetailScreen() {
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{ tone: "success" | "warn"; title: string; body: string } | null>(null);
   const [loyaltyStatus, setLoyaltyStatus] = useState<WPLoyaltyStatus | null>(null);
+  const [activeTab, setActiveTab] = useState<"rewards" | "venue">("rewards");
   const savedBrightness = useRef<number | null>(null);
 
   // QR modal reveal animation
@@ -241,7 +242,12 @@ export default function VenueDetailScreen() {
   const locationText = getDisplayAddress(venue.acf?.address);
   const todayHours = getTodayOpeningHours(venue.acf?.opening_hours);
   const todayStatus = getTodayOpeningStatus(venue.acf?.opening_hours);
-  const mapsQuery = locationText ? encodeURIComponent(locationText) : null;
+  const venueCoords = getLatLng(venue.acf?.address);
+  const mapsQuery = venueCoords
+    ? `${venueCoords.lat},${venueCoords.lng}`
+    : locationText
+      ? encodeURIComponent(locationText)
+      : null;
   const mapsUrl = mapsQuery ? `https://www.google.com/maps/search/?api=1&query=${mapsQuery}` : null;
 
   return (
@@ -268,6 +274,22 @@ export default function VenueDetailScreen() {
           >
             <Ionicons name="chevron-back" size={20} color="white" />
           </TouchableOpacity>
+
+          {mapsUrl ? (
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                Linking.openURL(mapsUrl);
+              }}
+              style={{
+                position: "absolute", top: 16, right: 16,
+                backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 20,
+                width: 36, height: 36, alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <Ionicons name="map-outline" size={18} color="white" />
+            </TouchableOpacity>
+          ) : null}
 
           <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 108, backgroundColor: "rgba(15,0,50,0.58)" }} />
           <View style={{ position: "absolute", left: 20, right: 20, bottom: 28 }}>
@@ -338,6 +360,34 @@ export default function VenueDetailScreen() {
               ) : null}
             </View>
           ) : null}
+          <View style={{ flexDirection: "row", backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 16, padding: 4, marginBottom: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
+            {[
+              { key: "rewards", label: "Rewards" },
+              { key: "venue", label: "Loyalty & Check In" },
+            ].map((tab) => {
+              const active = activeTab === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => setActiveTab(tab.key as "rewards" | "venue")}
+                  style={{
+                    flex: 1,
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    paddingHorizontal: 10,
+                    backgroundColor: active ? YELLOW : "transparent",
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ color: active ? NAV : "rgba(255,255,255,0.72)", fontSize: 13, fontWeight: "900" }}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {activeTab === "venue" ? (
+            <>
           <View style={{
             backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16,
             marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
@@ -512,9 +562,11 @@ export default function VenueDetailScreen() {
               ))}
             </View>
           )}
+            </>
+          ) : null}
 
           {/* ── Tier Offers ── */}
-          {venue.tier_offers && venue.tier_offers.length > 0 && (
+          {activeTab === "rewards" && venue.tier_offers && venue.tier_offers.length > 0 && (
             <View style={{ marginBottom: 24 }}>
               <View style={{ marginBottom: 10 }}>
                 <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
@@ -711,6 +763,7 @@ export default function VenueDetailScreen() {
           )}
 
           {/* HU NOW Offers */}
+          {activeTab === "rewards" ? (
           <View style={{ marginBottom: 32 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <Text style={{ color: "white", fontWeight: "800", fontSize: 18 }}>HU NOW Offers</Text>
@@ -888,6 +941,7 @@ export default function VenueDetailScreen() {
               })
             )}
           </View>
+          ) : null}
         </View>
       </ScrollView>
 
