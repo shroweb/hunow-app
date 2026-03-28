@@ -36,6 +36,7 @@ export default function ScanScreen() {
   const [venueMismatchHint, setVenueMismatchHint] = useState<{ offerTitle?: string | null } | null>(null);
   const [voucherInfo, setVoucherInfo] = useState<WPVoucher | null>(null);
   const [redeeming, setRedeeming] = useState(false);
+  const [stampingLoyalty, setStampingLoyalty] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [redeemSuccess, setRedeemSuccess] = useState(false);
   const [pointsAwarded, setPointsAwarded] = useState(35);
@@ -167,7 +168,7 @@ export default function ScanScreen() {
 
   async function handleAddLoyaltyStamp() {
     if (!cardToken || !token) return;
-    setRedeeming(true);
+    setStampingLoyalty(true);
     try {
       const result = await stampLoyalty(cardToken, token);
       setLoyaltyStatus(result.loyalty_status);
@@ -181,7 +182,7 @@ export default function ScanScreen() {
         title: result.cycle_completed
           ? "Voucher added to wallet"
           : result.points_awarded > 0
-            ? "+5 points awarded"
+            ? `+${result.loyalty_status.points_milestone.points} points awarded`
             : "Loyalty stamp added",
         body: result.cycle_completed
           ? `${result.voucher?.title ?? "Loyalty reward"} has been added to ${result.member_name}'s vouchers and the card has reset to 0/10.`
@@ -198,7 +199,7 @@ export default function ScanScreen() {
         body: err?.message ?? "Please try again.",
       });
     } finally {
-      setRedeeming(false);
+      setStampingLoyalty(false);
     }
   }
 
@@ -493,8 +494,11 @@ export default function ScanScreen() {
                   </View>
                 </View>
 
-                <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>
-                  Select offer to redeem
+                <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 }}>
+                  Redeem a reward
+                </Text>
+                <Text style={{ color: "rgba(15,0,50,0.54)", fontSize: 13, lineHeight: 18, marginBottom: 10 }}>
+                  Loyalty stamps and offer redemptions are separate actions. Add a stamp for any qualifying purchase, or select a reward to redeem below.
                 </Text>
                 {scanHint ? (
                   <View style={{ backgroundColor: "rgba(251,201,0,0.12)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, borderWidth: 1, borderColor: "rgba(251,201,0,0.25)" }}>
@@ -517,11 +521,14 @@ export default function ScanScreen() {
                   </View>
                 ) : null}
                 {loyaltyStatus?.enabled ? (
-                  <View style={{ backgroundColor: "rgba(15,0,50,0.04)", borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: "rgba(15,0,50,0.06)" }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                  <View style={{ backgroundColor: "rgba(15,0,50,0.04)", borderRadius: 18, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: "rgba(15,0,50,0.06)" }}>
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ color: "#0F0032", fontSize: 15, fontWeight: "900" }}>{loyaltyStatus.card_title}</Text>
-                        <Text style={{ color: "rgba(15,0,50,0.52)", fontSize: 12, marginTop: 2 }}>
+                        <Text style={{ color: "rgba(15,0,50,0.42)", fontSize: 11, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>
+                          Loyalty Card
+                        </Text>
+                        <Text style={{ color: "#0F0032", fontSize: 16, fontWeight: "900" }}>{loyaltyStatus.card_title}</Text>
+                        <Text style={{ color: "rgba(15,0,50,0.54)", fontSize: 12, marginTop: 3 }}>
                           {loyaltyStatus.stamp_count}/{loyaltyStatus.target} {loyaltyStatus.stamp_label.toLowerCase()}{loyaltyStatus.stamp_count === 1 ? "" : "s"}
                         </Text>
                       </View>
@@ -534,7 +541,7 @@ export default function ScanScreen() {
                       <View style={{ width: `${Math.max((loyaltyStatus.stamp_count / loyaltyStatus.target) * 100, loyaltyStatus.stamp_count > 0 ? 6 : 0)}%`, height: "100%", backgroundColor: "#FBC900", borderRadius: 999 }} />
                     </View>
 
-                    <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: loyaltyFeedback ? 10 : 0 }}>
+                    <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
                       <View style={{ backgroundColor: "rgba(251,201,0,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
                         <Text style={{ color: "#0F0032", fontSize: 11, fontWeight: "800" }}>5 stamps = +{loyaltyStatus.points_milestone.points} pts</Text>
                       </View>
@@ -544,7 +551,7 @@ export default function ScanScreen() {
                     </View>
 
                     {loyaltyFeedback ? (
-                      <View style={{ backgroundColor: loyaltyFeedback.tone === "success" ? "rgba(34,197,94,0.10)" : "rgba(245,158,11,0.12)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: loyaltyFeedback.tone === "success" ? "rgba(34,197,94,0.18)" : "rgba(245,158,11,0.22)" }}>
+                      <View style={{ backgroundColor: loyaltyFeedback.tone === "success" ? "rgba(34,197,94,0.10)" : "rgba(245,158,11,0.12)", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: loyaltyFeedback.tone === "success" ? "rgba(34,197,94,0.18)" : "rgba(245,158,11,0.22)", marginBottom: 12 }}>
                         <Text style={{ color: loyaltyFeedback.tone === "success" ? "#15803D" : "#B45309", fontSize: 12, fontWeight: "900", marginBottom: 3 }}>
                           {loyaltyFeedback.title}
                         </Text>
@@ -552,6 +559,37 @@ export default function ScanScreen() {
                           {loyaltyFeedback.body}
                         </Text>
                       </View>
+                    ) : null}
+
+                    <TouchableOpacity
+                      style={{ borderRadius: 14, paddingVertical: 14, alignItems: "center", backgroundColor: "#0F0032" }}
+                      onPress={handleAddLoyaltyStamp}
+                      disabled={stampingLoyalty}
+                    >
+                      {stampingLoyalty
+                        ? <ActivityIndicator color="#FBC900" />
+                        : (
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <Ionicons name="add-circle-outline" size={18} color="#FBC900" />
+                            <Text style={{ fontWeight: "800", color: "#FBC900" }}>Add Loyalty Stamp</Text>
+                          </View>
+                        )}
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+
+                {selectedOffer ? (
+                  <View style={{ backgroundColor: "rgba(251,201,0,0.1)", borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "rgba(251,201,0,0.22)" }}>
+                    <Text style={{ color: "rgba(15,0,50,0.42)", fontSize: 11, fontWeight: "800", letterSpacing: 0.7, textTransform: "uppercase", marginBottom: 4 }}>
+                      Ready to Redeem
+                    </Text>
+                    <Text style={{ color: "#0F0032", fontSize: 15, fontWeight: "900", marginBottom: 2 }}>
+                      {selectedOffer.title}
+                    </Text>
+                    {selectedOffer.description ? (
+                      <Text style={{ color: "rgba(15,0,50,0.56)", fontSize: 12, lineHeight: 18 }} numberOfLines={2}>
+                        {decodeHtml(selectedOffer.description)}
+                      </Text>
                     ) : null}
                   </View>
                 ) : null}
@@ -675,17 +713,6 @@ export default function ScanScreen() {
                   );
                 })()}
 
-                {loyaltyStatus?.enabled ? (
-                  <TouchableOpacity
-                    style={{ borderRadius: 14, paddingVertical: 15, alignItems: "center", backgroundColor: "#0F0032", marginBottom: 10 }}
-                    onPress={handleAddLoyaltyStamp}
-                    disabled={redeeming}
-                  >
-                    {redeeming
-                      ? <ActivityIndicator color="#FBC900" />
-                      : <Text style={{ fontWeight: "800", color: "#FBC900" }}>Add Loyalty Stamp</Text>}
-                  </TouchableOpacity>
-                ) : null}
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <TouchableOpacity
                     style={{ flex: 1, backgroundColor: "#F5F5F7", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
@@ -700,7 +727,7 @@ export default function ScanScreen() {
                   >
                     {redeeming
                       ? <ActivityIndicator color="#0F0032" />
-                      : <Text style={{ fontWeight: "800", color: selectedOffer ? "#0F0032" : "rgba(15,0,50,0.35)" }}>Redeem</Text>
+                      : <Text style={{ fontWeight: "800", color: selectedOffer ? "#0F0032" : "rgba(15,0,50,0.35)" }}>{selectedOffer ? "Redeem Reward" : "Select a Reward"}</Text>
                     }
                   </TouchableOpacity>
                 </View>
