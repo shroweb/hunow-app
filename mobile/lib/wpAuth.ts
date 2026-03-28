@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { WPLoyaltyStatus } from "@/lib/wordpress";
 
 const WP_BASE = (process.env.EXPO_PUBLIC_WP_API_URL ?? "https://hunow.co.uk/wp-json").replace(/\/wp\/v2$/, "");
 const JWT_URL = `${WP_BASE}/jwt-auth/v1/token`;
@@ -13,6 +14,7 @@ const GOOGLE_LOGIN_URL = `${WP_BASE}/hunow/v1/google-login`;
 const LOOKUP_URL = `${WP_BASE}/hunow/v1/lookup-card`;
 const REDEEM_URL = `${WP_BASE}/hunow/v1/redeem`;
 const OFFER_STATUSES_URL = `${WP_BASE}/hunow/v1/offer-statuses`;
+const LOYALTY_STAMP_URL = `${WP_BASE}/hunow/v1/loyalty-stamp`;
 const VOUCHERS_URL = `${WP_BASE}/hunow/v1/vouchers`;
 const VOUCHER_CODE_URL = `${WP_BASE}/hunow/v1/vouchers/redeem-code`;
 const LOOKUP_VOUCHER_URL = `${WP_BASE}/hunow/v1/lookup-voucher`;
@@ -141,7 +143,7 @@ export interface WPVoucher {
   claimed_user_id?: number;
   claimed_at?: string | null;
   redeemed_at?: string | null;
-  source?: "admin" | "venue";
+  source?: "admin" | "venue" | "loyalty";
   status: "active" | "redeemed" | "expired";
 }
 
@@ -265,7 +267,7 @@ export async function lookupCard(
   cardToken: string,
   jwt: string,
   wpPostId?: number,
-): Promise<{ valid: boolean; name: string; user_id: number; points: number; tier: string; offer_statuses?: OfferStatusesResponse | null }> {
+): Promise<{ valid: boolean; name: string; user_id: number; points: number; tier: string; offer_statuses?: OfferStatusesResponse | null; loyalty_status?: WPLoyaltyStatus | null }> {
   const res = await fetch(LOOKUP_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
@@ -274,6 +276,29 @@ export async function lookupCard(
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { message?: string };
     throw new Error(err.message ?? "Invalid card");
+  }
+  return res.json();
+}
+
+export async function stampLoyalty(
+  cardToken: string,
+  jwt: string,
+): Promise<{
+  success: boolean;
+  member_name: string;
+  points_awarded: number;
+  cycle_completed: boolean;
+  voucher?: WPVoucher | null;
+  loyalty_status: WPLoyaltyStatus;
+}> {
+  const res = await fetch(LOYALTY_STAMP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify({ card_token: cardToken }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not add loyalty stamp.");
   }
   return res.json();
 }

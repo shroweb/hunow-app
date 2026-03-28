@@ -10,7 +10,7 @@ import * as Location from "expo-location";
 import Animated, {
   useSharedValue, withSpring, withTiming, useAnimatedStyle,
 } from "react-native-reanimated";
-import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, formatOfferSchedule, type FavouriteOfferRef, type WPEat, type WPOffer } from "@/lib/wordpress";
+import { wordpress, getFeaturedImage, extractOffers, formatOfferRule, formatOfferSchedule, type FavouriteOfferRef, type WPEat, type WPLoyaltyStatus, type WPOffer } from "@/lib/wordpress";
 import { fetchOfferStatuses, type OfferStatus } from "@/lib/wpAuth";
 import { decodeHtml, stripHtml, getDisplayAddress, getTodayOpeningHours, getTodayOpeningStatus, getLatLng } from "@/lib/utils";
 import { getExpiryBadgeLabel } from "@/lib/offerExpiry";
@@ -49,6 +49,7 @@ export default function VenueDetailScreen() {
   const [expandedOfferKeys, setExpandedOfferKeys] = useState<string[]>([]);
   const [checkinLoading, setCheckinLoading] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState<{ tone: "success" | "warn"; title: string; body: string } | null>(null);
+  const [loyaltyStatus, setLoyaltyStatus] = useState<WPLoyaltyStatus | null>(null);
   const savedBrightness = useRef<number | null>(null);
 
   // QR modal reveal animation
@@ -59,9 +60,10 @@ export default function VenueDetailScreen() {
     async function load() {
       if (!id) return;
       setStatusLoading(!!token);
-      const [wpVenue, statusData] = await Promise.all([
+      const [wpVenue, statusData, loyaltyData] = await Promise.all([
         wordpress.getEatById(Number(id)).catch(() => null),
         token ? fetchOfferStatuses(Number(id), token).catch(() => null) : Promise.resolve(null),
+        token ? wordpress.getLoyaltyStatus(Number(id), token).catch(() => null) : Promise.resolve(null),
       ]);
       setVenue(wpVenue);
       if (wpVenue) setOffers(extractOffers(wpVenue));
@@ -71,6 +73,7 @@ export default function VenueDetailScreen() {
           tier: Object.fromEntries((statusData.tier ?? []).map((s) => [s.tier ?? "", s])),
         });
       }
+      setLoyaltyStatus(loyaltyData);
       setStatusLoading(false);
       setLoading(false);
     }
@@ -352,7 +355,7 @@ export default function VenueDetailScreen() {
                 </View>
               </View>
               <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>+1 pt</Text>
+                <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>+5 pts</Text>
               </View>
             </View>
             <TouchableOpacity
@@ -370,6 +373,58 @@ export default function VenueDetailScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+          {loyaltyStatus?.enabled ? (
+            <View style={{
+              backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16,
+              marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
+            }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                  <View style={{ backgroundColor: YELLOW + "22", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="card-outline" size={18} color={YELLOW} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: "white", fontSize: 15, fontWeight: "800" }}>{loyaltyStatus.card_title}</Text>
+                    <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 12, marginTop: 2 }}>
+                      {loyaltyStatus.reward_title}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>
+                    {loyaltyStatus.stamp_count}/{loyaltyStatus.target}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ height: 10, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 10 }}>
+                <View style={{ width: `${Math.max((loyaltyStatus.stamp_count / loyaltyStatus.target) * 100, loyaltyStatus.stamp_count > 0 ? 6 : 0)}%`, height: "100%", borderRadius: 999, backgroundColor: YELLOW }} />
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: loyaltyStatus.reward_description ? 10 : 0 }}>
+                <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Text style={{ color: "rgba(255,255,255,0.76)", fontSize: 11, fontWeight: "800" }}>
+                    5 {loyaltyStatus.stamp_label.toLowerCase()}s = +5 pts
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: "rgba(34,197,94,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Text style={{ color: "#86EFAC", fontSize: 11, fontWeight: "800" }}>
+                    10 {loyaltyStatus.stamp_label.toLowerCase()}s = free reward
+                  </Text>
+                </View>
+              </View>
+
+              {loyaltyStatus.reward_description ? (
+                <Text style={{ color: "rgba(255,255,255,0.62)", fontSize: 13, lineHeight: 19, marginBottom: 10 }}>
+                  {loyaltyStatus.reward_description}
+                </Text>
+              ) : null}
+
+              <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 12 }}>
+                Staff will add a {loyaltyStatus.stamp_label.toLowerCase()} after any in-store purchase. Your reward appears in Vouchers automatically at 10/10.
+              </Text>
+            </View>
+          ) : null}
           {venue.excerpt?.rendered ? (
             <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
               {stripHtml(venue.excerpt.rendered)}

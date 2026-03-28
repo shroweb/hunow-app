@@ -50,11 +50,38 @@ export interface FavouriteOfferRef {
   date_added?: string;
 }
 
+export interface WPLoyaltyCardConfig {
+  enabled: boolean;
+  card_title: string;
+  stamp_label: string;
+  reward_title: string;
+  reward_description: string;
+  reward_expiry_days?: number | null;
+}
+
+export interface WPLoyaltyStatus extends WPLoyaltyCardConfig {
+  stamp_count: number;
+  target: number;
+  cycle: number;
+  last_stamped_at?: string | null;
+  lifetime_stamps: number;
+  stamps_remaining: number;
+  points_milestone: {
+    at: number;
+    points: number;
+  };
+  reward_milestone: {
+    at: number;
+    type: "voucher";
+  };
+}
+
 export interface BusinessOffersResponse {
   venue_id: number;
   venue_name: string;
   subscription_tier: string;
   max_offers: number;
+  loyalty_card: WPLoyaltyCardConfig;
   standard_offers: WPOffer[];
   tier_offers: WPTierOffer[];
 }
@@ -420,10 +447,14 @@ export const wordpress = {
   },
 
   saveBusinessOffers(
-    body: { standard_offers: WPOffer[]; tier_offers: WPTierOffer[] },
+    body: { standard_offers: WPOffer[]; tier_offers: WPTierOffer[]; loyalty_card?: WPLoyaltyCardConfig },
     token: string,
   ): Promise<BusinessOffersResponse> {
     return post<BusinessOffersResponse>(`${HUNOW_BASE}/business-offers`, body, token);
+  },
+
+  getLoyaltyStatus(venueId: number, token: string): Promise<WPLoyaltyStatus> {
+    return get<WPLoyaltyStatus>(`${HUNOW_BASE}/loyalty-status?venue_id=${venueId}`, token);
   },
 
   uploadOfferImage(
