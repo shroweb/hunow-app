@@ -594,7 +594,21 @@ export default function ScanScreen() {
                   </View>
                 ) : null}
 
-                <ScrollView style={{ marginBottom: 16 }} showsVerticalScrollIndicator={false}>
+                <View style={{ marginBottom: 12 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <Text style={{ color: "rgba(15,0,50,0.42)", fontSize: 11, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                      Standard Offers
+                    </Text>
+                    <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 11, fontWeight: "700" }}>
+                      {offers.length} available
+                    </Text>
+                  </View>
+                  <Text style={{ color: "rgba(15,0,50,0.54)", fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
+                    Select a normal venue reward to redeem for this member.
+                  </Text>
+                </View>
+
+                <ScrollView style={{ marginBottom: 16, maxHeight: 240 }} showsVerticalScrollIndicator={false}>
                   {offersLoading && <ActivityIndicator color="#0F0032" style={{ marginVertical: 16 }} />}
                   {!offersLoading && offers.length === 0 && (
                     <View style={{ alignItems: "center", paddingVertical: 24 }}>
@@ -611,16 +625,24 @@ export default function ScanScreen() {
                           key={offer.id}
                           disabled={unavailable}
                           style={{
-                            borderRadius: 14, padding: 14, marginBottom: 8,
-                            backgroundColor: selectedOffer?.id === offer.id ? "rgba(251,201,0,0.08)" : "#F5F5F7",
+                            borderRadius: 16, padding: 14, marginBottom: 10,
+                            backgroundColor: selectedOffer?.id === offer.id ? "rgba(251,201,0,0.12)" : "white",
                             borderWidth: 1.5,
-                            borderColor: selectedOffer?.id === offer.id ? "#FBC900" : unavailable ? "rgba(15,0,50,0.08)" : "transparent",
+                            borderColor: selectedOffer?.id === offer.id ? "#FBC900" : unavailable ? "rgba(15,0,50,0.08)" : "rgba(15,0,50,0.06)",
                             opacity: unavailable ? 0.6 : 1,
                           }}
                           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedOffer(offer); }}
                         >
                           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
                             <View style={{ flex: 1 }}>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+                                <View style={{ backgroundColor: "rgba(15,0,50,0.06)", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 }}>
+                                  <Text style={{ color: "#0F0032", fontSize: 10, fontWeight: "900", textTransform: "uppercase" }}>Standard</Text>
+                                </View>
+                                <Text style={{ color: "rgba(15,0,50,0.45)", fontSize: 11, fontWeight: "700" }}>
+                                  {formatOfferRule(offer.limit_count, offer.limit_period)}
+                                </Text>
+                              </View>
                               <Text style={{ color: "#0F0032", fontWeight: "700", fontSize: 14 }}>
                                 {decodeHtml(offer.title)}
                               </Text>
@@ -629,9 +651,6 @@ export default function ScanScreen() {
                                   {decodeHtml(offer.description)}
                                 </Text>
                               ) : null}
-                              <Text style={{ color: "rgba(15,0,50,0.38)", fontSize: 11, marginTop: 5 }}>
-                                {formatOfferRule(offer.limit_count, offer.limit_period)}
-                              </Text>
                               {status ? (
                                 <Text style={{ color: unavailable ? "#B45309" : "rgba(15,0,50,0.45)", fontSize: 11, marginTop: 4, fontWeight: "700" }}>
                                   {status.status_label}{status.next_available_text ? ` • ${status.next_available_text}` : ""}
@@ -659,8 +678,16 @@ export default function ScanScreen() {
                   if (qualifyingTierOffers.length === 0) return null;
                   return (
                     <View style={{ marginBottom: 12 }}>
-                      <Text style={{ color: "rgba(15,0,50,0.4)", fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>
-                        Tier Offers Available
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                        <Text style={{ color: "rgba(15,0,50,0.42)", fontSize: 11, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase" }}>
+                          Tier Offers
+                        </Text>
+                        <Text style={{ color: "rgba(15,0,50,0.48)", fontSize: 11, fontWeight: "700" }}>
+                          {qualifyingTierOffers.length} unlocked
+                        </Text>
+                      </View>
+                      <Text style={{ color: "rgba(15,0,50,0.54)", fontSize: 12, lineHeight: 17, marginBottom: 10 }}>
+                        These rewards are available because the member has already unlocked the required tier.
                       </Text>
                       {qualifyingTierOffers.map((to) => {
                         const colour = TIER_COLOUR[to.tier] ?? "#FBC900";
@@ -672,10 +699,10 @@ export default function ScanScreen() {
                             key={to.tier}
                             disabled={unavailable}
                             style={{
-                              borderRadius: 14, padding: 14, marginBottom: 8,
-                              backgroundColor: isSelected ? "rgba(251,201,0,0.08)" : "#F5F5F7",
+                              borderRadius: 16, padding: 14, marginBottom: 10,
+                              backgroundColor: isSelected ? "rgba(251,201,0,0.08)" : "#F7F6FB",
                               borderWidth: 1.5,
-                              borderColor: isSelected ? colour : unavailable ? colour + "55" : "transparent",
+                              borderColor: isSelected ? colour : unavailable ? colour + "55" : colour + "22",
                               opacity: unavailable ? 0.6 : 1,
                             }}
                             onPress={() => {
