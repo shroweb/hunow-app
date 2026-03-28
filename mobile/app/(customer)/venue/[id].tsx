@@ -378,51 +378,86 @@ export default function VenueDetailScreen() {
               backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 18, padding: 16,
               marginBottom: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)",
             }}>
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
-                  <View style={{ backgroundColor: YELLOW + "22", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}>
-                    <Ionicons name="card-outline" size={18} color={YELLOW} />
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => toggleExpanded("loyalty")}
+                style={{ marginBottom: expandedOfferKeys.includes("loyalty") ? 10 : 0 }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                    <View style={{ backgroundColor: YELLOW + "22", borderRadius: 12, width: 38, height: 38, alignItems: "center", justifyContent: "center" }}>
+                      <Ionicons name="card-outline" size={18} color={YELLOW} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: "white", fontSize: 15, fontWeight: "800" }}>{loyaltyStatus.card_title}</Text>
+                      <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 12, marginTop: 2 }}>
+                        {loyaltyStatus.reward_title}
+                      </Text>
+                      <Text style={{ color: "rgba(255,255,255,0.36)", fontSize: 11, fontWeight: "700", marginTop: 5 }}>
+                        {expandedOfferKeys.includes("loyalty") ? "Tap to collapse" : "Tap to expand"}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: "white", fontSize: 15, fontWeight: "800" }}>{loyaltyStatus.card_title}</Text>
-                    <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 12, marginTop: 2 }}>
-                      {loyaltyStatus.reward_title}
-                    </Text>
+                  <View style={{ alignItems: "flex-end", gap: 8 }}>
+                    <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>
+                        {loyaltyStatus.stamp_count}/{loyaltyStatus.target}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={expandedOfferKeys.includes("loyalty") ? "chevron-up" : "chevron-down"}
+                      size={18}
+                      color="rgba(255,255,255,0.68)"
+                    />
                   </View>
                 </View>
-                <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                  <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "900" }}>
-                    {loyaltyStatus.stamp_count}/{loyaltyStatus.target}
-                  </Text>
-                </View>
-              </View>
+              </TouchableOpacity>
 
               <View style={{ height: 10, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden", marginBottom: 10 }}>
                 <View style={{ width: `${Math.max((loyaltyStatus.stamp_count / loyaltyStatus.target) * 100, loyaltyStatus.stamp_count > 0 ? 6 : 0)}%`, height: "100%", borderRadius: 999, backgroundColor: YELLOW }} />
               </View>
 
-              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: loyaltyStatus.reward_description ? 10 : 0 }}>
-                <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                  <Text style={{ color: "rgba(255,255,255,0.76)", fontSize: 11, fontWeight: "800" }}>
-                    5 {loyaltyStatus.stamp_label.toLowerCase()}s = +{loyaltyStatus.points_milestone.points} pts
-                  </Text>
-                </View>
-                <View style={{ backgroundColor: "rgba(34,197,94,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-                  <Text style={{ color: "#86EFAC", fontSize: 11, fontWeight: "800" }}>
-                    10 {loyaltyStatus.stamp_label.toLowerCase()}s = free reward
-                  </Text>
-                </View>
-              </View>
+              {expandedOfferKeys.includes("loyalty") ? (
+                <>
+                  <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginBottom: loyaltyStatus.reward_description ? 10 : 12 }}>
+                    <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: "rgba(255,255,255,0.76)", fontSize: 11, fontWeight: "800" }}>
+                        5 {loyaltyStatus.stamp_label.toLowerCase()}s = +{loyaltyStatus.points_milestone.points} pts
+                      </Text>
+                    </View>
+                    <View style={{ backgroundColor: "rgba(34,197,94,0.14)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+                      <Text style={{ color: "#86EFAC", fontSize: 11, fontWeight: "800" }}>
+                        10 {loyaltyStatus.stamp_label.toLowerCase()}s = free reward
+                      </Text>
+                    </View>
+                  </View>
 
-              {loyaltyStatus.reward_description ? (
-                <Text style={{ color: "rgba(255,255,255,0.62)", fontSize: 13, lineHeight: 19, marginBottom: 10 }}>
-                  {loyaltyStatus.reward_description}
-                </Text>
+                  {loyaltyStatus.reward_description ? (
+                    <Text style={{ color: "rgba(255,255,255,0.62)", fontSize: 13, lineHeight: 19, marginBottom: 12 }}>
+                      {loyaltyStatus.reward_description}
+                    </Text>
+                  ) : null}
+
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: YELLOW,
+                      borderRadius: 14,
+                      paddingVertical: 13,
+                      alignItems: "center",
+                      flexDirection: "row",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      setQrModalOffer({ id: 0, title: loyaltyStatus.card_title, description: loyaltyStatus.reward_description } as any);
+                    }}
+                  >
+                    <Ionicons name="qr-code-outline" size={16} color={NAV} />
+                    <Text style={{ color: NAV, fontSize: 14, fontWeight: "900" }}>Show QR Code</Text>
+                  </TouchableOpacity>
+                </>
               ) : null}
-
-              <Text style={{ color: "rgba(255,255,255,0.48)", fontSize: 12 }}>
-                Staff will add a {loyaltyStatus.stamp_label.toLowerCase()} after any in-store purchase. Your reward appears in Vouchers automatically at 10/10.
-              </Text>
             </View>
           ) : null}
           {venue.excerpt?.rendered ? (
