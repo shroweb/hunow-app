@@ -5,6 +5,7 @@ const WP_BASE = (process.env.EXPO_PUBLIC_WP_API_URL ?? "https://hunow.co.uk/wp-j
 const JWT_URL = `${WP_BASE}/jwt-auth/v1/token`;
 const REGISTER_URL = `${WP_BASE}/hunow/v1/register`;
 const ME_URL = `${WP_BASE}/hunow/v1/me`;
+const NOTIFICATION_PREFERENCES_URL = `${WP_BASE}/hunow/v1/notifications/preferences`;
 const APP_CONFIG_URL = `${WP_BASE}/hunow/v1/app-config`;
 const BUSINESS_DASHBOARD_URL = `${WP_BASE}/hunow/v1/business-dashboard`;
 const FORGOT_PASSWORD_URL = `${WP_BASE}/hunow/v1/forgot-password`;
@@ -44,8 +45,26 @@ export interface WPUser {
   today_checked_in?: boolean;
   last_daily_checkin?: string | null;
   login_streak?: number;
+  notification_preferences?: WPNotificationPreferences;
+  has_push_token?: boolean;
+  push_token_count?: number;
+  last_push_registered_at?: string | null;
   challenges?: WPChallenge[];
   redemptions: WPRedemption[];
+}
+
+export interface WPNotificationPreferences {
+  member: {
+    receipts: boolean;
+    vouchers: boolean;
+    tier_updates: boolean;
+    reward_reminders: boolean;
+    loyalty_milestones: boolean;
+  };
+  business: {
+    offer_redeems: boolean;
+    voucher_redeems: boolean;
+  };
 }
 
 export interface WPChallenge {
@@ -248,6 +267,28 @@ export async function fetchMe(token: string): Promise<WPUser> {
   }
 
   return res.json() as Promise<WPUser>;
+}
+
+export async function updateNotificationPreferences(
+  notificationPreferences: WPNotificationPreferences,
+  token: string,
+): Promise<WPNotificationPreferences> {
+  const res = await fetch(NOTIFICATION_PREFERENCES_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ notification_preferences: notificationPreferences }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? "Could not update notification settings.");
+  }
+
+  const data = await res.json() as { notification_preferences: WPNotificationPreferences };
+  return data.notification_preferences;
 }
 
 export async function fetchAppConfig(): Promise<AppConfig | null> {

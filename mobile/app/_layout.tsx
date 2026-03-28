@@ -5,7 +5,9 @@ import { View, ActivityIndicator, Text } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import Constants from "expo-constants";
+import * as Notifications from "expo-notifications";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { routeFromNotificationData } from "@/lib/push";
 
 function compareVersions(a: string, b: string): number {
   const aParts = a.split(".").map((part) => Number(part) || 0);
@@ -40,6 +42,21 @@ function RootNavigator() {
       }
     }
   }, [user, loading, segments, router]);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      routeFromNotificationData(response.notification.request.content.data as Record<string, unknown>, router);
+    });
+
+    Notifications.getLastNotificationResponseAsync()
+      .then((response) => {
+        if (!response) return;
+        routeFromNotificationData(response.notification.request.content.data as Record<string, unknown>, router);
+      })
+      .catch(() => {});
+
+    return () => subscription.remove();
+  }, [router]);
 
   if (loading) {
     return (

@@ -3,12 +3,43 @@ import { View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView, Lin
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/context/AuthContext";
+import { updateNotificationPreferences, type WPNotificationPreferences } from "@/lib/wpAuth";
 import { wordpress, extractOffers, type WPEat } from "@/lib/wordpress";
 
+function NotificationToggleRow({
+  label,
+  description,
+  value,
+  onPress,
+}: {
+  label: string;
+  description: string;
+  value: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      className="bg-[#F5F5F7] rounded-2xl p-4 border border-[#0F0032]/10 mb-3"
+      onPress={onPress}
+    >
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1">
+          <Text className="text-[#0F0032] font-semibold mb-1">{label}</Text>
+          <Text className="text-[#0F0032]/55 text-xs leading-5">{description}</Text>
+        </View>
+        <View className={`rounded-full px-3 py-1.5 ${value ? "bg-brand-yellow" : "bg-[#0F0032]/10"}`}>
+          <Text className={`text-xs font-bold ${value ? "text-[#0F0032]" : "text-[#0F0032]/65"}`}>{value ? "On" : "Off"}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function BusinessProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, token, signOut, refreshUser } = useAuth();
   const [venue, setVenue] = useState<WPEat | null>(null);
   const [loadingVenue, setLoadingVenue] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
 
   const WP_BASE = (process.env.EXPO_PUBLIC_WP_API_URL ?? "https://hunow.co.uk/wp-json").replace(/\/wp\/v2$/, "");
   const PORTAL_URL = `${WP_BASE.replace(/\/wp-json$/, "")}/my-account/`;
@@ -45,6 +76,38 @@ export default function BusinessProfileScreen() {
   const standardOffers = venue ? extractOffers(venue) : [];
   const tierOfferCount = venue?.tier_offers?.length ?? 0;
   const setupReady = user.setup_status === "ready";
+  const notificationPreferences: WPNotificationPreferences = user.notification_preferences ?? {
+    member: {
+      receipts: true,
+      vouchers: true,
+      tier_updates: true,
+      reward_reminders: true,
+      loyalty_milestones: true,
+    },
+    business: {
+      offer_redeems: true,
+      voucher_redeems: true,
+    },
+  };
+
+  async function handleToggleBusinessNotification<K extends keyof WPNotificationPreferences["business"]>(key: K) {
+    if (!token) return;
+    setSavingNotifications(true);
+    try {
+      const updated: WPNotificationPreferences = {
+        ...notificationPreferences,
+        business: {
+          ...notificationPreferences.business,
+          [key]: !notificationPreferences.business[key],
+        },
+      };
+      await updateNotificationPreferences(updated, token);
+      await refreshUser();
+    } catch (e: unknown) {
+      Alert.alert("Couldn’t update notifications", e instanceof Error ? e.message : "Please try again.");
+    }
+    setSavingNotifications(false);
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-[#F5F5F7]">
@@ -164,6 +227,39 @@ export default function BusinessProfileScreen() {
           <Text className="text-[#0F0032]/60 text-xs leading-5">
             The mobile business app now handles live scanning, redemptions, analytics, and in-app offer editing. The HU NOW web portal is still available for account setup and deeper WordPress-side management.
           </Text>
+        </View>
+
+        <View className="bg-white rounded-2xl p-4 mb-4"
+          style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8 }}
+        >
+          <View className="flex-row items-start justify-between mb-3">
+            <View className="flex-1 pr-3">
+              <Text className="text-[#0F0032] font-semibold text-base mb-1">Notifications</Text>
+              <Text className="text-[#0F0032]/55 text-xs leading-5">
+                Control the business alerts you receive for live venue activity.
+              </Text>
+            </View>
+            <View className={`rounded-full px-3 py-1.5 ${user.has_push_token ? "bg-brand-yellow/20" : "bg-[#0F0032]/8"}`}>
+              <Text className={`text-xs font-bold ${user.has_push_token ? "text-[#0F0032]" : "text-[#0F0032]/55"}`}>
+                {user.has_push_token ? `${user.push_token_count ?? 1} device` : "Push off"}
+              </Text>
+            </View>
+          </View>
+
+          <NotificationToggleRow
+            label="Offer redeems"
+            description="Alerts whenever one of your live offers is redeemed."
+            value={notificationPreferences.business.offer_redeems}
+            onPress={() => handleToggleBusinessNotification("offer_redeems")}
+          />
+          <NotificationToggleRow
+            label="Voucher redeems"
+            description="Alerts whenever one of your venue vouchers is redeemed or loyalty rewards are issued."
+            value={notificationPreferences.business.voucher_redeems}
+            onPress={() => handleToggleBusinessNotification("voucher_redeems")}
+          />
+
+          {savingNotifications ? <ActivityIndicator color="#0F0032" style={{ marginTop: 8 }} /> : null}
         </View>
 
         {/* Sign out */}

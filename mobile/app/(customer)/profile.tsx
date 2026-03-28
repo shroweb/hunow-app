@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useAuth } from "@/context/AuthContext";
-import { requestPasswordReset, updateEmail, type WPChallenge } from "@/lib/wpAuth";
+import { requestPasswordReset, updateEmail, updateNotificationPreferences, type WPChallenge, type WPNotificationPreferences } from "@/lib/wpAuth";
 import { TIER_META } from "@/lib/tierMeta";
 
 const NAV = "#0F0032";
@@ -67,12 +67,49 @@ function ChallengeCard({ item }: { item: WPChallenge }) {
   );
 }
 
+function NotificationToggleRow({
+  label,
+  description,
+  value,
+  onPress,
+}: {
+  label: string;
+  description: string;
+  value: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor: "rgba(255,255,255,0.05)",
+        borderRadius: 16,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: value ? "rgba(251,201,0,0.36)" : "rgba(255,255,255,0.08)",
+        marginBottom: 10,
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: "white", fontSize: 14, fontWeight: "800", marginBottom: 4 }}>{label}</Text>
+          <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 12, lineHeight: 18 }}>{description}</Text>
+        </View>
+        <View style={{ backgroundColor: value ? YELLOW : "rgba(255,255,255,0.09)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+          <Text style={{ color: value ? NAV : "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "900" }}>{value ? "On" : "Off"}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function ProfileScreen() {
   const { user, token, signOut, refreshUser } = useAuth();
   const [nextEmail, setNextEmail] = useState(user?.email ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [savingEmail, setSavingEmail] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
 
   if (!user) return null;
   const currentUser = user;
@@ -86,6 +123,19 @@ export default function ProfileScreen() {
     ? `Checked in today • ${user.login_streak ?? 0} day streak`
     : `${user.login_streak ?? 0} day streak ready to continue`;
   const challengeList = useMemo(() => currentUser.challenges ?? [], [currentUser.challenges]);
+  const notificationPreferences: WPNotificationPreferences = currentUser.notification_preferences ?? {
+    member: {
+      receipts: true,
+      vouchers: true,
+      tier_updates: true,
+      reward_reminders: true,
+      loyalty_milestones: true,
+    },
+    business: {
+      offer_redeems: true,
+      voucher_redeems: true,
+    },
+  };
 
   async function handleUpdateEmail() {
     if (!token) return;
@@ -123,6 +173,25 @@ export default function ProfileScreen() {
     await Share.share({
       message: `Join HU NOW with my invite code ${code} and unlock city rewards across Hull.`,
     });
+  }
+
+  async function handleToggleNotification<K extends keyof WPNotificationPreferences["member"]>(key: K) {
+    if (!token) return;
+    setSavingNotifications(true);
+    try {
+      const updated: WPNotificationPreferences = {
+        ...notificationPreferences,
+        member: {
+          ...notificationPreferences.member,
+          [key]: !notificationPreferences.member[key],
+        },
+      };
+      await updateNotificationPreferences(updated, token);
+      await refreshUser();
+    } catch (e: unknown) {
+      Alert.alert("Couldn’t update notifications", e instanceof Error ? e.message : "Please try again.");
+    }
+    setSavingNotifications(false);
   }
 
   return (
@@ -229,6 +298,64 @@ export default function ProfileScreen() {
             ))}
           </View>
         ) : null}
+
+        <View
+          style={{
+            backgroundColor: "rgba(255,255,255,0.07)",
+            borderRadius: 20,
+            padding: 18,
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.08)",
+            marginBottom: 16,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ color: "white", fontSize: 18, fontWeight: "800", marginBottom: 4 }}>Notifications</Text>
+              <Text style={{ color: "rgba(255,255,255,0.46)", fontSize: 12, lineHeight: 18 }}>
+                Manage the updates you want from HU NOW. Transactional notifications stay on by default until you change them.
+              </Text>
+            </View>
+            <View style={{ backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
+              <Text style={{ color: user.has_push_token ? YELLOW : "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: "900" }}>
+                {user.has_push_token ? `${user.push_token_count ?? 1} device` : "Push off"}
+              </Text>
+            </View>
+          </View>
+
+          <NotificationToggleRow
+            label="Receipts"
+            description="Offer redemption receipts and purchase confirmations."
+            value={notificationPreferences.member.receipts}
+            onPress={() => handleToggleNotification("receipts")}
+          />
+          <NotificationToggleRow
+            label="Vouchers"
+            description="Voucher claimed alerts and wallet-ready updates."
+            value={notificationPreferences.member.vouchers}
+            onPress={() => handleToggleNotification("vouchers")}
+          />
+          <NotificationToggleRow
+            label="Tier updates"
+            description="Know when you unlock Bronze, Silver, or Gold."
+            value={notificationPreferences.member.tier_updates}
+            onPress={() => handleToggleNotification("tier_updates")}
+          />
+          <NotificationToggleRow
+            label="Reward reminders"
+            description="Alerts when a limited reward becomes available again."
+            value={notificationPreferences.member.reward_reminders}
+            onPress={() => handleToggleNotification("reward_reminders")}
+          />
+          <NotificationToggleRow
+            label="Loyalty milestones"
+            description="Updates for stamp milestones and loyalty rewards."
+            value={notificationPreferences.member.loyalty_milestones}
+            onPress={() => handleToggleNotification("loyalty_milestones")}
+          />
+
+          {savingNotifications ? <ActivityIndicator color={YELLOW} style={{ marginTop: 6 }} /> : null}
+        </View>
 
         <View
           style={{
