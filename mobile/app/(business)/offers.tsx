@@ -10,7 +10,6 @@ import {
   formatOfferRule,
   formatOfferSchedule,
   type BusinessOffersResponse,
-  type WPLoyaltyCardConfig,
   type WPOffer,
   type WPTierOffer,
 } from "@/lib/wordpress";
@@ -157,14 +156,6 @@ export default function BusinessOffersScreen() {
   const [data, setData] = useState<BusinessOffersResponse | null>(null);
   const [standardOffers, setStandardOffers] = useState<WPOffer[]>([]);
   const [tierOffers, setTierOffers] = useState<WPTierOffer[]>([]);
-  const [loyaltyCard, setLoyaltyCard] = useState<WPLoyaltyCardConfig>({
-    enabled: false,
-    card_title: "Venue Loyalty Card",
-    stamp_label: "Stamp",
-    reward_title: "Loyalty Reward",
-    reward_description: "",
-    reward_expiry_days: null,
-  });
   const [editingStandard, setEditingStandard] = useState<Record<number, boolean>>({});
   const [editingTier, setEditingTier] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -194,7 +185,6 @@ export default function BusinessOffersScreen() {
         setData(response);
         setStandardOffers(response.standard_offers);
         setTierOffers(response.tier_offers);
-        setLoyaltyCard(response.loyalty_card);
         setEditingStandard({});
         setEditingTier({});
       } catch (err: any) {
@@ -374,21 +364,12 @@ export default function BusinessOffersScreen() {
           time_start: sanitiseTimeInput(offer.time_start ?? ""),
           time_end: sanitiseTimeInput(offer.time_end ?? ""),
         })),
-        loyalty_card: {
-          enabled: loyaltyCard.enabled,
-          card_title: loyaltyCard.card_title.trim(),
-          stamp_label: loyaltyCard.stamp_label.trim(),
-          reward_title: loyaltyCard.reward_title.trim(),
-          reward_description: loyaltyCard.reward_description.trim(),
-          reward_expiry_days: loyaltyCard.reward_expiry_days ? Math.max(0, Number(loyaltyCard.reward_expiry_days)) : 0,
-        },
       };
 
       const response = await wordpress.saveBusinessOffers(payload, token);
       setData(response);
       setStandardOffers(response.standard_offers);
       setTierOffers(response.tier_offers);
-      setLoyaltyCard(response.loyalty_card);
       setEditingStandard({});
       setEditingTier({});
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -599,87 +580,15 @@ export default function BusinessOffersScreen() {
         </View>
 
         <View style={{ backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 20, padding: 16, marginBottom: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.08)" }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: "white", fontSize: 18, fontWeight: "900", marginBottom: 4 }}>Venue Loyalty Card</Text>
-              <Text style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, lineHeight: 18 }}>
-                Stamp after any in-store purchase. At 5 stamps members earn +5 points, and at 10 they unlock a voucher in their wallet.
+              <Text style={{ color: "white", fontSize: 16, fontWeight: "800", marginBottom: 4 }}>Venue Loyalty Card</Text>
+              <Text style={{ color: "rgba(255,255,255,0.56)", fontSize: 13, lineHeight: 18 }}>
+                Loyalty now lives in its own tab so this screen stays focused on offers and reward windows.
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={() => setLoyaltyCard((current) => ({ ...current, enabled: !current.enabled }))}
-              style={{
-                backgroundColor: loyaltyCard.enabled ? YELLOW : "rgba(255,255,255,0.08)",
-                borderRadius: 999,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-              }}
-            >
-              <Text style={{ color: loyaltyCard.enabled ? NAV : "white", fontSize: 12, fontWeight: "900" }}>
-                {loyaltyCard.enabled ? "Enabled" : "Disabled"}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ marginBottom: 12 }}>
-            <FieldLabel light>Card Title</FieldLabel>
-            <Input
-              dark
-              value={loyaltyCard.card_title}
-              onChangeText={(value) => setLoyaltyCard((current) => ({ ...current, card_title: value }))}
-              placeholder="e.g. Sailmakers Loyalty Card"
-            />
-          </View>
-
-          <View style={{ marginBottom: 12 }}>
-            <FieldLabel light>Stamp Label</FieldLabel>
-            <Input
-              dark
-              value={loyaltyCard.stamp_label}
-              onChangeText={(value) => setLoyaltyCard((current) => ({ ...current, stamp_label: value }))}
-              placeholder="e.g. Coffee stamp"
-            />
-          </View>
-
-          <View style={{ marginBottom: 12 }}>
-            <FieldLabel light>10-Stamp Reward Title</FieldLabel>
-            <Input
-              dark
-              value={loyaltyCard.reward_title}
-              onChangeText={(value) => setLoyaltyCard((current) => ({ ...current, reward_title: value }))}
-              placeholder="e.g. Free meal voucher"
-            />
-          </View>
-
-          <View style={{ marginBottom: 12 }}>
-            <FieldLabel light>Reward Description</FieldLabel>
-            <Input
-              dark
-              value={loyaltyCard.reward_description}
-              onChangeText={(value) => setLoyaltyCard((current) => ({ ...current, reward_description: value }))}
-              placeholder="Shown on the customer's loyalty card and voucher"
-              multiline
-              style={{ minHeight: 92, textAlignVertical: "top" }}
-            />
-          </View>
-
-          <View>
-            <FieldLabel light>Voucher Expiry Days (Optional)</FieldLabel>
-            <Input
-              dark
-              value={loyaltyCard.reward_expiry_days ? String(loyaltyCard.reward_expiry_days) : ""}
-              onChangeText={(value) => setLoyaltyCard((current) => ({ ...current, reward_expiry_days: value.trim() ? Math.max(0, Number(value)) : null }))}
-              placeholder="Leave blank for no expiry"
-              keyboardType="number-pad"
-            />
-          </View>
-
-          <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-            <View style={{ backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-              <Text style={{ color: "rgba(255,255,255,0.74)", fontSize: 11, fontWeight: "800" }}>5 stamps = +5 pts</Text>
-            </View>
-            <View style={{ backgroundColor: YELLOW + "22", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}>
-              <Text style={{ color: YELLOW, fontSize: 11, fontWeight: "800" }}>10 stamps = voucher reward</Text>
+            <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(251,201,0,0.14)", alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="card-outline" size={20} color={YELLOW} />
             </View>
           </View>
         </View>
